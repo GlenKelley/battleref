@@ -1,0 +1,3 @@
+#!/bin/bash
+cd gitosis-admin 
+git reset HEAD --hard
