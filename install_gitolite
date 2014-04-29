@@ -1,0 +1,58 @@
+#!/bin/bash
+set -exv
+GIT_USER=$1
+ROOT_PUB_FILE=$2
+ADMIN_PUB_FILE=$3
+[[ -n "$GIT_USER" ]] &&
+[[ -n "$ROOT_PUB_FILE" ]] &&
+[[ -n "$ADMIN_PUB_FILE" ]] || ( echo "usage: install <git_user><root_public_key> <admin_public_key>" && exit 1 )
+
+[[ -f "$ROOT_PUB_FILE" ]] || ( echo "$ROOT_PUB_FILE does not exist" && exit 1 )
+export ROOT_KEY=`cat "$ROOT_PUB_FILE"`
+
+[[ -f "$ADMIN_PUB_FILE" ]] || ( echo "$ADMIN_PUB_FILE does not exist" && exit 1 )
+export ADMIN_KEY=`cat "$ADMIN_PUB_FILE"`
+
+[[ "$ADMIN_KEY" != "$ROOT_KEY" ]] || ( echo "the root and admin keys must be different" && exit 1 )
+
+echo "installing battleref server"
+
+if ! id -u "$GIT_USER" &>/dev/null 2>&1
+then
+	echo "add $GIT_USER user"
+	sudo adduser "$GIT_USER"
+fi
+# || ( echo "user $GIT_USER already exists" && exit 1 )
+
+export REPO_DIR=/opt/battleref
+echo "creating tournament directory $REPO_DIR"
+# [[ ! -e "$REPO_DIR" ]] || ( echo "$REPO_DIR already exists" && exit 1 )
+if [[ ! -e "$REPO_DIR" ]]
+then
+	sudo mkdir -m 755 "$REPO_DIR"
+	sudo chown "$GIT_USER:$GIT_USER" "$REPO_DIR"
+fi
+
+echo "installing gitolite"
+sudo -E su "$GIT_USER" <<'EOF'
+	set -exv
+	cd
+
+	if [[ ! -e gitolite ]]
+	then 
+		git clone git://github.com/sitaramc/gitolite
+	fi
+
+	mkdir -p bin
+	gitolite/install -ln
+
+	mkdir -m 0700 -p .ssh
+	echo "$ROOT_KEY" > .ssh/authorized_keys
+	chmod 0644 .ssh/authorized_keys
+	echo "$ADMIN_KEY" > admin.pub
+
+	rm -f repositories
+	ln -s "$REPO_DIR" repositories
+
+	bin/gitolite setup -pk admin.pub
+EOF

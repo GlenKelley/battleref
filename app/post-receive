@@ -1,0 +1,8 @@
+#!/bin/bash
+set -x
+read oldrev newrev ref
+repo=`pwd | perl -ne '/([^\/.]+)\/?\.git$/; print "$1\n"'`
+if [[ "$repo" != "gitolite-admin" ]]
+then
+	curl "http://localhost:4001/revision/submit?repo=$repo&commit=$newrev"
+fi

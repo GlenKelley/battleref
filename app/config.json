@@ -1,0 +1,12 @@
+{
+	"database_filename":"users.db",
+	"gitolite_template":"@admins = root webserver\n\nrepo gitolite-admin\n RW+ = @admins\n\nrepo defaultplayer\n RW+ = @admins\n\n",
+	"predefined_users":{
+		"root":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1GAwxTVwISOKpe6B95S2aq8/7vzQqrTol0+x7CQnpJmGxPhAUVDo/prSk3LjLNyRxp9RKpRXTrycLxQfHpr2uPi5gdGQO4eLSqaZJLB7Hpntv1shky8UFRag0C1AAFgtSNC5+onRyL5lHMFDd4nKwapkyPS2yA0iufquUynYUmRrIvFcY/NUmVYXXN+GhNtSdVAsgoWc1vKeL/xYBPEDG5lJIow5CExtXxc81yuuIS93EOb5V+hhHMl0Mi51BkG29xPjec9r4xOKsrspyLH5dpjQz7gf40K1ULG4BKeFaXTJ/u2EPugdmC2YMxE8RldTFjh0X2npSQ29xN2iNCH99 akusete-root",
+		"webserver":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBeuEqCv0wGYuroicaeAfAT6z3/Sf5H93VkkBK79n1X+ewaphkMpSA9ip5MvPEskniBYJWvpqNGWemIhiuu/ctqJVDGresffm9j/NoZ5O/z5P4wlm3psL+eavrP6HGs9MexkmcroJbUTN/B4hYC/EULuDtYEwkkFB4u1cJC6TdG616BA3Ilr8UKVYMWwsWUqFt4gyU5GY5M6Q5LDfNuZ6Q3dQ5/xFGLu8+GDcHrH7Jc8EhNCzaIquPuIPNr+P9wCQasmgj+BhNbfIE8PPP7jGIbQ2PgO4z2Sz+BAeuyCDOjh8OaE87rkIIUUsRzE7h9iDSQyAURpBdejECrIR13yOR webserver@ip-172-31-29-167",
+		"defaultplayer":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBeuEqCv0wGYuroicaeAfAT6z3/Sf5H93VkkBK79n1X+ewaphkMpSA9ip5MvPEskniBYJWvpqNGWemIhiuu/ctqJVDGresffm9j/NoZ5O/z5P4wlm3psL+eavrP6HGs9MexkmcroJbUTN/B4hYC/EULuDtYEwkkFB4u1cJC6TdG616BA3Ilr8UKVYMWwsWUqFt4gyU5GY5M6Q5LDfNuZ6Q3dQ5/xFGLu8+GDcHrH7Jc8EhNCzaIquPuIPNr+P9wCQasmgj+BhNbfIE8PPP7jGIbQ2PgO4z2Sz+BAeuyCDOjh8OaE87rkIIUUsRzE7h9iDSQyAURpBdejECrIR13yOR webserver@ip-172-31-29-167"
+	},
+	"server_port":"4001",
+	"git_hostname":"git.akusete.com",
+	"api_hostname":"api.akusete.com"
+}

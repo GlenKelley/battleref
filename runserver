@@ -1,0 +1,48 @@
+#!/bin/bash
+set -x
+
+REPO=/opt/git/battleref.git
+LOG_DIR=~/.battleref/log
+RLOG=$LOG_DIR/runloop.log
+mkdir -p "$LOG_DIR"
+
+# SANDBOX=`mktemp -dt battleref`
+RUN_DIR=~/.battleref/rundir
+RUN_LOCK=~/.battleref/runlock
+ENTRY_LOCK=~/.battleref/entrylock
+until false; do
+	until mkdir "$ENTRY_LOCK" 2>> "$RLOG"; do 
+		echo "Unable to aquire lock $ENTRY_LOCK" >>"$RLOG"
+    	sleep 1
+	done
+
+	until mkdir "$RUN_LOCK" 2>> "$RLOG"; do 
+		echo "Unable to aquire lock $RUN_LOCK" >>"$RLOG"
+    	sleep 1
+	done
+	rmdir "$ENTRY_LOCK"
+
+	rmdir -f "$RUN_DIR"
+	mkdir -p "$RUN_DIR"
+	cd "$RUN_DIR"
+	if [[ -e battleref ]]
+	then
+		cd battleref
+		git pull
+		cd ..
+	else 
+		git clone /opt/git/battleref.git		
+	fi
+
+#	rm -r scripts
+#	cp -r "$GIT_HOME/app/scripts" scripts
+	if go run "$RUN_DIR/battleref/app/main.go" >> "$LOG_DIR/out.log" 2>> "$LOG_DIR/err.log"
+	then
+		rm "$RUN_LOCK"
+		exit 0
+	fi
+    echo "BattleCodeServer terminated with exit code $?. Respawning.." >>"$RLOG"
+	# rm -r scripts
+	rmdir "$RUN_LOCK"
+	sleep 1
+done

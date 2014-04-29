@@ -1,0 +1,4 @@
+#!/bin/bash
+set -ex
+cd ~/battleref/app
+go run main.go >> ~/logs/out.log 2>>&1

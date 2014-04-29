@@ -1,0 +1,33 @@
+#!/bin/bash
+set -ex
+REPOA=$1
+HASHA=$2
+REPOB=$3
+HASHB=$4
+MAP=$5
+GIT_SERVER=$6
+SANDBOX=`pwd`/sandbox
+echo "run match $REPOA vs $REPOB"
+cd $SANDBOX
+rm -rf "teams"
+mkdir -p "teams"
+
+git clone "git@$GIT_SERVER:$REPOA" "teams/$REPOA"
+cd "teams/$REPOA"
+git checkout "$HASHA"
+cd $SANDBOX
+
+git clone "git@$GIT_SERVER:$REPOB" "teams/$REPOB" 
+cd "teams/$REPOB"
+git checkout "$HASHB"
+cd $SANDBOX
+
+cp bc.conf.template bc.conf
+
+echo "# Headless settings" >> bc.conf
+echo "bc.game.maps=$MAP" >> bc.conf
+echo "bc.game.team-a=$REPOA" >> bc.conf
+echo "bc.game.team-b=$REPOB" >> bc.conf
+echo "bc.game.save-file=match.rms" >> bc.conf
+
+ant file -Dc=bc.conf # > output.log 2> error.log

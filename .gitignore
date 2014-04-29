@@ -1,2 +1,4 @@
-app/gitosis-admin
 app/users.db
+app/sandbox/bc.conf
+app/sandbox/teams
+app/sandbox/bin

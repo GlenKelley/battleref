@@ -1,0 +1,13 @@
+#!/bin/bash
+NAME=$1
+GIT_HOST=$2
+set -ex
+rm -rf "$NAME"
+git clone "git@$GIT_HOST:defaultplayer.git" "$NAME" 
+cd $NAME
+sed "1s/package defaultplayer;/package $NAME;/" RobotPlayer.java > tmp.java
+mv tmp.java RobotPlayer.java
+git commit -m "package name" RobotPlayer.java
+git push --mirror "git@$GIT_HOST:$NAME.git"
+cd ..
+rm -rf "$NAME"

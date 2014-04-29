@@ -1,0 +1,53 @@
+#!/bin/bash
+set -ex
+
+ROOT_KEY=~/.ssh/root
+ADMIN_KEY=~/.ssh/admin
+
+if [[ ! -f "$ROOT_KEY" ]]
+then 
+	echo "creating root key"
+	ssh-keygen -f "$ROOT_KEY" -P "" -C "battleref webserver key"
+fi
+
+if [[ ! -f "$ADMIN_KEY" ]]
+then 
+	echo "creating admin key"
+	ssh-keygen -f "$ADMIN_KEY" -P "" -C "battleref gitolite admin key"
+fi
+
+GIT_USER=g2
+WEB_USER=w2
+
+if ! which git
+then
+	echo "no git"
+	sudo yum install git
+fi
+
+if ! which go
+then
+	echo "no go"
+	sudo yum install go
+fi
+
+#if ! which cpan 
+#then
+#	sudo yum install cpan
+#fi
+#cpan Data::Dumper
+
+#wget http://www.cpan.org/modules/by-module/Data/Data-Dumper-2.151.tar.gz
+#tar xvzf Data-Dumper-2.151.tar.gz
+#cd Data-Dumper-2.151
+#perl Makefile.PL
+#make
+#make install
+#cd ..
+
+GIT_HOME=`git rev-parse --show-toplevel`
+[[ -n "$GIT_HOME" ]] || ( echo "must run in repository" && exit 1 )
+
+./install_gitolite "$GIT_USER" "$ROOT_KEY.pub" "$ADMIN_KEY.pub"
+./install_webserver "$WEB_USER" "$GIT_USER" "$ROOT_KEY" "$ROOT_KEY.pub" "$ADMIN_KEY" "$ADMIN_KEY.pub" "$GIT_HOME"
+
