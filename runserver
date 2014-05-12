@@ -22,7 +22,6 @@ until false; do
 	done
 	rmdir "$ENTRY_LOCK"
 
-	rmdir -f "$RUN_DIR"
 	mkdir -p "$RUN_DIR"
 	cd "$RUN_DIR"
 	if [[ -e battleref ]]
