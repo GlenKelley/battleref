@@ -21,19 +21,25 @@ WEB_USER=w2
 
 if ! which git
 then
-	echo "no git"
+	echo "installing git"
 	sudo yum install git
 fi
 
 if ! which gcc
 then
-	echo "no gcc"
+	echo "installing gcc"
 	sudo yum install gcc
+fi
+
+if ! perl -e 'user Data::Dumper'
+then
+	echo "installing perl module Data::Dumper"
+	sudo yum install perl-Data-Dumper
 fi
 
 if ! which go
 then
-	echo "no go"
+	echo "installing go"
 	sudo yum install go
 fi
 
