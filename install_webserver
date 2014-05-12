@@ -76,9 +76,11 @@ EOM
 	mkdir -p golib
 	if ! grep "GOPATH" ~/.bashrc
 	then
-		echo "export GOPATH=~/golib" >> ~/.bashrc
+		echo "export GOPATH=$HOME/golib" >> ~/.bashrc
 	fi
-	
+	. ~/.bashrc
+	env | grep GOPATH
+
 	go get "github.com/mattn/go-sqlite3"
 	go install "github.com/mattn/go-sqlite3"
 
