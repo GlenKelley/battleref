@@ -74,7 +74,11 @@ EOM
 	chmod 0644 ".ssh/authorized_keys"
 
 	mkdir -p golib
-	export GOPATH=~/golib
+	if ! grep "GOPATH" ~/.bashrc
+	then
+		echo "export GOPATH=~/golib" >> ~/.bashrc
+	fi
+	
 	go get "github.com/mattn/go-sqlite3"
 	go install "github.com/mattn/go-sqlite3"
 

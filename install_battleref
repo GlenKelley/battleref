@@ -25,6 +25,12 @@ then
 	sudo yum install git
 fi
 
+if ! which gcc
+then
+	echo "no gcc"
+	sudo yum install gcc
+fi
+
 if ! which go
 then
 	echo "no go"
