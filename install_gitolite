@@ -22,11 +22,9 @@ then
 	echo "add $GIT_USER user"
 	sudo adduser "$GIT_USER"
 fi
-# || ( echo "user $GIT_USER already exists" && exit 1 )
 
 export REPO_DIR=/opt/battleref
 echo "creating tournament directory $REPO_DIR"
-# [[ ! -e "$REPO_DIR" ]] || ( echo "$REPO_DIR already exists" && exit 1 )
 if [[ ! -e "$REPO_DIR" ]]
 then
 	sudo mkdir -m 755 "$REPO_DIR"
