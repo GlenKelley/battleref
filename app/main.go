@@ -807,7 +807,7 @@ const (
 )
 
 func playMatch(r1 Revision, r2 Revision, m string, config Config) MatchResult {
-	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.Absolute"Sand"boxDir())
+	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.AbsoluteSandboxDir())
 	b, err := cmd.CombinedOutput()
 	s := string(b)
 	if err != nil {
