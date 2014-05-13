@@ -596,7 +596,7 @@ func (f *RevisionSubmitForm) Validate() error {
 	return nil
 }
 
-func checkRevision(gitHash, name, gitHostname string) error {
+func checkRevision(gitHash, name, gitHostname string, config Config) error {
 	return runAndPrint(exec.Command(config.AppScriptPath("checkBranch"), name, gitHash, gitHostname))
 }
 
@@ -611,7 +611,7 @@ func revisionSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		}
 	}
 	if err == nil && !submitForm.Silent {
-		if err = checkRevision(submitForm.GitHash, submitForm.Repo, s.Config.GitHostname); err != nil {
+		if err = checkRevision(submitForm.GitHash, submitForm.Repo, s.Config.GitHostname, s.Config); err != nil {
 			err = fmt.Errorf("invalid git hash %s", submitForm.GitHash)
 		}
 	}
@@ -807,7 +807,7 @@ const (
 )
 
 func playMatch(r1 Revision, r2 Revision, m string, config Config) MatchResult {
-	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.AbsoluteSandboxDir())
+	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.Absolute"Sand"boxDir())
 	b, err := cmd.CombinedOutput()
 	s := string(b)
 	if err != nil {
