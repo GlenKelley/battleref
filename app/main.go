@@ -54,6 +54,22 @@ type Config struct {
 	ServerPort string `json:"server_port"`
 	GitHostname string `json:"git_hostname"`
 	ApiHostname string `json:"api_hostname"`
+	AppDir string `json:"app_dir"`
+	SandboxDir string `json:"sandbox_dir"`
+}
+
+func (c *Config) AbsoluteAppDir() string {
+	wd, _ := os.Getwd()
+	return filepath.Join(wd, c.AppDir)
+}
+
+func (c *Config) AbsoluteSandboxDir() string {
+	wd, _ := os.Getwd()
+	return filepath.Join(wd, c.SandboxDir)
+}
+
+func (c *Config) AppScriptPath(script string) string {
+	return filepath.Join(c.AbsoluteAppDir(), script)
 }
 
 func LoadConfig(filename string) (Config, error) {
@@ -404,19 +420,23 @@ func addUser(db *Database, form RegisterForm, config Config) error {
 		log.Printf("added user %v\n", form)
 		if !form.Silent {
 			if err := updateGitolite(tx, fmt.Sprintf("added user %s", form.Name), config); err != nil { return err }
-			return runAndPrint(exec.Command("./initRepo", form.Name, config.GitHostname))
+			return runAndPrint(exec.Command(config.AppScriptPath("initRepo"), form.Name, config.GitHostname))
 		}
 		return nil
 	})
 }
 
 func updateGitolite(tx *Transaction, message string, config Config) error {
-	err := runAndPrint(exec.Command("./checkoutGitolite", config.GitHostname))
+	tmpdir, err := ioutil.TempDir("", "gitolite-admin")
+	if err != nil { return err }
+	defer os.RemoveAll(tmpdir)
+	err = runAndPrint(exec.Command(config.AppScriptPath("checkoutGitolite"), config.GitHostname, tmpdir))
 	if err != nil { return err }
 
-	err = os.RemoveAll("gitolite-admin/keydir")
+	keydir := filepath.Join(tmpdir, "keydir")
+	err = os.RemoveAll(keydir)
 	if err != nil { return err }
-	err = os.Mkdir("gitolite-admin/keydir", 0755)
+	err = os.Mkdir(keydir, 0755)
 	if err != nil { return err }
 	b := bytes.NewBufferString(config.GitoliteTemplate)
 
@@ -426,7 +446,8 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 		if alt, ok := keys[publicKey]; ok {
 			name = alt
 		} else {
-	    	err = ioutil.WriteFile(fmt.Sprintf("gitolite-admin/keydir/%s.pub", name), []byte(publicKey + "\n"), 0644)
+			publicKeyFilename := filepath.Join(keydir, fmt.Sprintf("%s.pub", name))
+	    	err = ioutil.WriteFile(publicKeyFilename, []byte(publicKey + "\n"), 0644)
 	    	keys[publicKey] = name
 		}
 		return name, err
@@ -449,10 +470,10 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 	    _, err = b.WriteString(fmt.Sprintf("repo %s\n RW+ = @admins %s\n\n", name, canonicalName))
 	    if err != nil { return err }
 	}
-	err = ioutil.WriteFile("gitolite-admin/conf/gitolite.conf", b.Bytes(), 0755)
+	err = ioutil.WriteFile(filepath.Join(tmpdir, "conf/gitolite.conf"), b.Bytes(), 0755)
 	if err != nil { return err }
 
-	err = runAndPrint(exec.Command("./updateGitolite", message))
+	err = runAndPrint(exec.Command(config.AppScriptPath("updateGitolite"), message, tmpdir))
 	return err
 }
 
@@ -575,7 +596,7 @@ func (f *RevisionSubmitForm) Validate() error {
 }
 
 func checkRevision(gitHash, name, gitHostname string) error {
-	return runAndPrint(exec.Command("./checkBranch", name, gitHash, gitHostname))
+	return runAndPrint(exec.Command(config.AppScriptPath("checkBranch"), name, gitHash, gitHostname))
 }
 
 func revisionSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
@@ -785,7 +806,7 @@ const (
 )
 
 func playMatch(r1 Revision, r2 Revision, m string, config Config) MatchResult {
-	cmd := exec.Command("./runMatch", r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname)
+	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.AbsoluteSandboxDir())
 	b, err := cmd.CombinedOutput()
 	s := string(b)
 	if err != nil {

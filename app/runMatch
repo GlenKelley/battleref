@@ -6,21 +6,23 @@ REPOB=$3
 HASHB=$4
 MAP=$5
 GIT_SERVER=$6
-SANDBOX=`pwd`/sandbox
+SANDBOX=$7
+rm -rf "$SANDBOX"
+cp -r sandbox "$SANDBOX"
 echo "run match $REPOA vs $REPOB"
-cd $SANDBOX
+cd "$SANDBOX"
 rm -rf "teams"
 mkdir -p "teams"
 
 git clone "git@$GIT_SERVER:$REPOA" "teams/$REPOA"
 cd "teams/$REPOA"
 git checkout "$HASHA"
-cd $SANDBOX
+cd "$SANDBOX"
 
 git clone "git@$GIT_SERVER:$REPOB" "teams/$REPOB" 
 cd "teams/$REPOB"
 git checkout "$HASHB"
-cd $SANDBOX
+cd "$SANDBOX"
 
 cp bc.conf.template bc.conf
 

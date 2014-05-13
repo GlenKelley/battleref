@@ -7,6 +7,5 @@
 		"defaultplayer":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBeuEqCv0wGYuroicaeAfAT6z3/Sf5H93VkkBK79n1X+ewaphkMpSA9ip5MvPEskniBYJWvpqNGWemIhiuu/ctqJVDGresffm9j/NoZ5O/z5P4wlm3psL+eavrP6HGs9MexkmcroJbUTN/B4hYC/EULuDtYEwkkFB4u1cJC6TdG616BA3Ilr8UKVYMWwsWUqFt4gyU5GY5M6Q5LDfNuZ6Q3dQ5/xFGLu8+GDcHrH7Jc8EhNCzaIquPuIPNr+P9wCQasmgj+BhNbfIE8PPP7jGIbQ2PgO4z2Sz+BAeuyCDOjh8OaE87rkIIUUsRzE7h9iDSQyAURpBdejECrIR13yOR webserver@ip-172-31-29-167"
 	},
 	"server_port":"4001",
-	"git_hostname":"git.akusete.com",
-	"api_hostname":"api.akusete.com"
+	"git_hostname":"git.akusete.com"
 }

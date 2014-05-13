@@ -35,7 +35,7 @@ until false; do
 
 #	rm -r scripts
 #	cp -r "$GIT_HOME/app/scripts" scripts
-	if go run "$RUN_DIR/battleref/app/main.go" >> "$LOG_DIR/out.log" 2>> "$LOG_DIR/err.log"
+	if go run "$RUN_DIR/battleref/app/main.go" "$RUN_DIR/battleref/app/config.json" >> "$LOG_DIR/out.log" 2>> "$LOG_DIR/err.log"
 	then
 		rm "$RUN_LOCK"
 		exit 0

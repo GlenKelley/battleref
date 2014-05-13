@@ -3,10 +3,11 @@ NAME=$1
 BRANCH=$2
 GIT_HOST=$3
 # set -ex
-rm -rf "$NAME.git"
-git clone --bare "git@$GIT_HOST:$NAME.git"
-cd "$NAME.git"
+TEMPDIR=`mktemp -d -t "$NAME"`
+# rm -rf "$NAME.git"
+git clone --bare "git@$GIT_HOST:$NAME.git" "$TEMPDIR"
+cd "$TEMPDIR"
 git log "$BRANCH" || EXIT=$?
 cd ..
-rm -rf $NAME.git
+rm -rf "$TEMPDIR"
 [[ "$EXIT" -eq "0" ]]

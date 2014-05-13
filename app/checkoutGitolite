@@ -1,7 +1,8 @@
 #!/bin/bash
 GIT_SERVER=$1
+REPO_DIR=$2
 set -ex
-rm -rf gitolite-admin
-git clone "git@$GIT_SERVER:gitolite-admin.git"
-cd gitolite-admin
+rm -rf "$GITOLITE_DIR"
+git clone "git@$GIT_SERVER:gitolite-admin.git" "$REPO_DIR"
+cd "$REPO_DIR"
 git checkout master

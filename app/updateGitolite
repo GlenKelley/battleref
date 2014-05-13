@@ -1,8 +1,9 @@
 #!/bin/bash
 COMMENT=$1
+REPO=$2
 set -ex
-cd gitolite-admin
+cd "$REPO"
 git add conf/gitolite.conf keydir/*.pub
 git commit -m "$COMMENT" conf/gitolite.conf keydir && git push origin master ;
-cd ..
-rm -rf gitolite-admin
+# cd ..
+# rm -rf "$REPO"
