@@ -43,6 +43,9 @@ then
 	sudo yum install go
 fi
 
+echo "installing libcurl"
+sudo yum install curl libcurl
+
 GIT_HOME=`git rev-parse --show-toplevel`
 [[ -n "$GIT_HOME" ]] || ( echo "must run in repository" && exit 1 )
 
