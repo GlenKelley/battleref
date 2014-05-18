@@ -6,7 +6,7 @@ ROOT_PRIVATE_FILE=$3
 ROOT_PUB_FILE=$4
 ADMIN_PRIVATE_FILE=$5
 ADMIN_PUB_FILE=$6
-GIT_HOME=$7
+GIT_ROOT=$7
 [[ -n "$WEB_USER" ]] &&
 [[ -n "$GIT_USER" ]] &&
 [[ -n "$ROOT_PRIVATE_FILE" ]] &&
@@ -25,11 +25,6 @@ export ADMIN_PUB_KEY=`cat "$ADMIN_PUB_FILE"`
 
 echo "installing battleref webserver"
 
-# ! id -u "$WEB_USER" &>/dev/null 2>&1 || ( echo "user $WEB_USER already exists" && exit 1 )
-
-#echo "add $WEB_USER user"
-#sudo adduser "$WEB_USER"
-
 if ! id -u "$WEB_USER" &>/dev/null 2>&1
 then
 	echo "add $WEB_USER user"
@@ -38,14 +33,25 @@ fi
 
 sudo mkdir -m 0755 -p /opt/git
 
-cd /opt/git
+GIT_DIR=/opt/git/battleref.git
 if [[ -e /opt/git/battleref.git ]]
 then
-	sudo rm -rf /opt/git/battleref.git
+	cd "$GIT_DIR"
+	if git remote | grep origin
+	then
+		git remote set-url origin file:///Users/gkelley/development/tmp/a.git
+	else
+		git remote add origin file:///Users/gkelley/development/tmp/a.git
+	fi
 fi
-sudo git clone --mirror "$GIT_HOME/.git"
+sudo git clone --mirror --local "$GIT_ROOT" "$GIT_DIR"
 
-sudo cp -n "$GIT_HOME/post-receive" "/opt/git/battleref.git/hooks/"
+cd "$GIT_ROOT"
+BRANCH=`git status --porcelain -b | cut -c4-`
+
+git show master:scripts/post-receive hooks/
+
+sudo cp -n "$GIT_ROOT/post-receive" "/opt/git/battleref.git/hooks/"
 sudo chown -R "$WEB_USER:$WEB_USER" "/opt/git/"
 
 export AUTH_KEYS=`cat ~/.ssh/authorized_keys`
