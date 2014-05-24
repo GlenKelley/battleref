@@ -51,7 +51,7 @@ type Event struct {
 type Config struct {
 	DatabaseFilename string `json:"database_filename"`
 	GitoliteTemplate string `json:"gitolite_template"`
-	PredefinedUsers map[string]string `json:"predefined_users"`
+	PredefinedUsers []string `json:"predefined_users"`
 	ServerPort string `json:"server_port"`
 	GitHostname string `json:"git_hostname"`
 	ApiHostname string `json:"api_hostname"`
@@ -71,6 +71,15 @@ func (c *Config) AbsoluteSandboxDir() string {
 
 func (c *Config) AppScriptPath(script string) string {
 	return filepath.Join(c.AbsoluteAppDir(), script)
+}
+
+func (c *Config) IsPredefinedUser(user string) bool {
+	for _, u := range c.PredefinedUsers {
+		if user == u {
+			return true
+		} 
+	}
+	return false
 }
 
 func LoadConfig(filename string) (Config, error) {
@@ -349,7 +358,7 @@ type RegisterForm struct {
 func (f *RegisterForm) Validate(config Config) error {
 	if f.Name == "" { return errors.New("missing name") }
 	if f.PublicKey == "" { return errors.New("missing public_key") }
-	_, reserved := config.PredefinedUsers[f.Name]
+	reserved := config.IsPredefinedUser(f.Name)
 	if reserved {
 		return fmt.Errorf("the name %s is taken", f.Name)
 	}
@@ -453,8 +462,12 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 		}
 		return name, err
 	}
-	for name, publicKey := range config.PredefinedUsers {
-		_, err = writeKey(name, publicKey)
+	for _, name := range config.PredefinedUsers {
+		var b []byte
+		b, err = ioutil.ReadFile(filepath.Join(os.Getenv("HOME"), ".ssh", name + ".pub"))
+		if err != nil { return err }
+		_, err = writeKey(name, string(b))
+		if err != nil { return err }
 	} 
 
 	rows, err := tx.ListUsers()
