@@ -19,29 +19,10 @@ fi
 GIT_USER=git
 WEB_USER=webserver
 
-if ! which git
-then
-	echo "installing git"
-	sudo yum install git
-fi
-
-if ! which gcc
-then
-	echo "installing gcc"
-	sudo yum install gcc
-fi
-
-if ! perl -e 'user Data::Dumper'
-then
-	echo "installing perl module Data::Dumper"
-	sudo yum install perl-Data-Dumper
-fi
-
-if ! which go
-then
-	echo "installing go"
-	sudo yum install go
-fi
+which git || sudo yum install git
+which gcc || sudo yum install gcc
+perl -e 'user Data::Dumper' || sudo yum install perl-Data-Dumper
+which go || sudo yum install go
 
 echo "installing libcurl"
 sudo yum install curl libcurl
