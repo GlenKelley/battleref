@@ -4,7 +4,7 @@
 # usage: install api.akusete.com github.com/GlenKelley/battlecode
 
 export HOST=api.akusete.com
-export REPO=github.com/GlenKelley/battlecode
+export REPO=github.com/GlenKelley/battleref
 
 set -exv
 [[ -n "$HOST" ]] &&

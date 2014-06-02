@@ -7,7 +7,7 @@ set -ex
 # install giolite
 
 ROOT_KEY=.ssh/gitolite_rsa
-ADMIN_KEY.ssh/webserver_rsa
+ADMIN_KEY=.ssh/webserver_rsa
 GIT_USER=git
 REPO=/opt/battleref
 GITOLITE=git://github.com/sitaramc/gitolite
