@@ -3,7 +3,7 @@ NAME=$1
 GIT_HOST=$2
 DEFAULT_PLAYER=$3
 set -ex
-TEMPDIR=`mktemp -d -t "$NAME"`
+TEMPDIR=`mktemp -d --suffix "$NAME"`
 git init "$TEMPDIR"
 sed "1s/package defaultplayer;/package $NAME;/" "$DEFAULT_PLAYER" > "$TEMPDIR"/RobotPlayer.java
 cd "$TEMPDIR"

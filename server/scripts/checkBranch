@@ -3,7 +3,7 @@ NAME=$1
 BRANCH=$2
 GIT_HOST=$3
 # set -ex
-TEMPDIR=`mktemp -d -t "$NAME"`
+TEMPDIR=`mktemp -d --suffix "$NAME"`
 # rm -rf "$NAME.git"
 git clone --bare "git@$GIT_HOST:$NAME.git" "$TEMPDIR"
 cd "$TEMPDIR"

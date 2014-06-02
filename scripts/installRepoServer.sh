@@ -1,17 +1,19 @@
 #!/bin/bash
 set -ex
 
-GIT_DIR=/opt/git/
-REPO=$GIT_DIR/battleref.git
-WEB_USER=webserver
-BRANCH=master
+export ROOT_DIR=/opt/git
+export REPO=$ROOT_DIR/battleref.git
+export WEB_USER=webserver
+export BRANCH=master
 
-mkdir -p "$GIT_DIR"
-chown "$WEB_USER:$WEB_USER" "$GIT_DIR"
+sudo mkdir -p "$ROOT_DIR"
+sudo chown "$WEB_USER:$WEB_USER" "$ROOT_DIR"
 
 sudo -E su "$WEB_USER" <<'EOF'
-[[ -e "$REPO" ]] || git clone --bare https://github.com/GlenKelley/battlecode.git "$REPO"
-
+set -ex
+cd "$ROOT_DIR"
+[[ -e "$REPO" ]] || git clone --bare git://github.com/GlenKelley/battleref.git "$REPO"
 cd "$REPO"
-git show "$MASTER:scripts/post-receive" > "$REPO/.git/hooks/post-receive"
+git show "$BRANCH:scripts/post-receive" > "$REPO/hooks/post-receive"
 EOF
+

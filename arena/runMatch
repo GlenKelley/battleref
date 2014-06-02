@@ -10,7 +10,7 @@ BATTLECODE=$7
 
 echo "run match $REPOA vs $REPOB"
 
-TEMPDIR=`mktemp -d -t "$NAME"`
+TEMPDIR=`mktemp -d --suffix "$NAME"`
 cp -r sandbox "$BATTLECODE" "$TEMPDIR"
 
 cd "$TEMPDIR"

@@ -9,7 +9,7 @@ mkdir -p "$LOG_DIR"
 until false; do
 	export BATTLEREF_DB = ~/.battleref/db.sqlite3
 
-	RUN_DIR=`mktemp -d -t battleref`
+	RUN_DIR=`mktemp -d --suffix battleref`
 	git clone "$REPO" "$RUN_DIR"
 
 	cd "$RUN_DIR"
