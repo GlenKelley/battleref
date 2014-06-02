@@ -6,23 +6,24 @@ REPOB=$3
 HASHB=$4
 MAP=$5
 GIT_SERVER=$6
-SANDBOX=$7
-rm -rf "$SANDBOX"
-cp -r sandbox "$SANDBOX"
-echo "run match $REPOA vs $REPOB"
-cd "$SANDBOX"
-rm -rf "teams"
-mkdir -p "teams"
+BATTLECODE=$7
 
+echo "run match $REPOA vs $REPOB"
+
+TEMPDIR=`mktemp -d -t "$NAME"`
+cp -r sandbox "$BATTLECODE" "$TEMPDIR"
+
+cd "$TEMPDIR"
+mkdir -p "teams"
 git clone "git@$GIT_SERVER:$REPOA" "teams/$REPOA"
 cd "teams/$REPOA"
 git checkout "$HASHA"
-cd "$SANDBOX"
+cd "$TEMPDIR"
 
 git clone "git@$GIT_SERVER:$REPOB" "teams/$REPOB" 
 cd "teams/$REPOB"
 git checkout "$HASHB"
-cd "$SANDBOX"
+cd "$TEMPDIR"
 
 cp bc.conf.template bc.conf
 
@@ -33,3 +34,5 @@ echo "bc.game.team-b=$REPOB" >> bc.conf
 echo "bc.game.save-file=match.rms" >> bc.conf
 
 ant file -Dc=bc.conf # > output.log 2> error.log
+
+rm -rf "$TEMPDIR"

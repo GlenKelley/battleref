@@ -7,7 +7,7 @@ TEMPDIR=`mktemp -d -t "$NAME"`
 # rm -rf "$NAME.git"
 git clone --bare "git@$GIT_HOST:$NAME.git" "$TEMPDIR"
 cd "$TEMPDIR"
-git log "$BRANCH" || EXIT=$?
+EXIT=git log "$BRANCH"
 cd ..
 rm -rf "$TEMPDIR"
 [[ "$EXIT" -eq "0" ]]

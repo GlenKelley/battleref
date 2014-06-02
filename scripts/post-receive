@@ -1,29 +1,4 @@
 #!/bin/bash
-set -ex
-
-RUN_LOCK=~/.battleref/lock
-ENTRY_LOCK=~/.battleref/entry
-
-until mkdir "$ENTRY_LOCK" 2>> "$RLOG"; do 
-	echo "Unable to aquire lock $ENTRY_LOCK" >>"$RLOG"
-	sleep 1
-done
-until mkdir "$RUN_LOCK" 2>> "$RLOG"; do  
-	curl 'http://localhost:4001/shutdown' || true
-	sleep 2
-done
-rm "$RUN_LOCK"
-
-read oldrev newrev ref
-
-#TEMP_FILE=`mktemp -t battleref`
-#git show "$newrev:app/post-receive" > "$TEMP_FILE"
-#scp "$TEMP_FILE" "git@localhost:442" "$GIT_HOME/.git/hooks/"
-
-rm "$ENTRY_LOCK"
-
-#!/bin/bash
-set -ex
-unset GIT_DIR
-cd ~/battleref
-git pull
+set -x
+# read oldrev newrev ref
+curl 'http://localhost:4001/shutdown'

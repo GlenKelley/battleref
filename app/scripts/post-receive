@@ -1,6 +1,0 @@
-#!/bin/bash
-set -ex
-unset GIT_DIR
-cd ~/battleref
-git pull
-curl 'http://localhost:4001/restart'

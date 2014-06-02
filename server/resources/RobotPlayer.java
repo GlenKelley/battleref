@@ -1,0 +1,4 @@
+package defaultplayer;
+
+class RobotPlayer {
+}

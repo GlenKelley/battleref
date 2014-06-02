@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"os"
@@ -8,283 +8,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"errors"
-	"database/sql"
 	"bytes"
 	"os/exec"
-	"flag"
+	// "flag"
 	"fmt"
 	"regexp"
 	"sort"
-	"time"
-	// "math/rand"
+	// "time"
 	"io/ioutil"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/GlenKelley/battleref/arena"
 )
-
-/**
-TODO: validate public keys
-TODO: upload maps
-TODO: run checkouts in sandbox
-*/
-
-var (
-	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")
-	PublicKeyRegex = regexp.MustCompile("")
-	CommitRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")
-	WinRegex = regexp.MustCompile("\\[java\\] \\[server\\]\\s+([\\w\\d-]+)\\s+\\((A|B)\\) wins \\(round (\\d+)\\)")
-	ReasonRegex = regexp.MustCompile("\\[java\\] Reason: ([^\n]+)")
-)
-
-type EventType int
-
-const (
-	EventNewCommit EventType = iota
-	EventNewMap    EventType = iota
-	EventStart     EventType = iota
-)
-
-type Event struct {
-	Name string
-	Type EventType
-}
-
-type Config struct {
-	DatabaseFilename string `json:"database_filename"`
-	GitoliteTemplate string `json:"gitolite_template"`
-	PredefinedUsers []string `json:"predefined_users"`
-	ServerPort string `json:"server_port"`
-	GitHostname string `json:"git_hostname"`
-	ApiHostname string `json:"api_hostname"`
-	AppDir string `json:"app_dir"`
-	SandboxDir string `json:"sandbox_dir"`
-}
-
-func (c *Config) AbsoluteAppDir() string {
-	wd, _ := os.Getwd()
-	return filepath.Join(wd, c.AppDir)
-}
-
-func (c *Config) AbsoluteSandboxDir() string {
-	wd, _ := os.Getwd()
-	return filepath.Join(wd, c.SandboxDir)
-}
-
-func (c *Config) AppScriptPath(script string) string {
-	return filepath.Join(c.AbsoluteAppDir(), script)
-}
-
-func (c *Config) IsPredefinedUser(user string) bool {
-	for _, u := range c.PredefinedUsers {
-		if user == u {
-			return true
-		} 
-	}
-	return false
-}
-
-func LoadConfig(filename string) (Config, error) {
-	var config Config
-	bs, err := ioutil.ReadFile(filename)
-	if err != nil { return config, err }
-	err = json.Unmarshal(bs, &config)
-	if err != nil { return config, err }
-	return config, nil
-}
-
-type Database struct {
-	db *sql.DB
-}
-
-type Transaction struct {
-	tx *sql.Tx
-}
-
-func (t *Transaction) AddUser(name, publicKey string) error {
-	_, err := t.tx.Exec("insert into user(name, public_key) values(?,?)", name, publicKey)
-	return err
-}
-
-func (t *Transaction) RemoveUser(name string) error {
-	_, err := t.tx.Exec("delete from user where name = ?", name)
-	return err
-}
-
-func (t *Transaction) RemoveUserMatches(name string) error {
-	_, err := t.tx.Exec("delete from match where p1 = ? or p2 = ?", name, name)
-	return err
-}
-
-func (t *Transaction) RemoveUserRevision(name string) error {
-	_, err := t.tx.Exec("delete from revision where name = ?", name)
-	return err
-}
-
-func (t *Transaction) ListUsers() (*sql.Rows, error) {
-	rows, err := t.tx.Query("select name, public_key from user")
-	return rows, err
-}
-
-func OpenDatabase(filename string) (*Database, error) {
-	db, err := sql.Open("sqlite3", filename)
-	if err != nil { return nil, err }
-	return &Database{db}, nil
-}
-
-func (c *Database) InitTables(config Config) error {
-	_, err := c.db.Exec("create table if not exists user (name text not null primary key, public_key text not null, date_created timestamp not null default current_timestamp);")
-	if err != nil { return err }
-	_, err = c.db.Exec("create table if not exists revision (githash text not null primary key, name text not null, date timestamp not null default current_timestamp, is_head int not null default false);")
-	if err != nil { return err }
-	_, err = c.db.Exec("create table if not exists map (name text primary key);")
-	if err != nil { return err }
-	_, err = c.db.Exec("create table if not exists match (p1 text not null, p2 text not null, map text not null, result text not null, unique (p1, p2, map));")
-	if err != nil { return err }
-
-	return nil
-}
-
-func (c *Database) Transaction(f func(*Transaction) error) error {
-	tx, err := c.db.Begin()
-	if err != nil { return err }
-	err = f(&Transaction{tx})
-	if err == nil {
-		err = tx.Commit()
-	} else {
-		log.Println("rollback", err)
-		e2 := tx.Rollback()
-		if e2 != nil {
-			err = e2
-		}
-	}
-	return err
-}
-
-func (c *Database) ListUsers() (*sql.Rows, error) {
-	rows, err := c.db.Query("select name, public_key from user")
-	return rows, err
-}
-
-func (c *Database) AddMap(name string) error {
-	_, err := c.db.Exec("insert into map(name) values(?)", name)
-	return err
-}
-
-func (c *Database) RemoveMap(name string) error {
-	_, err := c.db.Exec("delete from map where name = ?", name)
-	return err
-}
-
-func (c *Database) CountUsersWithName(name string) (int, error) {
-	var count int
-	err := c.db.QueryRow("SELECT count(*) FROM user WHERE name=?", name).Scan(&count)
-	return count, err
-}
-
-func (t *Transaction) AddRevision(commit, name string, isHead bool) error {
-	var err error
-	h := 0
-	if isHead {
-		_, err = t.tx.Exec("update revision set is_head = 0 where name = ? and githash != ?", name, commit)
-		h = 1
-	}
-	if err == nil {
-		_, err = t.tx.Exec("insert into revision (githash, name, is_head) values(?,?,?)", commit, name, h)
-	}
-	return err
-}
-
-func (c *Database) ListHeadRevisions() (map[string]Revision, error) {
-	rows, err := c.db.Query("select * from revision where is_head != 0")
-	commits := map[string]Revision{}
-	if err != nil { return commits, err }
-	for rows.Next() {
-		var revision Revision
-	    err = rows.Scan(&revision.GitHash, &revision.Name, &revision.Date, &revision.IsHead)
-	    if err != nil { break }
-	    commits[revision.Name] = revision
-	}
-	return commits, err
-}
-
-func (c *Database) ListRevisions() (map[string][]Revision, error) {
-	rows, err := c.db.Query("select * from revision")
-	commits := map[string][]Revision{}
-	if err != nil { return commits, err }
-	for rows.Next() {
-		var revision Revision
-	    err = rows.Scan(&revision.GitHash, &revision.Name, &revision.Date, &revision.IsHead)
-	    if err != nil { break }
-	    commits[revision.Name] = append(commits[revision.Name], revision)
-	}
-	return commits, err
-}
-
-func (c *Database) HasResult(r1 Revision, r2 Revision, mapName string) (bool, error) {
-	var count int
-	err := c.db.QueryRow("SELECT count(*) FROM match WHERE p1=? AND p2=? AND map=?", r1.GitHash, r2.GitHash, mapName).Scan(&count)
-	return count > 0, err
-}
-
-func (c *Database) ListMaps() ([]string, error) {
-	rows, err := c.db.Query("select * from map")
-	if err != nil { return nil, err }
-	maps := []string{}
-	for rows.Next() {
-		var mapName string
-	    if err := rows.Scan(&mapName); err != nil { return nil, err }
-	    maps = append(maps, mapName)
-	}
-	return maps, nil
-}
-
-func (c *Database) AddMatch(p1, p2, mapName string, result MatchResult) error {
-	_, err := c.db.Exec("insert into match(p1, p2, map, result) values (?,?,?,?)", p1, p2, mapName, string(result))
-	return err
-}
-
-func (c *Database) FlushMapFailures() error {
-	_, err := c.db.Exec("delete from match where result = ?", string(ResultFail))
-	return err
-}
-
-type Match struct {
-	PlayerA string
-	PlayerB string
-	Map 	string
-	Result  MatchResult
-}
-
-func (m *Match) PlayerAScore() int {
-	switch m.Result {
-		case ResultWinA: return 2 
-		case ResultTieA: return 1
-		default: return 0  
-	}
-}
-
-func (m *Match) PlayerBScore() int {
-	switch m.Result {
-		case ResultWinB: return 2 
-		case ResultTieB: return 1
-		default: return 0  
-	}
-}
-
-func (c *Database) RankedMatches() ([]Match, error) {
-	rows, err := c.db.Query("select r1.name, r2.name, m.map, m.result from match m join revision r1 on m.p1 = r1.githash join revision r2 on m.p2 = r2.githash where r1.is_head != 0 and r2.is_head != 0")
-	if err != nil { return nil, err }
-	matches := []Match{}
-	for rows.Next() {
-		var match Match
-		var result string
-	    if err := rows.Scan(&match.PlayerA, &match.PlayerB, &match.Map, &result); err != nil { 
-	    	return nil, err
-	    }
-	    match.Result = MatchResult(result)
-	    matches = append(matches, match)
-	}
-	return matches, nil
-}
 
 type ServerState struct {
 	Database *Database
@@ -320,30 +54,90 @@ func (s *ServerState) HandleFunc(pattern string, handler func(http.ResponseWrite
 	})
 }
 
-func main() {
-	var configFilename string
-	var cleanDatabase bool
-	flag.StringVar(&configFilename, "config", "config.json", "environment parameters for application")
-	flag.BoolVar(&cleanDatabase, "clean", false, "clean database")
-	flag.Parse()
 
-	config, err := LoadConfig(configFilename)
-	if err != nil { log.Fatal(err) }
+var (
+	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")			//tournament usernames
+	PublicKeyRegex = regexp.MustCompile("")					//SSH public key TODO: this
+	CommitRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
+)
 
-	if cleanDatabase {
-		os.Remove(config.DatabaseFilename)	
-	}
-	database, err := OpenDatabase(config.DatabaseFilename)
-	if err != nil { log.Fatal(err) }
+type EventType int
 
-	err = database.InitTables(config)
-	if err != nil { log.Fatal(err) }
+const (
+	EventNewCommit EventType = iota
+	EventNewMap    EventType = iota
+	EventStart     EventType = iota
+)
 
-	server := NewServer(config, database)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", config.ServerPort), server.Handler))
+type Event struct {
+	Name string
+	Type EventType
 }
 
-func runAndPrint(cmd *exec.Cmd) error {
+type Config struct {
+	GitoliteTemplate string `json:"gitolite_template"`
+	PredefinedRepos []string `json:"predefined_repos"`
+	ServerPort string `json:"server_port"`
+	GitHostname string `json:"git_hostname"`
+}
+
+// func (c *Config) AbsoluteAppDir() string {
+// 	wd, _ := os.Getwd()
+// 	return filepath.Join(wd, c.AppDir)
+// }
+
+// func (c *Config) AbsoluteSandboxDir() string {
+// 	wd, _ := os.Getwd()
+// 	return filepath.Join(wd, c.SandboxDir)
+// }
+
+// func (c *Config) AppScriptPath(script string) string {
+// 	return filepath.Join(c.AbsoluteAppDir(), script)
+// }
+
+func (c *Config) IsPredefinedRepo(user string) bool {
+	for _, u := range c.PredefinedRepos {
+		if user == u {
+			return true
+		} 
+	}
+	return false
+}
+
+func LoadConfig(filename string) (Config, error) {
+	var config Config
+	bs, err := ioutil.ReadFile(filename)
+	if err != nil { return config, err }
+	err = json.Unmarshal(bs, &config)
+	return config, err
+}
+
+type Match struct {
+	PlayerA string
+	PlayerB string
+	Map 	string
+	Result  arena.MatchResult
+}
+
+func (m *Match) PlayerAScore() int {
+	switch m.Result {
+		case arena.ResultWinA: return 2 
+		case arena.ResultTieA: return 1
+		default: return 0  
+	}
+}
+
+func (m *Match) PlayerBScore() int {
+	switch m.Result {
+		case arena.ResultWinB: return 2 
+		case arena.ResultTieB: return 1
+		default: return 0  
+	}
+}
+
+func runScript(scriptName string, args ... string) error {
+	scriptPath := filepath.Join("server/scripts", scriptName)
+	cmd := exec.Command(scriptPath, args ... )
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -352,13 +146,12 @@ func runAndPrint(cmd *exec.Cmd) error {
 type RegisterForm struct {
 	Name string `json:"name"`
 	PublicKey string `json:"public_key"`
-	Silent bool `json:"silent"`
 }
 
 func (f *RegisterForm) Validate(config Config) error {
 	if f.Name == "" { return errors.New("missing name") }
 	if f.PublicKey == "" { return errors.New("missing public_key") }
-	reserved := config.IsPredefinedUser(f.Name)
+	reserved := config.IsPredefinedRepo(f.Name)
 	if reserved {
 		return fmt.Errorf("the name %s is taken", f.Name)
 	}
@@ -373,7 +166,7 @@ func (f *RegisterForm) Validate(config Config) error {
 
 func validateUniqueness(name string, db *Database) error {
 	count, err := db.CountUsersWithName(name)
-	if err != nil { return errors.New("server error") }
+	if err != nil { return err }
 	if count > 0 { 
 		return fmt.Errorf("the name %s is taken", name) 
 	}
@@ -386,7 +179,6 @@ func parseRegisterForm(r *http.Request) RegisterForm {
     if err != nil {
     	form.Name = r.FormValue("name")
     	form.PublicKey = r.FormValue("public_key")
-    	form.Silent = r.FormValue("silent") != ""
     }
     return form
 }
@@ -428,11 +220,8 @@ func addUser(db *Database, form RegisterForm, config Config) error {
 		err := tx.AddUser(form.Name, form.PublicKey);
 		if err != nil { return err }
 		log.Printf("added user %v\n", form)
-		if !form.Silent {
-			if err := updateGitolite(tx, fmt.Sprintf("added user %s", form.Name), config); err != nil { return err }
-			return runAndPrint(exec.Command(config.AppScriptPath("initRepo"), form.Name, config.GitHostname))
-		}
-		return nil
+		if err := updateGitolite(tx, fmt.Sprintf("added user %s", form.Name), config); err != nil { return err }
+		return runScript("initRepo", form.Name, config.GitHostname, "server/resources/RobotPlayer.java")
 	})
 }
 
@@ -440,14 +229,14 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 	tmpdir, err := ioutil.TempDir("", "gitolite-admin")
 	if err != nil { return err }
 	defer os.RemoveAll(tmpdir)
-	err = runAndPrint(exec.Command(config.AppScriptPath("checkoutGitolite"), config.GitHostname, tmpdir))
+	err = runScript("checkoutGitolite", config.GitHostname, tmpdir)
 	if err != nil { return err }
 
 	keydir := filepath.Join(tmpdir, "keydir")
-	err = os.RemoveAll(keydir)
-	if err != nil { return err }
-	err = os.Mkdir(keydir, 0755)
-	if err != nil { return err }
+	// err = os.RemoveAll(keydir)
+	// if err != nil { return err }
+	// err = os.Mkdir(keydir, 0755)
+	// if err != nil { return err }
 	b := bytes.NewBufferString(config.GitoliteTemplate)
 
 	keys := map[string]string{}
@@ -462,13 +251,19 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 		}
 		return name, err
 	}
-	for _, name := range config.PredefinedUsers {
-		var b []byte
-		b, err = ioutil.ReadFile(filepath.Join(os.Getenv("HOME"), ".ssh", name + ".pub"))
-		if err != nil { return err }
-		_, err = writeKey(name, string(b))
-		if err != nil { return err }
-	} 
+
+	admin := "webserver_rsa"
+	bs, err := ioutil.ReadFile(filepath.Join(keydir, admin + ".pub"))
+	if err != nil { return err }
+	keys[string(bs)] = admin
+
+	// for _, name := range config.PredefinedUsers {
+	// 	var b []byte
+	// 	b, err = ioutil.ReadFile(filepath.Join(os.Getenv("HOME"), ".ssh", name + ".pub"))
+	// 	if err != nil { return err }
+	// 	_, err = writeKey(name, string(b))
+	// 	if err != nil { return err }
+	// } 
 
 	rows, err := tx.ListUsers()
 	if err != nil { return err }
@@ -487,7 +282,7 @@ func updateGitolite(tx *Transaction, message string, config Config) error {
 	err = ioutil.WriteFile(filepath.Join(tmpdir, "conf/gitolite.conf"), b.Bytes(), 0755)
 	if err != nil { return err }
 
-	err = runAndPrint(exec.Command(config.AppScriptPath("updateGitolite"), message, tmpdir))
+	err = runScript("updateGitolite", message, tmpdir)
 	return err
 }
 
@@ -558,13 +353,6 @@ func leaderboard(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 }
 
-type Revision struct {
-	Name string `json:"name"`
-	GitHash string `json:"git_hash"`
-	Date time.Time `json:"date"`
-	IsHead bool `json:"date"`
-}
-
 func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	revisions, err := s.Database.ListRevisions()
 	var b []byte
@@ -610,7 +398,7 @@ func (f *RevisionSubmitForm) Validate() error {
 }
 
 func checkRevision(gitHash, name, gitHostname string, config Config) error {
-	return runAndPrint(exec.Command(config.AppScriptPath("checkBranch"), name, gitHash, gitHostname))
+	return runScript("checkBranch", name, gitHash, gitHostname)
 }
 
 func revisionSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
@@ -714,7 +502,7 @@ func mapSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	form := parseMapForm(r)
 	err := form.Validate()
 	if err == nil {
-		err = s.Database.AddMap(form.Name)
+		err = s.Database.Transaction(func(t *Transaction) error{ return t.AddMap(form.Name) })
 	}
 	if err == nil {
 		s.Events <- Event{form.Name, EventNewMap}
@@ -732,7 +520,7 @@ func mapRemove(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	form := parseMapForm(r)
 	err := form.Validate()
 	if err == nil {
-		err = s.Database.RemoveMap(form.Name)
+		err = s.Database.Transaction(func(t *Transaction) error{ return t.RemoveMap(form.Name) })
 	}
     if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -789,7 +577,7 @@ func (s *ServerState) Referee() {
 						log.Println(err)
 						continue
 					} else if !done {
-						result := playMatch(r1, r2, m, s.Config)
+						result := arena.PlayMatch(r1, r2, m, "arena/runMatch", s.Config.GitHostname, "arena/battlecode2014")
 						if err := s.Database.AddMatch(r1.GitHash, r2.GitHash, m, result); err != nil {
 							log.Println(err)
 						}
@@ -809,53 +597,6 @@ func (s *ServerState) Referee() {
 	// }
 }
 
-type MatchResult string
-
-const (
-	ResultWinA MatchResult = "A"
-	ResultWinB MatchResult = "B"
-	ResultTieA MatchResult = "TA"
-	ResultTieB MatchResult = "TB"
-	ResultFail MatchResult = "F"
-)
-
-func playMatch(r1 Revision, r2 Revision, m string, config Config) MatchResult {
-	cmd := exec.Command(config.AppScriptPath("runMatch"), r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, config.GitHostname, config.AbsoluteSandboxDir())
-	b, err := cmd.CombinedOutput()
-	s := string(b)
-	if err != nil {
-		log.Println(err)
-		log.Println(s)
-		return ResultFail
-	}
-	log.Println(s)
-	var winA bool
-	if m := WinRegex.FindStringSubmatch(s); m != nil {
-		winA = m[2] == "A"
-	}
-	var reason string
-	if m := ReasonRegex.FindStringSubmatch(s); m != nil {
-		reason = m[1]
-	}
-	var result MatchResult
-	switch reason {
-	case "The winning team won by getting a lot of milk.":
-		if winA {
-			result = ResultWinA
-		} else {
-			result = ResultWinB
-		}
-	case "The winning team won on tiebreakers.":
-		if winA {
-			result = ResultTieA
-		} else {
-			result = ResultTieB
-		}
-	default: result = ResultFail
-	}
-	return result
-}
-
 func tournamentStart(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	s.Database.FlushMapFailures()
 	s.Events <- Event{"", EventStart}
@@ -872,8 +613,5 @@ func restart(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	w.WriteHeader(http.StatusOK)
 	os.Exit(1)
 }
-
-
-
 
 

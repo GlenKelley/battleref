@@ -1,7 +1,0 @@
-{
-	"database_filename":"users.db",
-	"gitolite_template":"@admins = root webserver\n\nrepo gitolite-admin\n RW+ = @admins\n\nrepo defaultplayer\n RW+ = @admins\n\n",
-	"predefined_users":["root", "webserver", "defaultplayer"],
-	"server_port":"4001",
-	"git_hostname":"git.akusete.com"
-}
