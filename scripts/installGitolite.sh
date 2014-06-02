@@ -12,13 +12,11 @@ GIT_USER=git
 REPO=/opt/battleref
 GITOLITE=git://github.com/sitaramc/gitolite
 
-which git || sudo yum install git
-which gcc || sudo yum install gcc
-perl -e 'user Data::Dumper' || sudo yum install perl-Data-Dumper
-which go || sudo yum install go
+which git 2>/dev/null || sudo yum install git
+which gcc 2>/dev/null || sudo yum install gcc
+perl -e 'user Data::Dumper' 2>/dev/null || sudo yum install perl-Data-Dumper
+which go 2>/dev/null || sudo yum install go
 sudo yum install curl libcurl
-
-[[ -n `diff "$ROOT_KEY" "$ADMIN_KEY"` ]] || ( echo "the root and admin keys must be different" && exit 1 )
 
 id -u "$GIT_USER" &>/dev/null 2>&1 || sudo adduser "$GIT_USER"
 
