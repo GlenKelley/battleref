@@ -63,7 +63,7 @@ while true ; do
 
 	echo `date` "Starting battleref server" | tee -a $LOG
 	set +e	
-	$BATTLEREF_DIR/runServer -e $ENV_FILE > $BATTLEREF_DIR/server.log 2> $BATTLEREF_DIR/error.log
+	~/bin/startBattlerefServer -e $ENV_FILE > $BATTLEREF_DIR/server.log 2> $BATTLEREF_DIR/error.log
 	EXIT_STATUS=$?
 	set -e
 	echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
