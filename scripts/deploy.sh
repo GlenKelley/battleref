@@ -221,7 +221,7 @@ START_SERVER_CRON_LINE="*/1 * * * * \$GOPATH/src/$REPO/scripts/restartServer.sh 
 ) | crontab -
 
 # Remove shutdown lock file.
-rm -f \$WEBSERVER_HOME/.battleref/.shutdown
+rm -f ~/.battleref/.shutdown
 
 exit
 

@@ -51,7 +51,7 @@ LOG=$BATTLEREF_DIR/restart.log
 
 while true ; do
 	if [[ -f "$LOCK_FILE" ]] ; then
-		echo `date` "Server was shutdown. Exiting." | tee -a $LOG
+		echo `date` "Server is locked in shutdown. Exiting." | tee -a $LOG
 		cat $LOCKFILE | tee -a $LOG
 		exit 0
 	fi
@@ -67,5 +67,6 @@ while true ; do
 	EXIT_STATUS=$?
 	set -e
 	echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
+	sleep 60
 done
 '
