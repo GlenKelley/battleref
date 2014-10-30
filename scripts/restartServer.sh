@@ -35,19 +35,18 @@ if [[ "$OTHERS_RUNNING" -gt 0 ]] ; then
 	echo "${OTHERS_RUNNING} Battleref server already running. Exiting Script."
 	exit 0
 fi
-sleep 10
-exit 0
+
 DIR=`dirname $0`
-pushdir $DIR > /dev/null
+pushd $DIR > /dev/null
 GIT_ROOT=`git rev-parse --show-toplevel`
-popdir > /dev/null
+popd > /dev/null
 
 BATTLEREF_DIR=~/.battleref
 
 mkdir -p $BATTLEREF_DIR
 cd $BATTLEREF_DIR
 LOCK_FILE=$BATTLEREF_DIR/.shutdown
-ENV_FILE="$GIT_ROOT/server.$ENV.properties"
+ENV_FILE="$GIT_ROOT/env/server.$ENV.properties"
 LOG=$BATTLEREF_DIR/restart.log
 
 while true ; do
