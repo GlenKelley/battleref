@@ -14,14 +14,16 @@ function usage {
   echo ""
   echo "        -r repo-url          The URL of the battleref source code to install on the server"
   echo "        -h host-url          The connection url (user@hostname) of the target server"
+  echo "        -e environment       The environment to use when running the webserver"
   echo "" 
   exit 1
 }
 
-while getopts "h:r:?" opt; do
+while getopts "h:r:e:?" opt; do
   case $opt in
     h ) HOST="$OPTARG" ;;
     r ) REPO="$OPTARG" ;;
+    e ) ENV="$OPTARG" ;;
     ? ) usage
   esac
 done
@@ -35,6 +37,15 @@ fi
 
 if [[ -z "$REPO" ]] ; then
   echo "Error: You must define a repo."
+  usage
+fi
+
+ENVIRONMENTS="dev\nprod"
+if [[ -z "$ENV" ]] ; then
+  echo "Error: You must define an environment."
+  usage
+elif ! ( echo -e "$ENVIRONMENTS" | grep "$ENV" > /dev/null ) ; then
+  echo -e "Error: Environment $ENV is not one of the following:\n$ENVIRONMENTS"
   usage
 fi
 
@@ -66,7 +77,8 @@ fi
 if ! which go > /dev/null 2>&1 ; then
   echo "Installing Go."
   yes | sudo yum install go
-fi 
+fi
+go version
 
 #TODO: sudo yum install curl libcurl
 
