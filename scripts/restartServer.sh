@@ -49,24 +49,21 @@ LOCK_FILE=$BATTLEREF_DIR/.shutdown
 ENV_FILE="$GIT_ROOT/env/server.$ENV.properties"
 LOG=$BATTLEREF_DIR/restart.log
 
-while true ; do
-	if [[ -f "$LOCK_FILE" ]] ; then
-		echo `date` "Server is locked in shutdown. Exiting." | tee -a $LOG
-		cat $LOCKFILE | tee -a $LOG
-		exit 0
-	fi
-	
-	if [[ ! -f "$ENV_FILE" ]] ; then
-		echo `date` "$ENV_FILE is not a file." | tee -a $LOG
-		usage
-	fi
+if [[ -f "$LOCK_FILE" ]] ; then
+	echo `date` "Server is locked in shutdown. Exiting." | tee -a $LOG
+	cat $LOCKFILE | tee -a $LOG
+	exit 0
+fi
 
-	echo `date` "Starting battleref server" | tee -a $LOG
-	set +e	
-	~/bin/startBattlerefServer -e $ENV_FILE >> $BATTLEREF_DIR/server.log 2>> $BATTLEREF_DIR/error.log
-	EXIT_STATUS=$?
-	set -e
-	echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
-	sleep 60
-done
-'
+if [[ ! -f "$ENV_FILE" ]] ; then
+	echo `date` "$ENV_FILE is not a file." | tee -a $LOG
+	usage
+fi
+
+echo `date` "Starting battleref server" | tee -a $LOG
+set +e	
+~/bin/startBattlerefServer -e $ENV_FILE >> $BATTLEREF_DIR/server.log 2>> $BATTLEREF_DIR/error.log
+EXIT_STATUS=$?
+set -e
+echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
+
