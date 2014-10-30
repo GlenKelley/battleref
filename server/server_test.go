@@ -80,10 +80,10 @@ func errorResponse(t *testing.T, server *ServerState, url string) string {
 func TestVersion(t *testing.T) {
 	server := createServer(t)
 	ps := getResponse(t, server, "/version")
-	if !strings.Contains(ps, "SchemaVersion") {
+	if !strings.Contains(ps, "schemaVersion") {
 		t.FailNow()
 	}
-	if !strings.Contains(ps, "SourceVersion") {
+	if !strings.Contains(ps, "sourceVersion") {
 		t.FailNow()
 	}
 }
@@ -92,7 +92,7 @@ func TestShutdown(t *testing.T) {
 	server := createServer(t)
 	go server.Serve()
 	//Race condition of server not starting
-	time.Sleep(time.Millisecond) 
+	time.Sleep(time.Millisecond)
 	ps := getResponse(t, server, "/shutdown")
 	if !strings.Contains(ps, "Shutting Down") {
 		t.FailNow()

@@ -108,10 +108,10 @@ func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeError(w, err)
 	} else if gitVersion, err := GitVersion(); err != nil {
 		writeError(w, err)
-	} else if response, err := json.Marshal(struct {
-		SchemaVersion string
-		SourceVersion string
-	} { schemaVersion, gitVersion }); err != nil {
+	} else if response, err := json.Marshal(map[string]string{
+		"schemaVersion": schemaVersion,
+		"sourceVersion": gitVersion,
+	}); err != nil {
 		writeError(w, err)
 	} else {
 		w.Write(response)
