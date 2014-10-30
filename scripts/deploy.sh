@@ -72,7 +72,7 @@ if id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
   WEBSERVER_HOME=\`getent passwd $WEBSERVER_USER | cut -d: -f6\`
   if sudo -u "$WEBSERVER_USER" test -d "\$WEBSERVER_HOME/.battleref" ; then
     echo "Shutting down existing server."
-    echo "Shutdown by $0 to install" > \$WEBSERVER_HOME/.battleref/.shutdown
+    echo "Shutdown by $0 to install" | sudo -u "$WEBSERVER_USER" tee \$WEBSERVER_HOME/.battleref/.shutdown
     curl localhost:$SHUTDOWN_PORT/shutdown > /dev/null 2>&1 | true
   fi
 fi
