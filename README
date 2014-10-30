@@ -1,4 +1,19 @@
-.
-.
-.
-.
+# Battleref - A web server for running a battlecode competition
+#
+# Author: Glen Kelley
+#
+
+# Installation
+
+scripts/deploy.sh -r repo-url -h host
+
+Installs the application on a remote host, this will create a git and webserver user accounts
+
+# Directories
+- tournament		registration, submissions and leaderboard of a tournament
+- server		web service wrapper for the tournament
+- arena			runs an instance of a game between players
+- env			configuration files
+- scripts		installation scripts
+
+

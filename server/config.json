@@ -1,7 +1,0 @@
-{
-	"gitolite_template":"@admins = webserver_rsa\n\nrepo gitolite-admin\n RW+ = @admins\n\nrepo defaultplayer\n RW+ = @admins\n\n",
-	"predefined_repos":["webserver_rsa", "gitolite-admin"],
-	"server_port":"4001",
-	"git_hostname":"git.akusete.com",
-	"api_hostname":"api.akusete.com"
-}

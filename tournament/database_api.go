@@ -1,24 +1,97 @@
-package server
+package tournament
 
 import (
-	"log"
-	"database/sql"
-	"github.com/GlenKelley/battleref/arena"
+	"time"
 )
 
-const (
-	Version = "0.1"
-)
-
-type Database struct {
-	db *sql.DB
+// Logical database operations for a tournament
+type Statements interface {
+	CreateUser(name, publicKey string) error
+	UserExists(name string) (bool, error)
+	ListUsers() ([]string, error)
+	CreateMap(name, source string) error
+	GetMapSource(name string) (string, error)
+	ListMaps() ([]string, error)
+	CreateCommit(userName, commit string, time time.Time) error
+	SchemaVersion() (string, error)
 }
 
-func OpenDatabase(filename string) (*Database, error) {
-	db, err := sql.Open("sqlite3", filename)
-	return &Database{db}, err
+// An implementation of statements which uses an abstracted sql connection
+type Commands struct {
+	tx dbcon
 }
 
+func (c *Commands) SchemaVersion() (string, error) {
+	var hasVersionTable bool
+	if err := c.tx.QueryRow("select count(*) > 0 from sqlite_master where type='table' and name='schema_log'").Scan(&hasVersionTable); err != nil { return "", err }
+	if !hasVersionTable { return ZeroVersion, nil }
+	maxSchemaVersion := ZeroVersion
+	versions, err := queryStrings(c.tx, "select version from schema_log")
+	if err != nil { return "", err }
+	for _, version := range versions {
+		if SchemaVersionLess(maxSchemaVersion, version) {
+			maxSchemaVersion = version
+		}
+	}
+	return maxSchemaVersion, nil
+}
+
+func (c *Commands) CreateUser(name, publicKey string) error {
+	_, err := c.tx.Exec("insert into user(name, public_key) values(?,?)", name, publicKey)
+	return err
+}
+
+func (c *Commands) UserExists(name string) (bool, error) {
+	var exists bool
+	err := c.tx.QueryRow("select count(name) > 0 from user where name = ?", name).Scan(&exists)
+	return exists, err
+}
+
+func queryStrings(db dbcon, query string) ([]string, error) {
+	if rows, err := db.Query(query); err != nil {
+		return nil, err
+	} else {
+		var values []string
+		for rows.Next() {
+			var value string
+			if err2 := rows.Scan(&value); err2 != nil {
+				return nil, err2
+			} else {
+				values = append(values, value)
+			}
+		}
+		return values, nil
+	}
+}
+
+func (c *Commands) ListUsers() ([]string, error) {
+	users, err := queryStrings(c.tx, "select name from user")
+	return users, err
+}
+
+func (c *Commands) CreateMap(name, source string) error {
+	_, err := c.tx.Exec("insert into map(name, source) values (?,?)", name, source)
+	return err
+}
+
+func (c *Commands) GetMapSource(name string) (string, error) {
+	var source string
+	err := c.tx.QueryRow("select source from map where name = ?", name).Scan(&source)
+	return source, err
+}
+
+func (c *Commands) ListMaps() ([]string, error) {
+	maps, err := queryStrings(c.tx, "select name from map")
+	return maps, err
+}
+
+func (c *Commands) CreateCommit(playerName, commitHash string, time time.Time) error {
+	_, err := c.tx.Exec("insert into submission(commitHash, name, date_created) values (?,?,?)", commitHash, playerName, time)
+	return err
+}
+
+
+/*
 func (c *Database) InitTables(config Config) error {
 	_, err := c.db.Exec("create table if not exists user (name text not null primary key, public_key text not null, date_created timestamp not null default current_timestamp);")
 	if err != nil { return err }
@@ -123,16 +196,6 @@ func (d *Database) ListHeadRevisions() (map[string]arena.Revision, error) {
 }
 
 func (d *Database) ListRevisions() (map[string][]arena.Revision, error) {
-	rows, err := d.db.Query("select * from revision")
-	commits := map[string][]arena.Revision{}
-	if err != nil { return commits, err }
-	for rows.Next() {
-		var revision arena.Revision
-	    err = rows.Scan(&revision.GitHash, &revision.Name, &revision.Date, &revision.IsHead)
-	    if err != nil { break }
-	    commits[revision.Name] = append(commits[revision.Name], revision)
-	}
-	return commits, err
 }
 
 func (d *Database) HasResult(r1 arena.Revision, r2 arena.Revision, mapName string) (bool, error) {
@@ -178,3 +241,4 @@ func (d *Database) RankedMatches() ([]Match, error) {
 	}
 	return matches, nil
 }
+*/

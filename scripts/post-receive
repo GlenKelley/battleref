@@ -1,4 +1,0 @@
-#!/bin/bash
-set -x
-# read oldrev newrev ref
-curl 'http://localhost:4001/shutdown'

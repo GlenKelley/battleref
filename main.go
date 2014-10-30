@@ -1,39 +1,43 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
+	"flag"
+	"net/http"
 	"github.com/GlenKelley/battleref/server"
-	"github.com/GlenKelley/battleref/arena"
+	"github.com/GlenKelley/battleref/tournament"
 )
 
-/**
-TODO: validate public keys
-TODO: upload maps
-TODO: run checkouts in sandbox
-*/
+//TODO:(glen) Validate public keys
+//TODO:(glen) upload maps
+//TODO:(glen) run checkouts in sandbox
 
 func main() {
-	var configFilename string
-	var cleanDatabase bool
-	flag.StringVar(&configFilename, "config", "config.json", "environment parameters for application")
-	flag.BoolVar(&cleanDatabase, "clean", false, "clean database")
+	var propertiesFile string
+	var resetDatabase bool
+	flag.StringVar(&propertiesFile, "p", "", "environment parameters for application")
+	flag.BoolVar(&resetDatabase, "r", false, "reset database")
 	flag.Parse()
-
-	config, err := LoadConfig(configFilename)
-	if err != nil { log.Fatal(err) }
-
-	dbFile := os.Getenv("BATTLEREF_DB")
-	if cleanDatabase {
-		os.Remove(dbFile)	
+	if propertiesFile == "" {
+		flag.Usage()
+		log.Fatal("You must provide a properties file")
 	}
-	database, err := OpenDatabase(dbFile)
+
+	properties, err := server.ReadProperties(propertiesFile)
 	if err != nil { log.Fatal(err) }
 
-	err = database.InitTables(config)
+	if resetDatabase {
+		if err := tournament.ResetDatabase(properties.DatabaseURL); err != nil { log.Fatal(err) }
+	}
+
+	database, err := tournament.OpenDatabase(properties.DatabaseURL)
 	if err != nil { log.Fatal(err) }
 
-	server := NewServer(config, database)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", config.ServerPort), server.Handler))
+	if err := database.MigrateSchema(); err != nil { log.Fatal(err) }
+
+	tournament := tournament.NewTournament(database)
+
+	server := server.NewServer(tournament, properties)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", properties.ServerPort), server.Handler))
 }
-

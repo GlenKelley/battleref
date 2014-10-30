@@ -8,19 +8,21 @@
 
 function usage {
   echo ""
-  echo "$0 -k root-public-key -a admin-public-key -r repo-url -H host"
+  echo "$0 -r repo-url -h host"
+  echo ""
+  echo "Deploys a battleref server to a remote host. Requires sudo"
   echo ""
   echo "        -r repo-url          The URL of the battleref source code to install on the server"
-  echo "        -H host-url          The connection url (user@hostname) of the target server"
+  echo "        -h host-url          The connection url (user@hostname) of the target server"
   echo "" 
   exit 1
 }
 
-while getopts "ha:k:H:r:" opt; do
+while getopts "h:r:?" opt; do
   case $opt in
-    H ) HOST="$OPTARG" ;;
+    h ) HOST="$OPTARG" ;;
     r ) REPO="$OPTARG" ;;
-    h ) usage
+    ? ) usage
   esac
 done
 
