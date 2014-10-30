@@ -62,7 +62,7 @@ fi
 
 echo `date` "Starting battleref server" | tee -a $LOG
 set +e	
-~/bin/startBattlerefServer -e $ENV_FILE >> $BATTLEREF_DIR/server.log 2>> $BATTLEREF_DIR/error.log
+~/bin/startBattlerefServer -p $ENV_FILE >> $BATTLEREF_DIR/server.log 2>> $BATTLEREF_DIR/error.log
 EXIT_STATUS=$?
 set -e
 echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
