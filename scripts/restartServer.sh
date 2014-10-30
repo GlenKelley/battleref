@@ -30,11 +30,13 @@ if [[ -z "$ENV" ]] ; then
   usage
 fi
 
-if ps -ef | grep "bash $0" > /dev/null ; then
-	echo "Battleref server already running. Exiting Script."
+OTHERS_RUNNING=`ps -ef | grep -v grep |  grep "bash $0" | grep -v "$$" | grep "bash $0" | wc -l`
+if [[ "$OTHERS_RUNNING" -gt 0 ]] ; then
+	echo "${OTHERS_RUNNING} Battleref server already running. Exiting Script."
 	exit 0
-if
-
+fi
+sleep 10
+exit 0
 DIR=`dirname $0`
 pushdir $DIR > /dev/null
 GIT_ROOT=`git rev-parse --show-toplevel`
@@ -66,3 +68,4 @@ while true ; do
 	set -e
 	echo `date` "Battleref server quit with exit status $EXIT_STATUS" | tee -a $LOG
 done
+'
