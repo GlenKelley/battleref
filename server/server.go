@@ -1,20 +1,21 @@
 package server
 
 import (
-//	"os"
+	//"os"
 //	"path/filepath"
-//	"log"
+	"log"
 	"strings"
 //	"encoding/json"
+	"net"
 	"net/http"
-//	"errors"
+	"errors"
 //	"bytes"
 	"os/exec"
 	// "flag"
-	//"fmt"
+	"fmt"
 	//"regexp"
 //	"sort"
-	// "time"
+	"time"
 	"io/ioutil"
 	"encoding/json"
 	"github.com/GlenKelley/battleref/tournament"
@@ -23,13 +24,25 @@ import (
 type ServerState struct {
 	Tournament *tournament.Tournament
 	Properties Properties
-	Handler *http.ServeMux
+	HttpServer *http.Server
+	Listener   net.Listener
 }
 
 func NewServer(tournament *tournament.Tournament, properties Properties) *ServerState {
-	s := ServerState{tournament, properties, http.NewServeMux()}
-	//go s.Referee()
+	httpServer := &http.Server{
+		Addr:           fmt.Sprintf(":%v", properties.ServerPort),
+		Handler:        http.NewServeMux(),
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	s := ServerState{tournament, properties, httpServer, nil}
 	s.HandleFunc("/version", version)
+	s.HandleFunc("/shutdown", shutdown)
+
+	return &s
+
+	//go s.Referee()
 	//s.HandleFunc("/register", register)
 	//s.HandleFunc("/register/check", registerCheck)
 	//s.HandleFunc("/commits", commits)
@@ -43,11 +56,19 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	//s.HandleFunc("/clean", clean)
 	//s.HandleFunc("/restart", restart)
 	//s.HandleFunc("/tournament/start", tournamentStart)
-	return &s
+}
+
+func (s *ServerState) Serve() error {
+	if listener, err := net.Listen("tcp", s.HttpServer.Addr); err != nil {
+		return err
+	} else {
+		s.Listener = listener
+		return s.HttpServer.Serve(listener)
+	}
 }
 
 func (s *ServerState) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState)) {
-	s.Handler.HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
+	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
 		handler(w, r, s)
 	})
 }
@@ -94,6 +115,19 @@ func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeError(w, err)
 	} else {
 		w.Write(response)
+	}
+}
+
+func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	if s.Listener == nil {
+		writeError(w, errors.New("Server not listening"))
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Shutting Down"))
+		if err := s.Listener.Close(); err != nil {
+			log.Print(err)
+		}
+		s.Listener = nil
 	}
 }
 

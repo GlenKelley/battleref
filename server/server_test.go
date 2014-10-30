@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"time"
 	"strings"
 	"io/ioutil"
 	"net/http"
@@ -31,7 +33,7 @@ func createServer(t * testing.T) (*ServerState) {
 		tournament := tournament.NewTournament(database)
 		properties := Properties {
 			":memory:",
-			"8080",
+			"8081",
 		}
 		return NewServer(tournament, properties)
 	}
@@ -45,7 +47,27 @@ func getResponse(t *testing.T, server *ServerState, url string) string {
 		t.Error(err)
 		t.FailNow()
 	}
-	server.Handler.ServeHTTP(resp, req)
+	server.HttpServer.Handler.ServeHTTP(resp, req)
+	if p, err := ioutil.ReadAll(resp.Body); err != nil {
+		t.Error(err)
+		t.FailNow()
+		return ""
+	} else {
+		return string(p)
+	}
+}
+
+func errorResponse(t *testing.T, server *ServerState, url string) string {
+	resp := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	server.HttpServer.Handler.ServeHTTP(resp, req)
+	if resp.Code == http.StatusOK {
+		t.FailNow()
+	}
 	if p, err := ioutil.ReadAll(resp.Body); err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -64,6 +86,19 @@ func TestVersion(t *testing.T) {
 	if !strings.Contains(ps, "SourceVersion") {
 		t.FailNow()
 	}
+}
+
+func TestShutdown(t *testing.T) {
+	server := createServer(t)
+	go server.Serve()
+	//Race condition of server not starting
+	time.Sleep(time.Millisecond) 
+	ps := getResponse(t, server, "/shutdown")
+	if !strings.Contains(ps, "Shutting Down") {
+		t.FailNow()
+	}
+	ps = errorResponse(t, server, "/shutdown")
+	fmt.Println(ps)
 }
 
 

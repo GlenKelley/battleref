@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"flag"
-	"net/http"
 	"github.com/GlenKelley/battleref/server"
 	"github.com/GlenKelley/battleref/tournament"
 )
@@ -39,5 +37,5 @@ func main() {
 	tournament := tournament.NewTournament(database)
 
 	server := server.NewServer(tournament, properties)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", properties.ServerPort), server.Handler))
+	log.Fatal(server.Serve())
 }
