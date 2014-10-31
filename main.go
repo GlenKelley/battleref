@@ -16,7 +16,7 @@ func main() {
 	var resetDatabase bool
 	var resourcePath string
 	flag.StringVar(&environment, "e", "", "environment parameters for application")
-	flag.StringVar(&resourcePath, "r", "./", "root directory for resource files")
+	flag.StringVar(&resourcePath, "r", ".", "root directory for resource files")
 	flag.BoolVar(&resetDatabase, "d", false, "reset database")
 	flag.Parse()
 	if environment == "" {

@@ -88,7 +88,7 @@ type Properties struct {
 }
 
 func ReadProperties(env, resourcePath string) (Properties, error) {
-	propertiesFilename := filepath.Join(resourcePath, fmt.Sprintf("server.%s.properties", env))
+	propertiesFilename := filepath.Join(resourcePath, "env", fmt.Sprintf("server.%s.properties", env))
 	var properties Properties
 	properties.ResourcePath =  resourcePath
 	bs, err := ioutil.ReadFile(propertiesFilename)
