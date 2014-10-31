@@ -12,17 +12,19 @@ import (
 //TODO:(glen) run checkouts in sandbox
 
 func main() {
-	var propertiesFile string
+	var environment string
 	var resetDatabase bool
-	flag.StringVar(&propertiesFile, "p", "", "environment parameters for application")
-	flag.BoolVar(&resetDatabase, "r", false, "reset database")
+	var resourcePath string
+	flag.StringVar(&environment, "e", "", "environment parameters for application")
+	flag.StringVar(&resourcePath, "r", "./", "root directory for resource files")
+	flag.BoolVar(&resetDatabase, "d", false, "reset database")
 	flag.Parse()
-	if propertiesFile == "" {
+	if environment == "" {
 		flag.Usage()
-		log.Fatal("You must provide a properties file")
+		log.Fatal("You must define a environment")
 	}
 
-	properties, err := server.ReadProperties(propertiesFile)
+	properties, err := server.ReadProperties(environment, resourcePath)
 	if err != nil { log.Fatal(err) }
 
 	if resetDatabase {

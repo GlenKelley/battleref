@@ -15,6 +15,7 @@ import (
 	"fmt"
 	//"regexp"
 //	"sort"
+	"path/filepath"
 	"time"
 	"io/ioutil"
 	"encoding/json"
@@ -81,13 +82,16 @@ func (s *ServerState) HandleFunc(pattern string, handler func(http.ResponseWrite
 
 // Environment variables
 type Properties struct {
-	DatabaseURL string `json:"database_url"`
-	ServerPort  string `json:"server_port"`
+	DatabaseURL  string `json:"database_url"`
+	ServerPort   string `json:"server_port"`
+	ResourcePath string `json:"resource_path"`
 }
 
-func ReadProperties(filename string) (Properties, error) {
+func ReadProperties(env, resourcePath string) (Properties, error) {
+	propertiesFilename := filepath.Join(resourcePath, fmt.Sprintf("server.%s.properties", env))
 	var properties Properties
-	bs, err := ioutil.ReadFile(filename)
+	properties.ResourcePath =  resourcePath
+	bs, err := ioutil.ReadFile(propertiesFilename)
 	if err != nil { return properties, err }
 	err = json.Unmarshal(bs, &properties)
 	return properties, err
@@ -98,15 +102,17 @@ func writeError(w http.ResponseWriter, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-func GitVersion() (string, error) {
-	bytes, err := exec.Command("git","rev-parse","HEAD").Output()
+func GitVersion(path string) (string, error) {
+	cmd := exec.Command("git", "rev-parse","HEAD")
+	cmd.Dir = path
+	bytes, err := cmd.Output()
 	return strings.TrimSpace(string(bytes)), err
 }
 
 func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if schemaVersion, err := s.Tournament.Database.SchemaVersion(); err != nil {
 		writeError(w, err)
-	} else if gitVersion, err := GitVersion(); err != nil {
+	} else if gitVersion, err := GitVersion(s.Properties.ResourcePath); err != nil {
 		writeError(w, err)
 	} else if response, err := json.Marshal(map[string]string{
 		"schemaVersion": schemaVersion,
