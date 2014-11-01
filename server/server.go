@@ -84,11 +84,11 @@ func (s *ServerState) HandleFunc(pattern string, handler func(http.ResponseWrite
 	})
 }
 
-//var (
-//	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-//	PublicKeyRegex = regexp.MustCompile("")			//SSH public key TODO: this
-//	CommitRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
-//)
+var (
+	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
+	PublicKeyRegex = regexp.MustCompile("ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)")	//SSH public key
+	CommitRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
+)
 
 // Environment variables
 type Properties struct {
@@ -213,6 +213,10 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 	if err := parseForm(r, &form); err != nil {
 		writeJSONError(w, err)
+	} else if !NameRegex.MatchString(form.Name) {
+		writeJSONError(w, errors.New("Invalid Name")) {
+	} else if !PublicKeyRegex.MatchString(form.PublicKey) {
+		writeJSONError(w, errors.New("Invalid Public Key"))
 	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
 		writeJSONError(w, err)
 	} else {
@@ -227,6 +231,8 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSON(w, JSONResponse{"players":userNames})
 	}
 }
+
+func addMap(
 
 //type EventType int
 //
