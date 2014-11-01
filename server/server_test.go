@@ -15,7 +15,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/tournament"
 )
-// import "code.google.com/p/gomock/gomock"
 
 func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.Error(arg ... )
@@ -44,7 +43,7 @@ func createServer(t * testing.T) (*ServerState) {
 
 }
 
-func sendGet(t *testing.T, server *ServerState, url string) string {
+func sendGet(t *testing.T, server *ServerState, url string) JSONResponse {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Error(err)
@@ -53,7 +52,7 @@ func sendGet(t *testing.T, server *ServerState, url string) string {
 	return sendRequest(t, server, http.StatusOK, req)
 }
 
-func sendPost(t *testing.T, server *ServerState, url string, body io.Reader) string {
+func sendPost(t *testing.T, server *ServerState, url string, body io.Reader) JSONResponse {
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		t.Error(err)
@@ -62,7 +61,7 @@ func sendPost(t *testing.T, server *ServerState, url string, body io.Reader) str
 	return sendRequest(t, server, http.StatusOK, req)
 }
 
-func sendJSONPost(t *testing.T, server *ServerState, url string, body interface{}) string {
+func sendJSONPost(t *testing.T, server *ServerState, url string, body interface{}) JSONResponse {
 	bs, err := json.Marshal(body)
 	if err != nil {
 		t.Error(err)
@@ -77,7 +76,7 @@ func sendJSONPost(t *testing.T, server *ServerState, url string, body interface{
 	return sendRequest(t, server, http.StatusOK, req)
 }
 
-func sendGetExpectStatus(t *testing.T, server *ServerState, expectedCode int, url string) string {
+func sendGetExpectStatus(t *testing.T, server *ServerState, expectedCode int, url string) JSONResponse {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Error(err)
@@ -86,7 +85,7 @@ func sendGetExpectStatus(t *testing.T, server *ServerState, expectedCode int, ur
 	return sendRequest(t, server, expectedCode, req)
 }
 
-func sendRequest(t *testing.T, server *ServerState, expectedCode int, req *http.Request) string {
+func sendRequest(t *testing.T, server *ServerState, expectedCode int, req *http.Request) JSONResponse {
 	resp := httptest.NewRecorder()
 	server.HttpServer.Handler.ServeHTTP(resp, req)
 	if resp.Code != expectedCode {
@@ -96,24 +95,19 @@ func sendRequest(t *testing.T, server *ServerState, expectedCode int, req *http.
 		}
 		t.FailNow()
 	}
-	if p, err := ioutil.ReadAll(resp.Body); err != nil {
+        var jsonResponse JSONResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jsonResponse); err != nil {
 		t.Error(err)
 		t.FailNow()
-		return ""
-	} else {
-		return string(p)
 	}
+	return jsonResponse
 }
 
 func TestVersion(t *testing.T) {
 	server := createServer(t)
-	ps := sendGet(t, server, "/version")
-	if !strings.Contains(ps, "schemaVersion") {
-		t.FailNow()
-	}
-	if !strings.Contains(ps, "sourceVersion") {
-		t.FailNow()
-	}
+	r := sendGet(t, server, "/version")
+	if r["schemaVersion"] == "" { t.FailNow() }
+	if r["sourceVersion"] == "" { t.FailNow() }
 }
 
 func TestShutdown(t *testing.T) {
@@ -121,10 +115,8 @@ func TestShutdown(t *testing.T) {
 	go server.Serve()
 	//Race condition of server not starting
 	time.Sleep(time.Millisecond)
-	ps := sendGet(t, server, "/shutdown")
-	if !strings.Contains(ps, "Shutting Down") {
-		t.FailNow()
-	}
+	r := sendGet(t, server, "/shutdown")
+	if r["shutdown"] == "" { t.FailNow() }
 	sendGetExpectStatus(t, server, http.StatusInternalServerError, "/shutdown")
 }
 
@@ -174,28 +166,56 @@ func TestParseFormJSON(t *testing.T) {
 
 func TestRegisterForm(t *testing.T) {
 	server := createServer(t)
-	ps := sendPost(t, server, "/register", strings.NewReader("name=foo&public_key=bar"))
-	if !strings.Contains(ps, "foo") || !strings.Contains(ps, "bar") {
-		t.FailNow()
-	}
+	r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key=PublicKeyFoo"))
+	if r["name"] != "NameFoo" { t.FailNow() }
+	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
 }
 
 func TestRegisterQuery(t *testing.T) {
 	server := createServer(t)
-	ps := sendPost(t, server, "/register?name=foo&public_key=bar", nil)
-	if !strings.Contains(ps, "foo") || !strings.Contains(ps, "bar") {
-		t.FailNow()
-	}
+	r := sendPost(t, server, "/register?name=NameFoo&public_key=PublicKeyFoo", nil)
+	if r["name"] != "NameFoo" { t.FailNow() }
+	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
 }
 
 func TestRegisterJSON(t *testing.T) {
 	server := createServer(t)
-	ps := sendJSONPost(t, server, "/register", map[string]string{"name":"foo","public_key":"bar"})
-	if !strings.Contains(ps, "foo") || !strings.Contains(ps, "bar") {
+	r := sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":"PublicKeyFoo"})
+	if r["name"] != "NameFoo" { t.FailNow() }
+	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
+}
+
+func compareStrings(a []interface{}, b []string) bool {
+	if len(a) != len(b) { return false }
+	for i, as := range a {
+		if as != b[i] { return false }
+	}
+	return true
+}
+
+func compareStringsUnordered(a []interface{}, b []string) bool {
+	if len(a) != len(b) { return false }
+	c := make(map[string]int)
+	for _, s := range a { c[s.(string)]++ }
+	for _, s := range b { c[s]-- }
+	for _, i := range c { if i > 0 { return false } }
+	return true
+}
+
+func TestPlayers(t *testing.T) {
+	server := createServer(t)
+	if r := sendGet(t, server, "/players"); len(r["players"].([]interface{})) > 0 {
+		t.Error("expected no players", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":"PublicKeyFoo"})
+	if r := sendGet(t, server, "/players"); !compareStrings(r["players"].([]interface{}), []string{"NameFoo"}) {
+		t.Error("expected single player NameFoo", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":"PublicKeyBar"})
+	if r := sendGet(t, server, "/players"); !compareStringsUnordered(r["players"].([]interface{}), []string{"NameFoo", "NameBar"}) {
+		t.Error("expected two players NameFoo, NameBar", r)
 		t.FailNow()
 	}
 }
-
-
-
-

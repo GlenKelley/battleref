@@ -25,6 +25,11 @@ import (
 	"github.com/GlenKelley/battleref/tournament"
 )
 
+type JSONResponse map[string]interface{}
+
+const HeaderContentType = "Content-Type"
+const ContentTypeJSON = "application/json"
+
 type ServerState struct {
 	Tournament *tournament.Tournament
 	Properties Properties
@@ -44,6 +49,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("/version", version)
 	s.HandleFunc("/shutdown", shutdown)
 	s.HandleFunc("/register", register)
+	s.HandleFunc("/players", players)
 
 	return &s
 
@@ -101,9 +107,28 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 	return properties, err
 }
 
-func writeError(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(err.Error()))
+func writeJSONError(w http.ResponseWriter, err error) {
+	if bs, e2 := json.Marshal(JSONResponse{"error":err}); e2 != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	} else {
+		w.Header().Add(HeaderContentType, ContentTypeJSON)
+		w.WriteHeader(http.StatusInternalServerError)
+		if _, err := w.Write(bs); err != nil {
+			log.Println("Failed to send error response: ", err)
+		}
+	}
+}
+
+func writeJSON(w http.ResponseWriter, response interface{}) {
+	if bs, err := json.Marshal(response); err != nil {
+		writeJSONError(w, err)
+	} else {
+		w.Header().Add(HeaderContentType, ContentTypeJSON)
+		if _, err := w.Write(bs); err != nil {
+			log.Println("Failed to send response: ", err)
+		}
+	}
 }
 
 func GitVersion(path string) (string, error) {
@@ -115,25 +140,22 @@ func GitVersion(path string) (string, error) {
 
 func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if schemaVersion, err := s.Tournament.Database.SchemaVersion(); err != nil {
-		writeError(w, err)
+		writeJSONError(w, err)
 	} else if gitVersion, err := GitVersion(s.Properties.ResourcePath); err != nil {
-		writeError(w, err)
-	} else if response, err := json.Marshal(map[string]string{
-		"schemaVersion": schemaVersion,
-		"sourceVersion": gitVersion,
-	}); err != nil {
-		writeError(w, err)
+		writeJSONError(w, err)
 	} else {
-		w.Write(response)
+		writeJSON(w, JSONResponse{
+			"schemaVersion": schemaVersion,
+			"sourceVersion": gitVersion,
+		})
 	}
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if s.Listener == nil {
-		writeError(w, errors.New("Server not listening"))
+		writeJSONError(w, errors.New("Server not listening"))
 	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Shutting Down"))
+		writeJSON(w, JSONResponse{"message":"Shutting Down"})
 		if err := s.Listener.Close(); err != nil {
 			log.Print(err)
 		}
@@ -184,23 +206,27 @@ func parseForm(r *http.Request, form interface{}) error {
 }
 
 func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	w.Header().Add("Content-Type", "application/json")
 	var form struct {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeError(w, err)
-	} else if response, err := json.Marshal(&form); err != nil {
-		writeError(w, err)
+		writeJSONError(w, err)
 	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
-		writeError(w, err)
+		writeJSONError(w, err)
 	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(response)
+		writeJSON(w, form)
 	}
 }
 
-
+func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	if userNames, err := s.Tournament.ListUsers(); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, JSONResponse{"players":userNames})
+	}
+}
 
 //type EventType int
 //

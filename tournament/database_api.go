@@ -66,6 +66,7 @@ func queryStrings(db dbcon, query string) ([]string, error) {
 
 func (c *Commands) ListUsers() ([]string, error) {
 	users, err := queryStrings(c.tx, "select name from user")
+	if len(users) == 0 { users = []string{} }
 	return users, err
 }
 
