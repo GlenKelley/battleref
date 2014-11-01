@@ -15,6 +15,12 @@ func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.FailNow()
 }
 
+func Check(t *testing.T, err error) {
+	if err != nil {
+		ErrorNow(t, err)
+	}
+}
+
 func createTournament(t * testing.T) (*Tournament) {
 	if database, err := NewInMemoryDatabase(); err != nil {
 		ErrorNow(t, err)
@@ -49,6 +55,14 @@ func TestCreateUser(t *testing.T) {
 	if err != nil { ErrorNow(t, err) }
 	if len(users) != 1 { t.FailNow() }
 	if users[0] != "NameFoo" { t.FailNow() }
+}
+
+func TestCreateExistingUserError(t *testing.T) {
+	tm := createTournament(t)
+	Check(t, tm.CreateUser("NameFoo", "PublicKeyFoo"))
+	if err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err == nil {
+		ErrorNow(t, "expected error")
+	}
 }
 
 func TestCreateMap(t *testing.T) {

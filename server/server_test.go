@@ -172,9 +172,17 @@ func TestParseFormJSON(t *testing.T) {
 	if form.C != "" { t.Error(form.C, "expected ''") }
 }
 
-func TestRegister(t *testing.T) {
+func TestRegisterForm(t *testing.T) {
 	server := createServer(t)
-	ps := sendPost(t, server, "/register", strings.NewReader("name=foo&public_key=bar\n"))
+	ps := sendPost(t, server, "/register", strings.NewReader("name=foo&public_key=bar"))
+	if !strings.Contains(ps, "foo") || !strings.Contains(ps, "bar") {
+		t.FailNow()
+	}
+}
+
+func TestRegisterQuery(t *testing.T) {
+	server := createServer(t)
+	ps := sendPost(t, server, "/register?name=foo&public_key=bar", nil)
 	if !strings.Contains(ps, "foo") || !strings.Contains(ps, "bar") {
 		t.FailNow()
 	}

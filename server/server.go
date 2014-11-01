@@ -160,6 +160,7 @@ func parseForm(r *http.Request, form interface{}) error {
 				return err
 			}
 		}
+		r.ParseForm()
 		for i, n := 0, formType.NumField(); i < n; i++ {
 			formTag := formType.Field(i).Tag.Get("form")
 			postValue := postValues.Get(formTag)
