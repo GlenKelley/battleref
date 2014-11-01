@@ -60,13 +60,16 @@ func queryStrings(db dbcon, query string) ([]string, error) {
 				values = append(values, value)
 			}
 		}
-		return values, nil
+		if values == nil {
+			return []string{}, nil
+		} else {
+			return values, nil
+		}
 	}
 }
 
 func (c *Commands) ListUsers() ([]string, error) {
 	users, err := queryStrings(c.tx, "select name from user")
-	if len(users) == 0 { users = []string{} }
 	return users, err
 }
 

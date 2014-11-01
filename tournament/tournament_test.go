@@ -84,6 +84,14 @@ func TestCreateMap(t *testing.T) {
 	}
 }
 
+func TestCreateExistingMapError(t *testing.T) {
+	tm := createTournament(t)
+	Check(t, tm.CreateMap("NameFoo", "SourceFoo"))
+	if err := tm.CreateMap("NameFoo", "SourceFoo"); err == nil {
+		ErrorNow(t, "expected error")
+	}
+}
+
 func TestSubmitCommit(t *testing.T) {
 	tm := createTournament(t)
 	if err := tm.CreateUser("NameFoo","PublicKey"); err != nil {

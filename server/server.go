@@ -50,6 +50,8 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("/shutdown", shutdown)
 	s.HandleFunc("/register", register)
 	s.HandleFunc("/players", players)
+	s.HandleFunc("/maps", maps)
+	s.HandleFunc("/map/create", createMap)
 
 	return &s
 
@@ -232,6 +234,30 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 }
 
+func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	w.Header().Add("Content-Type", "application/json")
+	var form struct {
+		Name string `json:"name" form:"name" validate:"required"`
+		Source string `json:"source" form:"source" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeJSONError(w, err)
+	} else if !NameRegex.MatchString(form.Name) {
+		writeJSONError(w, errors.New("Invalid Name"))
+	} else if err := s.Tournament.CreateMap(form.Name, form.Source); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, form)
+	}
+}
+
+func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	if maps, err := s.Tournament.ListMaps(); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, JSONResponse{"maps":maps})
+	}
+}
 
 //type EventType int
 //

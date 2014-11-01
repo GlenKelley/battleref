@@ -221,3 +221,21 @@ func TestPlayers(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestMaps(t *testing.T) {
+	server := createServer(t)
+	if r := sendGet(t, server, "/maps"); len(r["maps"].([]interface{})) > 0 {
+		t.Error("expected no maps", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameFoo","source":"SourceFoo"})
+	if r := sendGet(t, server, "/maps"); !compareStrings(r["maps"].([]interface{}), []string{"NameFoo"}) {
+		t.Error("expected single player NameFoo", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameBar","source":"SourceBar"})
+	if r := sendGet(t, server, "/maps"); !compareStringsUnordered(r["maps"].([]interface{}), []string{"NameFoo", "NameBar"}) {
+		t.Error("expected two maps NameFoo, NameBar", r)
+		t.FailNow()
+	}
+}
