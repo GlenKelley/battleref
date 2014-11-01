@@ -16,6 +16,8 @@ import (
 	"github.com/GlenKelley/battleref/tournament"
 )
 
+const SamplePublicKey = "ssh-rsa AAAA01234abcd sample@public.key.com"
+
 func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.Error(arg ... )
 	trace := make([]byte, 1024)
@@ -166,23 +168,23 @@ func TestParseFormJSON(t *testing.T) {
 
 func TestRegisterForm(t *testing.T) {
 	server := createServer(t)
-	r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key=PublicKeyFoo"))
+	r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
 	if r["name"] != "NameFoo" { t.FailNow() }
-	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
+	if r["public_key"] != SamplePublicKey { t.FailNow() }
 }
 
 func TestRegisterQuery(t *testing.T) {
 	server := createServer(t)
-	r := sendPost(t, server, "/register?name=NameFoo&public_key=PublicKeyFoo", nil)
+	r := sendPost(t, server, "/register?name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey), nil)
 	if r["name"] != "NameFoo" { t.FailNow() }
-	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
+	if r["public_key"] != SamplePublicKey { t.FailNow() }
 }
 
 func TestRegisterJSON(t *testing.T) {
 	server := createServer(t)
-	r := sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":"PublicKeyFoo"})
+	r := sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
 	if r["name"] != "NameFoo" { t.FailNow() }
-	if r["public_key"] != "PublicKeyFoo" { t.FailNow() }
+	if r["public_key"] != SamplePublicKey { t.FailNow() }
 }
 
 func compareStrings(a []interface{}, b []string) bool {
@@ -208,12 +210,12 @@ func TestPlayers(t *testing.T) {
 		t.Error("expected no players", r)
 		t.FailNow()
 	}
-	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":"PublicKeyFoo"})
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
 	if r := sendGet(t, server, "/players"); !compareStrings(r["players"].([]interface{}), []string{"NameFoo"}) {
 		t.Error("expected single player NameFoo", r)
 		t.FailNow()
 	}
-	sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":"PublicKeyBar"})
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":SamplePublicKey})
 	if r := sendGet(t, server, "/players"); !compareStringsUnordered(r["players"].([]interface{}), []string{"NameFoo", "NameBar"}) {
 		t.Error("expected two players NameFoo, NameBar", r)
 		t.FailNow()

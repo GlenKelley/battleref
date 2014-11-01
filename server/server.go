@@ -16,7 +16,7 @@ import (
 	"os/exec"
 	// "flag"
 	"fmt"
-	//"regexp"
+	"regexp"
 //	"sort"
 	"path/filepath"
 	"time"
@@ -108,7 +108,7 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 }
 
 func writeJSONError(w http.ResponseWriter, err error) {
-	if bs, e2 := json.Marshal(JSONResponse{"error":err}); e2 != nil {
+	if bs, e2 := json.Marshal(JSONResponse{"error":err.Error()}); e2 != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	} else {
@@ -214,7 +214,7 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if err := parseForm(r, &form); err != nil {
 		writeJSONError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
-		writeJSONError(w, errors.New("Invalid Name")) {
+		writeJSONError(w, errors.New("Invalid Name"))
 	} else if !PublicKeyRegex.MatchString(form.PublicKey) {
 		writeJSONError(w, errors.New("Invalid Public Key"))
 	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
@@ -232,7 +232,6 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 }
 
-func addMap(
 
 //type EventType int
 //
