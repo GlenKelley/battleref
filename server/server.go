@@ -2,11 +2,14 @@ package server
 
 import (
 	//"os"
+	"reflect"
 //	"path/filepath"
 	"log"
 	"strings"
 //	"encoding/json"
 	"net"
+	"net/url"
+	//"bytes"
 	"net/http"
 	"errors"
 //	"bytes"
@@ -40,6 +43,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s := ServerState{tournament, properties, httpServer, nil}
 	s.HandleFunc("/version", version)
 	s.HandleFunc("/shutdown", shutdown)
+	s.HandleFunc("/register", register)
 
 	return &s
 
@@ -105,8 +109,8 @@ func writeError(w http.ResponseWriter, err error) {
 func GitVersion(path string) (string, error) {
 	cmd := exec.Command("git", "rev-parse","HEAD")
 	cmd.Dir = path
-	bytes, err := cmd.Output()
-	return strings.TrimSpace(string(bytes)), err
+	output, err := cmd.Output()
+	return strings.TrimSpace(string(output)), err
 }
 
 func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
@@ -136,6 +140,66 @@ func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		s.Listener = nil
 	}
 }
+
+func parseForm(r *http.Request, form interface{}) error {
+	formType := reflect.TypeOf(form).Elem()
+	formValue := reflect.ValueOf(form).Elem()
+	contentTypes := r.Header["Content-Type"]
+	if len(contentTypes) > 0 && contentTypes[0] == "application/json" {
+		if r.Body != nil {
+			if err := json.NewDecoder(r.Body).Decode(form); err != nil {
+				return err
+			}
+		}
+	} else {
+		var postValues url.Values
+		if r.Method == "POST" && r.Body != nil {
+			if bs, err := ioutil.ReadAll(r.Body); err != nil {
+				return err
+			} else if postValues, err = url.ParseQuery(string(bs)); err != nil {
+				return err
+			}
+		}
+		for i, n := 0, formType.NumField(); i < n; i++ {
+			formTag := formType.Field(i).Tag.Get("form")
+			postValue := postValues.Get(formTag)
+			queryValue := r.Form.Get(formTag)
+			if postValue != "" {
+				formValue.Field(i).SetString(postValue)
+			} else if queryValue != "" {
+				formValue.Field(i).SetString(queryValue)
+			}
+		}
+	}
+	for i, n := 0, formType.NumField(); i < n; i++ {
+		field := formType.Field(i)
+		value := formValue.Field(i)
+		validateTag := field.Tag.Get("validate")
+		if validateTag == "required" && value.String() == "" {
+			return errors.New(fmt.Sprintf("Missing required field %v", field.Name))
+		}
+	}
+	return nil
+}
+
+func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Name string `json:"name" form:"name" validate:"required"`
+		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeError(w, err)
+	} else if response, err := json.Marshal(&form); err != nil {
+		writeError(w, err)
+	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
+		writeError(w, err)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(response)
+	}
+}
+
+
 
 //type EventType int
 //
