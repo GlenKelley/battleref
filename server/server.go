@@ -55,6 +55,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("GET", "/version", version)
 	s.HandleFunc("GET", "/players", players)
 	s.HandleFunc("GET", "/maps", maps)
+	s.HandleFunc("GET", "/commits", commits)
 	s.HandleFunc("POST", "/shutdown", shutdown)
 	s.HandleFunc("POST", "/register", register)
 	s.HandleFunc("POST", "/map/create", createMap)
@@ -284,6 +285,24 @@ func submit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, form)
+	}
+}
+
+func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Name string `json:"name" form:"name" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeJSONError(w, err)
+	} else if exists, err := s.Tournament.UserExists(form.Name); err != nil {
+		writeJSONError(w, err)
+	} else if !exists {
+		writeJSONError(w, errors.New("Unknown player"))
+	} else if commits, err := s.Tournament.ListCommits(form.Name, form.Category); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, JSONResponse{"commits":commits})
 	}
 }
 

@@ -100,7 +100,13 @@ func TestSubmitCommit(t *testing.T) {
 	if err := tm.SubmitCommit("NameFoo", CategoryGeneral, "abcdef", time.Now()); err != nil {
 		ErrorNow(t, err)
 	}
-	//TODO: test commit exists
+	if commits, err := tm.ListCommits("NameFoo", CategoryGeneral); err != nil {
+		ErrorNow(t, err)
+	} else if len(commits) != 1 {
+		ErrorNow(t, len(commits), "but expected", 1)
+	} else if commits[0] != "abcdef" {
+		ErrorNow(t, commits[0], "but expected", "abcdef")
+	}
 }
 
 func TestRunMatch(t *testing.T) {

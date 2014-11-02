@@ -13,6 +13,7 @@ type Statements interface {
 	GetMapSource(name string) (string, error)
 	ListMaps() ([]string, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
+	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
 }
 
@@ -47,8 +48,8 @@ func (c *Commands) UserExists(name string) (bool, error) {
 	return exists, err
 }
 
-func queryStrings(db dbcon, query string) ([]string, error) {
-	if rows, err := db.Query(query); err != nil {
+func queryStrings(db dbcon, query string, args ... interface{}) ([]string, error) {
+	if rows, err := db.Query(query, args ...); err != nil {
 		return nil, err
 	} else {
 		var values []string
@@ -94,6 +95,10 @@ func (c *Commands) CreateCommit(playerName string, category TournamentCategory, 
 	return err
 }
 
+func (c *Commands) ListCommits(name string, category TournamentCategory) ([]string, error) {
+	commits, err := queryStrings(c.tx, "select commitHash from submission where name = ? and category = ?", name, string(category))
+	return commits, err
+}
 
 /*
 func (c *Database) InitTables(config Config) error {

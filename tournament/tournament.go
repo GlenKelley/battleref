@@ -49,6 +49,10 @@ func (t *Tournament) SubmitCommit(name string, category TournamentCategory, comm
 	return t.Database.CreateCommit(name, category, commitHash, time)
 }
 
+func (t *Tournament) ListCommits(name string, category TournamentCategory) ([]string, error) {
+	commits, err := t.Database.ListCommits(name, category)
+	return commits, err
+}
 
 /*
 import (

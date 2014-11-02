@@ -292,3 +292,21 @@ func TestSubmitDuplicateCommitError(t *testing.T) {
 	sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash})
 }
 
+func TestCommits(t *testing.T) {
+	server := createServer(t)
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
+	if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); len(r["commits"].([]interface{})) > 0 {
+		t.Error("expected no commits", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":"General","commit_hash":"abcdef"})
+	if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(r["commits"].([]interface{}), []string{"abcdef"}) {
+		t.Error("expected single commit abcdef", r)
+		t.FailNow()
+	}
+	sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":"General","commit_hash":"012345"})
+	if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(r["commits"].([]interface{}), []string{"abcdef","012345"}) {
+		t.Error("expected two commits abcdef, 012345", r)
+		t.FailNow()
+	}
+}
