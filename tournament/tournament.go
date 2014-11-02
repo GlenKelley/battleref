@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+type TournamentCategory string
+const (
+	CategoryGeneral = "general"
+)
+
 type Tournament struct {
 	Database Database
 }
@@ -40,8 +45,8 @@ func (t *Tournament) ListMaps() ([]string, error) {
 	return users, err
 }
 
-func (t *Tournament) SubmitCommit(name, commitHash string, time time.Time) error {
-	return t.Database.CreateCommit(name, commitHash, time)
+func (t *Tournament) SubmitCommit(name string, category TournamentCategory, commitHash string, time time.Time) error {
+	return t.Database.CreateCommit(name, category, commitHash, time)
 }
 
 

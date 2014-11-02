@@ -30,6 +30,12 @@ type JSONResponse map[string]interface{}
 const HeaderContentType = "Content-Type"
 const ContentTypeJSON = "application/json"
 
+var (
+	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
+	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)$")	//SSH public key
+	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
+)
+
 type ServerState struct {
 	Tournament *tournament.Tournament
 	Properties Properties
@@ -46,12 +52,13 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 		MaxHeaderBytes: 1 << 20,
 	}
 	s := ServerState{tournament, properties, httpServer, nil}
-	s.HandleFunc("/version", version)
-	s.HandleFunc("/shutdown", shutdown)
-	s.HandleFunc("/register", register)
-	s.HandleFunc("/players", players)
-	s.HandleFunc("/maps", maps)
-	s.HandleFunc("/map/create", createMap)
+	s.HandleFunc("GET", "/version", version)
+	s.HandleFunc("GET", "/players", players)
+	s.HandleFunc("GET", "/maps", maps)
+	s.HandleFunc("POST", "/shutdown", shutdown)
+	s.HandleFunc("POST", "/register", register)
+	s.HandleFunc("POST", "/map/create", createMap)
+	s.HandleFunc("POST", "/submit", submit)
 
 	return &s
 
@@ -80,17 +87,15 @@ func (s *ServerState) Serve() error {
 	}
 }
 
-func (s *ServerState) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState)) {
+func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState)) {
 	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
-		handler(w, r, s)
+		if r.Method == method {
+			handler(w, r, s)
+		} else {
+			writeJSONErrorWithCode(w, errors.New(fmt.Sprintf("Expected method %v", method)), http.StatusMethodNotAllowed)
+		}
 	})
 }
-
-var (
-	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-	PublicKeyRegex = regexp.MustCompile("ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)")	//SSH public key
-	CommitRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
-)
 
 // Environment variables
 type Properties struct {
@@ -110,8 +115,12 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 }
 
 func writeJSONError(w http.ResponseWriter, err error) {
+	writeJSONErrorWithCode(w, err, http.StatusInternalServerError)
+}
+
+func writeJSONErrorWithCode(w http.ResponseWriter, err error, status int) {
 	if bs, e2 := json.Marshal(JSONResponse{"error":err.Error()}); e2 != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(status)
 		w.Write([]byte(err.Error()))
 	} else {
 		w.Header().Add(HeaderContentType, ContentTypeJSON)
@@ -208,7 +217,6 @@ func parseForm(r *http.Request, form interface{}) error {
 }
 
 func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	w.Header().Add("Content-Type", "application/json")
 	var form struct {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
@@ -235,7 +243,6 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	w.Header().Add("Content-Type", "application/json")
 	var form struct {
 		Name string `json:"name" form:"name" validate:"required"`
 		Source string `json:"source" form:"source" validate:"required"`
@@ -256,6 +263,27 @@ func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, JSONResponse{"maps":maps})
+	}
+}
+
+func submit(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Name string `json:"name" form:"name" validate:"required"`
+		CommitHash string `json:"commit_hash" form:"commit_hash" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeJSONError(w, err)
+	} else if exists, err := s.Tournament.UserExists(form.Name); err != nil {
+		writeJSONError(w, err)
+	} else if !exists {
+		writeJSONError(w, errors.New("Unknown player"))
+	} else if !CommitHashRegex.MatchString(form.CommitHash) {
+		writeJSONError(w, errors.New("Invalid commit hash"))
+	} else if err := s.Tournament.SubmitCommit(form.Name, form.Category, form.CommitHash, time.Now()); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, form)
 	}
 }
 

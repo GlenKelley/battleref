@@ -97,7 +97,7 @@ func TestSubmitCommit(t *testing.T) {
 	if err := tm.CreateUser("NameFoo","PublicKey"); err != nil {
 		ErrorNow(t, err)
 	}
-	if err := tm.SubmitCommit("NameFoo","abcdef", time.Now()); err != nil {
+	if err := tm.SubmitCommit("NameFoo", CategoryGeneral, "abcdef", time.Now()); err != nil {
 		ErrorNow(t, err)
 	}
 	//TODO: test commit exists

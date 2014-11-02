@@ -12,7 +12,7 @@ type Statements interface {
 	CreateMap(name, source string) error
 	GetMapSource(name string) (string, error)
 	ListMaps() ([]string, error)
-	CreateCommit(userName, commit string, time time.Time) error
+	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	SchemaVersion() (string, error)
 }
 
@@ -89,8 +89,8 @@ func (c *Commands) ListMaps() ([]string, error) {
 	return maps, err
 }
 
-func (c *Commands) CreateCommit(playerName, commitHash string, time time.Time) error {
-	_, err := c.tx.Exec("insert into submission(commitHash, name, date_created) values (?,?,?)", commitHash, playerName, time)
+func (c *Commands) CreateCommit(playerName string, category TournamentCategory, commitHash string, time time.Time) error {
+	_, err := c.tx.Exec("insert into submission(commitHash, name, category, date_created) values (?,?,?,?)", commitHash, playerName, string(category), time)
 	return err
 }
 

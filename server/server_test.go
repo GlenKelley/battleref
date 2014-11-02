@@ -16,7 +16,10 @@ import (
 	"github.com/GlenKelley/battleref/tournament"
 )
 
-const SamplePublicKey = "ssh-rsa AAAA01234abcd sample@public.key.com"
+const (
+	SamplePublicKey = "ssh-rsa AAAA01234abcd sample@public.key.com"
+	SampleCommitHash = "012345"
+)
 
 func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.Error(arg ... )
@@ -64,6 +67,19 @@ func sendPost(t *testing.T, server *ServerState, url string, body io.Reader) JSO
 }
 
 func sendJSONPost(t *testing.T, server *ServerState, url string, body interface{}) JSONResponse {
+	return sendJSONPostExpectStatus(t, server, http.StatusOK, url, body)
+}
+
+func sendGetExpectStatus(t *testing.T, server *ServerState, expectedCode int, url string) JSONResponse {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	return sendRequest(t, server, expectedCode, req)
+}
+
+func sendJSONPostExpectStatus(t *testing.T, server *ServerState, expectedCode int, url string, body interface{}) JSONResponse {
 	bs, err := json.Marshal(body)
 	if err != nil {
 		t.Error(err)
@@ -75,15 +91,6 @@ func sendJSONPost(t *testing.T, server *ServerState, url string, body interface{
 		t.FailNow()
 	}
 	req.Header.Set("Content-Type", "application/json")
-	return sendRequest(t, server, http.StatusOK, req)
-}
-
-func sendGetExpectStatus(t *testing.T, server *ServerState, expectedCode int, url string) JSONResponse {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
 	return sendRequest(t, server, expectedCode, req)
 }
 
@@ -117,7 +124,7 @@ func TestShutdown(t *testing.T) {
 	go server.Serve()
 	//Race condition of server not starting
 	time.Sleep(time.Millisecond)
-	r := sendGet(t, server, "/shutdown")
+	r := sendPost(t, server, "/shutdown", nil)
 	if r["shutdown"] == "" { t.FailNow() }
 	sendGetExpectStatus(t, server, http.StatusInternalServerError, "/shutdown")
 }
@@ -239,3 +246,49 @@ func TestMaps(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestSubmitHash(t *testing.T) {
+	if !CommitHashRegex.MatchString(SampleCommitHash) {
+		t.FailNow()
+	}
+}
+
+func TestSubmit(t *testing.T) {
+	server := createServer(t)
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
+	if r := sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash}); r["name"] != "NameFoo" {
+		t.Error(r["name"], " expected ", "NameFoo")
+		t.FailNow()
+	} else if r["category"] != string(tournament.CategoryGeneral) {
+		t.Error(r["category"], " expected ", tournament.CategoryGeneral)
+		t.FailNow()
+	} else if r["commit_hash"] != SampleCommitHash {
+		t.Error(r["commit_hash"], " expected ", SampleCommitHash)
+		t.FailNow()
+	}
+}
+
+func TestSubmitPlayerNameError(t *testing.T) {
+	server := createServer(t)
+	if r := sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash}); r["error"] != "Unknown player" {
+		t.Error(r, "expected 'Unknown player'")
+		t.FailNow()
+	}
+}
+
+func TestSubmitCommitHashError(t *testing.T) {
+	server := createServer(t)
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
+	if r:= sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":"InvalidCommitHash"}); r["error"] != "Invalid commit hash" {
+		t.Error(r, "expected 'Unknown player'")
+		t.FailNow()
+	}
+}
+
+func TestSubmitDuplicateCommitError(t *testing.T) {
+	server := createServer(t)
+	sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
+	sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash})
+	sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash})
+}
+
