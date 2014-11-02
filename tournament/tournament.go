@@ -54,6 +54,40 @@ func (t *Tournament) ListCommits(name string, category TournamentCategory) ([]st
 	return commits, err
 }
 
+type Submission struct {
+	Name string
+	CommitHash string
+}
+
+type MatchResult string
+
+const (
+	MatchResultInProgress	= "InProgress"
+	MatchResultWinA		= "WinA"
+	MatchResultWinB		= "WinB"
+	MatchResultTieA		= "TieA"
+	MatchResultTieB		= "TieB"
+	MatchResultError	= "Error"
+)
+
+func (t *Tournament) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error {
+	return t.Database.CreateMatch(category, mapName, player1, player2, created)
+}
+
+func (t *Tournament) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {
+	return t.Database.UpdateMatch(category, mapName, player1, player2, finished, result, replay)
+}
+
+func (t *Tournament) GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error) {
+	result, err := t.Database.GetMatchResult(category, mapName, player1, player2)
+	return result, err
+}
+
+func (t *Tournament) GetMatchReplay(category TournamentCategory, mapName string, player1, player2 Submission) (string, error) {
+	replay, err := t.Database.GetMatchReplay(category, mapName, player1, player2)
+	return replay, err
+}
+
 /*
 import (
 	"os"

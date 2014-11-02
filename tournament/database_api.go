@@ -15,6 +15,10 @@ type Statements interface {
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
+	CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error
+	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error
+	GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error)
+	GetMatchReplay(category TournamentCategory, mapName string, player1, palyer2 Submission) (string, error)
 }
 
 // An implementation of statements which uses an abstracted sql connection
@@ -98,6 +102,33 @@ func (c *Commands) CreateCommit(playerName string, category TournamentCategory, 
 func (c *Commands) ListCommits(name string, category TournamentCategory) ([]string, error) {
 	commits, err := queryStrings(c.tx, "select commitHash from submission where name = ? and category = ?", name, string(category))
 	return commits, err
+}
+
+func (c *Commands) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error {
+	_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, result) values (?, ?, ?, ?, ?, ?, ?, ?)",
+		string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, MatchResultInProgress)
+	return err
+}
+
+func (c *Commands) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {
+	_, err := c.tx.Exec("update match set updated = ?, result = ?, replay = ? where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", finished, string(result), replay, string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash)
+	return err
+}
+
+func (c *Commands) GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error) {
+	var result string
+	err := c.tx.QueryRow("select result from match where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash).Scan(&result)
+	if err != nil {
+		return MatchResultError, err
+	} else {
+		return MatchResult(result), nil
+	}
+}
+
+func (c *Commands) GetMatchReplay(category TournamentCategory, mapName string, player1, player2 Submission) (string, error) {
+	var replay string
+	err := c.tx.QueryRow("select replay from match where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash).Scan(&replay)
+	return replay, err
 }
 
 /*

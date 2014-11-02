@@ -109,6 +109,39 @@ func TestSubmitCommit(t *testing.T) {
 	}
 }
 
+func TestCreateMatch(t *testing.T) {
+	tm := createTournament(t)
+	p1 := Submission{"p1","c1"}
+	p2 := Submission{"p2","c2"}
+	if err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil {
+		ErrorNow(t, err)
+	} else if result, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		ErrorNow(t, err)
+	} else if result != MatchResultInProgress {
+		t.FailNow()
+	}
+}
+
+func TestUpdateMatch(t *testing.T) {
+	tm := createTournament(t)
+	p1 := Submission{"p1","c1"}
+	p2 := Submission{"p2","c2"}
+	if err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil { ErrorNow(t, err) }
+	if err := tm.UpdateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"); err != nil {
+		ErrorNow(t, err)
+	} else if result, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		ErrorNow(t, err)
+	} else if result != MatchResultWinA {
+		t.Error(result, " expected ", MatchResultWinA)
+		t.FailNow()
+	} else if replay, err := tm.GetMatchReplay(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		ErrorNow(t, err)
+	} else if replay != "LogFoo" {
+		t.Error(replay, " expected LogFoo")
+		t.FailNow()
+	}
+}
+
 func TestRunMatch(t *testing.T) {
 
 }
