@@ -50,6 +50,8 @@ func createServer(t * testing.T) (*ServerState) {
 			":memory:",
 			"8081",
 			".",
+			"../arena",
+			".",
 		}
 		return NewServer(tournament, properties)
 	}

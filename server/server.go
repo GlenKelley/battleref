@@ -60,6 +60,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/register", register)
 	s.HandleFunc("POST", "/map/create", createMap)
 	s.HandleFunc("POST", "/submit", submit)
+	s.HandleFunc("POST", "/match/run", runMatch)
 
 	return &s
 
@@ -305,6 +306,40 @@ func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, JSONResponse{"commits":commits})
+	}
+}
+
+func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Player1 string `json:"player1" form:"player1" validate:"required"`
+		Player2 string `json:"player2" form:"player2" validate:"required"`
+		Commit1 string `json:"commit1" form:"commit1" validate:"required"`
+		Commit2 string `json:"commit2" form:"commit2" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+		Map string `json:"map" form:"map" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeJSONError(w, err)
+	} else if exists, err := s.Tournament.UserExists(form.Player1); err != nil {
+		writeJSONError(w, err)
+	} else if !exists {
+		writeJSONError(w, errors.New("Unknown player1"))
+	} else if exists, err := s.Tournament.UserExists(form.Player2); err != nil {
+		writeJSONError(w, err)
+	} else if !exists {
+		writeJSONError(w, errors.New("Unknown player2"))
+	} else if exists, err := s.Tournament.MapExists(form.Map); err != nil {
+		writeJSONError(w, err)
+	} else if !exists {
+		writeJSONError(w, errors.New("Unknown map"))
+	} else if !CommitHashRegex.MatchString(form.Commit1) {
+		writeJSONError(w, errors.New("Invalid commit hash 1"))
+	} else if !CommitHashRegex.MatchString(form.Commit2) {
+		writeJSONError(w, errors.New("Invalid commit hash 2"))
+	} else if result, err := s.Tournament.RunMatch(form.Category, form.Map, tournament.Submission{form.Player1, form.Commit1}, tournament.Submission{form.Player2, form.Commit2}, tournament.SystemClock()); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, JSONResponse{"result":result})
 	}
 }
 

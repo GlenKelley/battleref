@@ -12,6 +12,7 @@ type Statements interface {
 	CreateMap(name, source string) error
 	GetMapSource(name string) (string, error)
 	ListMaps() ([]string, error)
+	MapExists(name string) (bool, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
@@ -81,6 +82,12 @@ func (c *Commands) ListUsers() ([]string, error) {
 func (c *Commands) CreateMap(name, source string) error {
 	_, err := c.tx.Exec("insert into map(name, source) values (?,?)", name, source)
 	return err
+}
+
+func (c *Commands) MapExists(name string) (bool, error) {
+	var exists bool
+	err := c.tx.QueryRow("select count(name) > 0 from map where name = ?", name).Scan(&exists)
+	return exists, err
 }
 
 func (c *Commands) GetMapSource(name string) (string, error) {

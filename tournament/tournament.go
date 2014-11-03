@@ -12,9 +12,12 @@ type Clock interface {
 }
 
 //A clock which delegates to the system time
-type SystemClock struct {
+func SystemClock() Clock {
+	return &systemClock{} 
 }
-func (c *SystemClock) Now() time.Time {
+type systemClock struct {
+}
+func (c *systemClock) Now() time.Time {
 	return time.Now()
 }
 
@@ -60,6 +63,11 @@ func (t *Tournament) ListMaps() ([]string, error) {
 	return users, err
 }
 
+func (t *Tournament) MapExists(name string) (bool, error) {
+	exists, err := t.Database.MapExists(name)
+	return exists, err
+}
+
 func (t *Tournament) SubmitCommit(name string, category TournamentCategory, commitHash string, time time.Time) error {
 	return t.Database.CreateCommit(name, category, commitHash, time)
 }
@@ -103,12 +111,12 @@ func (t *Tournament) GetMatchReplay(category TournamentCategory, mapName string,
 	return replay, err
 }
 
-func (t *Tournament) RunMatch(category TournamentCategory, mapName string, player1, player2 Submission, clock Clock) error {
+func (t *Tournament) RunMatch(category TournamentCategory, mapName string, player1, player2 Submission, clock Clock) (MatchResult, error) {
 	if err := t.CreateMatch(category, mapName, player1, player2, clock.Now()); err != nil {
-		return err
+		return MatchResultError, err
 	}
 	if mapSource, err := t.GetMapSource(mapName); err != nil {
-		return err
+		return MatchResultError, err
 	} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
 		mapName,
 		strings.NewReader(mapSource),
@@ -121,11 +129,14 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 		if err2 := t.UpdateMatch(category, mapName, player1, player2, clock.Now(), MatchResultError, ""); err2 != nil {
 			log.Println(err2)
 		}
-		return err
-	} else if err := t.UpdateMatch(category, mapName, player1, player2, finished, GetMatchResult(result), result.Replay); err != nil {
-		return err
+		return MatchResultError, err
+	} else {
+		matchResult := GetMatchResult(result)
+		if err := t.UpdateMatch(category, mapName, player1, player2, finished, GetMatchResult(result), result.Replay); err != nil {
+			return MatchResultError, err
+		}
+		return matchResult, err
 	}
-	return nil
 }
 
 func GetMatchResult(a arena.MatchResult) MatchResult {
