@@ -2,6 +2,7 @@ package arena
 
 import (
 	"path/filepath"
+	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -48,7 +49,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	var result MatchResult
 	script := filepath.Join(a.ResourceDir, "runMatch.sh")
 	tarFile := filepath.Join(a.ResourceDir, "battlecode.tar")
-	mapFile, err := ioutil.TempFile(os.TempDir(), p.MapName); 
+	mapFile, err := ioutil.TempFile(os.TempDir(), p.MapName)
 	if err != nil {
 		return clock(), result, err
 	}
@@ -69,10 +70,16 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 		"-g", a.GitURL,
 		"-m", p.MapName,
 		"-M", mapFile.Name(),
+		"-R",
 	)
+	cmd.Dir = a.ResourceDir
+	buffer := bytes.Buffer{}
+	cmd.Stderr = &buffer
 	if out, err := cmd.Output(); err != nil {
+		log.Println("runMatch Error:", string(buffer.Bytes()))
 		return clock(), result, err
 	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
+		log.Println("runMatch Output:", string(out))
 		return clock(), result, err
 	} else {
 		return clock(), result, nil

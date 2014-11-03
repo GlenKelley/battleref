@@ -79,16 +79,19 @@ elif [[ ! -f "$MAP_FILE" ]] ; then
   usage
 fi
 
-DIR=`mktemp -d -t battlecode`
+BATTLECODE_DIR=$(mktemp -d -t battlecode)
+function cleanup {
+	rm -rf "$BATTLECODE_DIR"
+}
+trap cleanup EXIT
 
-tar -xf "$BATTLECODE_TAR" -C "$DIR/"
-
+tar -xf "$BATTLECODE_TAR" -C "$BATTLECODE_DIR/"
 #Create teams directory
-mkdir -p "$DIR/teams/"
+mkdir -p "$BATTLECODE_DIR/teams/"
 
 #Create maps directory
-mkdir -p "$DIR/maps/"
-cp "$MAP_FILE" "$DIR/maps/"
+mkdir -p "$BATTLECODE_DIR/maps/"
+cp "$MAP_FILE" "$BATTLECODE_DIR/maps/${MAP}.xml"
 
 function fixPackage {
 	find . -type f -name "*.java" -maxdepth 1 | while read FILE
@@ -99,22 +102,22 @@ function fixPackage {
 }
 
 #Create team1
-git clone "${GIT_URL}${PLAYER1}.git" "$DIR/teams/player1"
-pushd "$DIR/teams/$PLAYER1" >/dev/null
-git checkout "player1"
-fixPackage $PLAYER1
+git clone "${GIT_URL}${PLAYER1}.git" "$BATTLECODE_DIR/teams/player1"
+pushd "$BATTLECODE_DIR/teams/player1" >/dev/null
+if ! git checkout "$COMMIT1" 2>error.log ; then cat error.log >&2 ; fi
+fixPackage player1
 popd >/dev/null
 
 #Create team2
-git clone "${GIT_URL}${PLAYER2}.git" "$DIR/teams/player2"
-pushd "$DIR/teams/$PLAYER2" >/dev/null
-git checkout "$COMMIT2"
+git clone "${GIT_URL}${PLAYER2}.git" "$BATTLECODE_DIR/teams/player2"
+pushd "$BATTLECODE_DIR/teams/player2" >/dev/null
+if ! git checkout "$COMMIT2" 2>error.log ; then cat error.log >&2 ; fi
 fixPackage player2
 popd >/dev/null
 
 echo "Match [$PLAYER1:$COMMIT1] vs [$PLAYER2:$COMMIT2] on $MAP" >&2
 
-pushd "$DIR" >/dev/null
+pushd "$BATTLECODE_DIR" >/dev/null
 cp bc.conf.template bc.conf
 echo "# Headless settings" >> bc.conf
 echo "bc.game.maps=${MAP}.xml" >> bc.conf
@@ -122,24 +125,30 @@ echo "bc.game.team-a=player1" >> bc.conf
 echo "bc.game.team-b=player2" >> bc.conf
 echo "bc.game.save-file=match.rms" >> bc.conf
 
-ant file -Dc=bc.conf > output.log 2> error.log
-#cat error.log 2>&1
+if ! ant file -Dc=bc.conf > output.log 2> error.log ; then
+	cat output.log error.log >&2
+	exit 1
+fi
+
+if grep "~~~~~~~ERROR~~~~~~~" output.log >/dev/null ; then
+	cat output.log error.log >&2
+	exit 1 
+fi
+cat output.log error.log >&2
 
 WINNER=`grep "\[java\] \[server\]" output.log | perl -i -n -e 'if(/player\d \((\w)\) wins/){print "$1"}'`
 REASON=`grep "Reason:" output.log | perl -i -n -e '
 	if(/Reason: ([^\n]+)/){
 		if ($1 eq "The winning team won by getting a lot of milk.") { print "VICTORY" }
 		if ($1 eq "The winning team won on tiebreakers.") { print "TIE" }
+		if ($1 =~ /Team (A|B) won by default./) { print "TIE" }
 	}'`
 REPLAY=
 if [[ -n "$CAPTURE_REPLAY" ]] ; then
 	REPLAY=`cat match.rms | base64`
 fi
 
-echo "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\",\"replay\":\"$REPLAY\"}"
+echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\",\"replay\":\"$REPLAY\"}"
 
 popd > /dev/null
-
-#Cleanup
-rm -rf $DIR
 
