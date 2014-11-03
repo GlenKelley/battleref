@@ -5,7 +5,15 @@ import (
 	"testing"
 	"runtime"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/GlenKelley/battleref/arena"
 )
+
+type MockArena struct{
+}
+
+func (a MockArena) RunMatch(properties arena.MatchProperties, clock func()time.Time) (time.Time, arena.MatchResult, error) {
+	return clock(), arena.MatchResult{}, nil
+}
 
 func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.Error(arg ... )
@@ -22,6 +30,7 @@ func Check(t *testing.T, err error) {
 }
 
 func createTournament(t * testing.T) (*Tournament) {
+	mockArena := MockArena{}
 	if database, err := NewInMemoryDatabase(); err != nil {
 		ErrorNow(t, err)
 		return nil
@@ -29,7 +38,7 @@ func createTournament(t * testing.T) (*Tournament) {
 		ErrorNow(t, err)
 		return nil
 	} else {
-		return NewTournament(database)
+		return NewTournament(database, mockArena)
 	}
 }
 

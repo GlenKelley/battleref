@@ -1,8 +1,22 @@
 package tournament
 
 import (
+	"strings"
 	"time"
+	"log"
+	"github.com/GlenKelley/battleref/arena"
 )
+
+type Clock interface {
+	Now() time.Time
+}
+
+//A clock which delegates to the system time
+type SystemClock struct {
+}
+func (c *SystemClock) Now() time.Time {
+	return time.Now()
+}
 
 type TournamentCategory string
 const (
@@ -11,10 +25,11 @@ const (
 
 type Tournament struct {
 	Database Database
+	Arena	 arena.Arena
 }
 
-func NewTournament(database Database) *Tournament {
-	return &Tournament{database}
+func NewTournament(database Database, arena arena.Arena) *Tournament {
+	return &Tournament{database, arena}
 }
 
 func (t *Tournament) UserExists(name string) (bool, error) {
@@ -86,6 +101,49 @@ func (t *Tournament) GetMatchResult(category TournamentCategory, mapName string,
 func (t *Tournament) GetMatchReplay(category TournamentCategory, mapName string, player1, player2 Submission) (string, error) {
 	replay, err := t.Database.GetMatchReplay(category, mapName, player1, player2)
 	return replay, err
+}
+
+func (t *Tournament) RunMatch(category TournamentCategory, mapName string, player1, player2 Submission, clock Clock) error {
+	if err := t.CreateMatch(category, mapName, player1, player2, clock.Now()); err != nil {
+		return err
+	}
+	if mapSource, err := t.GetMapSource(mapName); err != nil {
+		return err
+	} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
+		mapName,
+		strings.NewReader(mapSource),
+		string(category),
+		player1.Name,
+		player2.Name,
+		player1.CommitHash,
+		player2.CommitHash,
+		}, func()time.Time{ return clock.Now() }); err != nil {
+		if err2 := t.UpdateMatch(category, mapName, player1, player2, clock.Now(), MatchResultError, ""); err2 != nil {
+			log.Println(err2)
+		}
+		return err
+	} else if err := t.UpdateMatch(category, mapName, player1, player2, finished, GetMatchResult(result), result.Replay); err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetMatchResult(a arena.MatchResult) MatchResult {
+	if a.Reason == arena.ReasonVictory {
+		if a.Winner == arena.WinnerA {
+			return MatchResultWinA
+		} else {
+			return MatchResultWinB
+		}
+	} else if a.Reason == arena.ReasonTie {
+		if a.Winner == arena.WinnerA {
+			return MatchResultTieA
+		} else {
+			return MatchResultTieB
+		}
+	} else {
+		return MatchResultError
+	}
 }
 
 /*

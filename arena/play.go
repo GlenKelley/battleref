@@ -1,12 +1,89 @@
 package arena
 
 import (
+	"path/filepath"
+	"os"
 	"os/exec"
 	"time"
-	"log"
-	"regexp"
+	"io"
+	"bytes"
+	"io/ioutil"
+	"encoding/json"
 )
 
+const (
+	ReasonTie = "TIE"
+	ReasonVictory = "VICTORY"
+
+	WinnerA = "A"
+	WinnerB = "B"
+)
+
+type MatchProperties struct {
+	MapName string
+	MapSource io.Reader
+	Category string
+	Player1 string
+	Player2 string
+	Commit1 string
+	Commit2 string
+}
+
+type Arena interface {
+	RunMatch(properties MatchProperties, clock func()time.Time) (time.Time, MatchResult, error)
+}
+
+type LocalArena struct {
+	ResourceDir string
+	GitURL string
+}
+
+type MatchResult struct {
+	Winner string `json:"winner"`
+	Reason string `json:"reason"`
+	Replay string `json:"replay"`
+}
+
+func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
+	var result MatchResult
+	script := filepath.Join(a.ResourceDir, "runMatch.sh")
+	tarFile := filepath.Join(a.ResourceDir, "battlecode.tar")
+	mapFile, err := ioutil.TempFile(os.TempDir(), p.MapName); 
+	if err != nil {
+		return clock(), result, err
+	}
+	defer os.Remove(mapFile.Name())
+	if file, err := os.Create(mapFile.Name()); err != nil {
+		return clock(), result, err
+	} else if _, err := io.Copy(file, p.MapSource); err != nil {
+		return clock(), result, err
+	} else {
+		file.Close()
+	}
+	cmd := exec.Command(script,
+		"-r", tarFile,
+		"-p", p.Player1,
+		"-P", p.Player2,
+		"-c", p.Commit1,
+		"-C", p.Commit2,
+		"-g", a.GitURL,
+		"-m", p.MapName,
+		"-M", mapFile.Name(),
+	)
+	if out, err := cmd.Output(); err != nil {
+		return clock(), result, err
+	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
+		return clock(), result, err
+	} else {
+		return clock(), result, nil
+	}
+}
+
+func NewArena(resourceDir, gitUrl string) Arena {
+	return LocalArena{resourceDir, gitUrl}
+}
+
+/*
 type MatchResult string
 
 var (
@@ -29,7 +106,7 @@ const (
 	ResultFail MatchResult = "F"
 )
 
-func PlayMatch(r1 Revision, r2 Revision, m, script, gitServer, battlecodePath string) MatchResult {
+func RunMatch(r1 Revision, r2 Revision, m, script, gitServer, battlecodePath string) MatchResult {
 	cmd := exec.Command(script, r1.Name, r1.GitHash, r2.Name, r2.GitHash, m, gitServer, battlecodePath)
 	b, err := cmd.CombinedOutput()
 	s := string(b)
@@ -65,3 +142,4 @@ func PlayMatch(r1 Revision, r2 Revision, m, script, gitServer, battlecodePath st
 	}
 	return result
 }
+*/

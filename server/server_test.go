@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/tournament"
+	"github.com/GlenKelley/battleref/arena"
 )
 
 const (
@@ -29,6 +30,13 @@ func ErrorNow(t *testing.T, arg ... interface{}) {
 	t.FailNow()
 }
 
+type MockArena struct{
+}
+
+func (a MockArena) RunMatch(properties arena.MatchProperties, clock func()time.Time) (time.Time, arena.MatchResult, error) {
+	return clock(), arena.MatchResult{}, nil
+}
+
 func createServer(t * testing.T) (*ServerState) {
 	if database, err := tournament.NewInMemoryDatabase(); err != nil {
 		ErrorNow(t, err)
@@ -37,7 +45,7 @@ func createServer(t * testing.T) (*ServerState) {
 		ErrorNow(t, err)
 		return nil
 	} else {
-		tournament := tournament.NewTournament(database)
+		tournament := tournament.NewTournament(database, MockArena{})
 		properties := Properties {
 			":memory:",
 			"8081",

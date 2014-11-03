@@ -103,6 +103,8 @@ type Properties struct {
 	DatabaseURL  string `json:"database_url"`
 	ServerPort   string `json:"server_port"`
 	ResourcePath string `json:"resource_path"`
+	ArenaResourcePath string `json:"arena_resource_path"`
+	GitURL	string `json:"git_url"`
 }
 
 func ReadProperties(env, resourcePath string) (Properties, error) {

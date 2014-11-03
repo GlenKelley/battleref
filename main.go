@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 	"flag"
+	"path/filepath"
 	"github.com/GlenKelley/battleref/server"
 	"github.com/GlenKelley/battleref/tournament"
+	"github.com/GlenKelley/battleref/arena"
 )
 
 //TODO:(glen) Validate public keys
@@ -36,7 +38,8 @@ func main() {
 
 	if err := database.MigrateSchema(); err != nil { log.Fatal(err) }
 
-	tournament := tournament.NewTournament(database)
+	arena := arena.NewArena(filepath.Join(resourcePath, properties.ArenaResourcePath), properties.GitURL)
+	tournament := tournament.NewTournament(database, arena)
 
 	server := server.NewServer(tournament, properties)
 	log.Fatal(server.Serve())
