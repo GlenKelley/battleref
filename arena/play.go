@@ -24,8 +24,8 @@ type MatchProperties struct {
 	MapName string
 	MapSource io.Reader
 	Category string
-	Player1 string
-	Player2 string
+	PlayerRepo1 string
+	PlayerRepo2 string
 	Commit1 string
 	Commit2 string
 }
@@ -36,7 +36,6 @@ type Arena interface {
 
 type LocalArena struct {
 	ResourceDir string
-	GitURL string
 }
 
 type MatchResult struct {
@@ -63,11 +62,10 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	}
 	cmd := exec.Command(script,
 		"-r", tarFile,
-		"-p", p.Player1,
-		"-P", p.Player2,
+		"-p", p.PlayerRepo1,
+		"-P", p.PlayerRepo2,
 		"-c", p.Commit1,
 		"-C", p.Commit2,
-		"-g", a.GitURL,
 		"-m", p.MapName,
 		"-M", mapFile.Name(),
 		"-R",
@@ -86,8 +84,8 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	}
 }
 
-func NewArena(resourceDir, gitUrl string) Arena {
-	return LocalArena{resourceDir, gitUrl}
+func NewArena(resourceDir string) Arena {
+	return LocalArena{resourceDir}
 }
 
 /*

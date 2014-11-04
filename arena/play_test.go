@@ -49,7 +49,7 @@ _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
 ]]></data>
 </map>`)
 
-var SamplePlayer = []byte(`package sampleplayer;
+var SamplePlayer = []byte(`package samplePlayer;
 import battlecode.common.RobotController;
 public class RobotPlayer {
 	public static void run(RobotController rc) {
@@ -115,14 +115,14 @@ func TestRunMatch(t *testing.T) {
 		ErrorNow(t, err)
 	}
 	packageDir := filepath.Join(build.Default.GOPATH, "src", pkg.Dir)
-	arena := NewArena(packageDir, gitDir+"/")
+	arena := NewArena(packageDir)
 	finishedTime := time.Now()
 	if finished, result, err := arena.RunMatch(MatchProperties{
 		"sampleMap",
 		bytes.NewReader(SampleMap),
 		"CategoryFoo",
-		"samplePlayer",
-		"samplePlayer",
+		filepath.Join(gitDir, "samplePlayer.git"),
+		filepath.Join(gitDir, "samplePlayer.git"),
 		commitHash,
 		commitHash,
 	}, func()time.Time{ return finishedTime }); err != nil {

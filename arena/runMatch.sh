@@ -11,11 +11,10 @@ function usage {
   echo "$0"
   echo ""
   echo "	-r battlecode tar	The tar file of the battlecode application"
-  echo "	-p player1		The name of the first player"
-  echo "	-P player2		The name of the second player"
+  echo "	-p player1		The git repo of the first player"
+  echo "	-P player2		The git repo of the second player"
   echo "	-c commit1		The git commit hash of the first player repo"
   echo "	-C commit2		The git commit hash of the second player repo"
-  echo "	-g git_url		The server connection string"
   echo "	-m map			The name of the map"
   echo "	-M map_file		The file of the map content"
   echo "        -R capture_replay       Returns the replay of the match"
@@ -23,14 +22,13 @@ function usage {
   exit 1
 }
 
-while getopts "?r:p:P:c:C:g:u:m:M:R" opt; do
+while getopts "?r:p:P:c:C:u:m:M:R" opt; do
   case $opt in
     r) BATTLECODE_TAR="$OPTARG" ;;
     p) PLAYER1="$OPTARG" ;;
     P) PLAYER2="$OPTARG" ;;
     c) COMMIT1="$OPTARG" ;;
     C) COMMIT2="$OPTARG" ;;
-    g) GIT_URL="$OPTARG" ;;
     m) MAP="$OPTARG" ;;
     M) MAP_FILE="$OPTARG" ;;
     R) CAPTURE_REPLAY=TRUE ;;
@@ -63,10 +61,6 @@ if [[ -z "$COMMIT2" ]] ; then
   echo "Error: You must define commit2."
   usage
 fi
-if [[ -z "$GIT_URL" ]] ; then
-  echo "error: you must define a git url."
-  usage
-fi
 if [[ -z "$MAP" ]] ; then
   echo "Error: You must define a map."
   usage
@@ -93,36 +87,41 @@ mkdir -p "$BATTLECODE_DIR/teams/"
 mkdir -p "$BATTLECODE_DIR/maps/"
 cp "$MAP_FILE" "$BATTLECODE_DIR/maps/${MAP}.xml"
 
-function fixPackage {
-	find . -type f -name "*.java" -maxdepth 1 | while read FILE
-	do 
-		perl -i -p -e "s/package \w+;/package $1;/" $FILE
-	done
-
+function createRepo {
+	REPO_URL=$1
+	REPO_NAME=$2
+	COMMIT=$3
+	REPO_PATH=$BATTLECODE_DIR/teams/$REPO_NAME
+	git clone "$REPO_URL" "$REPO_PATH"
+	pushd "$REPO_PATH" >/dev/null
+	if ! git checkout "$COMMIT" 2>error.log ; then 
+		cat error.log >&2
+	fi
+	popd >/dev/null
 }
 
-#Create team1
-git clone "${GIT_URL}${PLAYER1}.git" "$BATTLECODE_DIR/teams/player1"
-pushd "$BATTLECODE_DIR/teams/player1" >/dev/null
-if ! git checkout "$COMMIT1" 2>error.log ; then cat error.log >&2 ; fi
-fixPackage player1
-popd >/dev/null
+#Create teams
+NAME1=`basename "${PLAYER1%.git}"`
+NAME2=`basename "${PLAYER2%.git}"`
+createRepo "$PLAYER1" "$NAME1" "$COMMIT1"
 
-#Create team2
-git clone "${GIT_URL}${PLAYER2}.git" "$BATTLECODE_DIR/teams/player2"
-pushd "$BATTLECODE_DIR/teams/player2" >/dev/null
-if ! git checkout "$COMMIT2" 2>error.log ; then cat error.log >&2 ; fi
-fixPackage player2
-popd >/dev/null
+if [[ "$PLAYER1" = "$PLAYER2" ]] ; then
+  if [[ "$COMMIT1" != "$COMMIT2" ]] ; then
+    echo "Error: Unable to play different commits of the same player."
+    exit 1
+  fi
+else
+  createRepo "$PLAYER2" "$NAME2" "$COMMIT2"
+fi
 
-echo "Match [$PLAYER1:$COMMIT1] vs [$PLAYER2:$COMMIT2] on $MAP" >&2
+echo "Match [$NAME1:$COMMIT1] vs [$NAME2:$COMMIT2] on $MAP" >&2
 
 pushd "$BATTLECODE_DIR" >/dev/null
 cp bc.conf.template bc.conf
 echo "# Headless settings" >> bc.conf
 echo "bc.game.maps=${MAP}.xml" >> bc.conf
-echo "bc.game.team-a=player1" >> bc.conf
-echo "bc.game.team-b=player2" >> bc.conf
+echo "bc.game.team-a=${NAME1}" >> bc.conf
+echo "bc.game.team-b=${NAME2}" >> bc.conf
 echo "bc.game.save-file=match.rms" >> bc.conf
 
 if ! ant file -Dc=bc.conf > output.log 2> error.log ; then
@@ -136,7 +135,7 @@ if grep "~~~~~~~ERROR~~~~~~~" output.log >/dev/null ; then
 fi
 cat output.log error.log >&2
 
-WINNER=`grep "\[java\] \[server\]" output.log | perl -i -n -e 'if(/player\d \((\w)\) wins/){print "$1"}'`
+WINNER=`grep "\[java\] \[server\]" output.log | perl -i -n -e 'if(/ \((\w)\) wins/){print "$1"}'`
 REASON=`grep "Reason:" output.log | perl -i -n -e '
 	if(/Reason: ([^\n]+)/){
 		if ($1 eq "The winning team won by getting a lot of milk.") { print "VICTORY" }

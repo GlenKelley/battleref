@@ -7,6 +7,7 @@ import (
 	"github.com/GlenKelley/battleref/server"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/arena"
+	"github.com/GlenKelley/battleref/repo"
 )
 
 //TODO:(glen) Validate public keys
@@ -38,8 +39,11 @@ func main() {
 
 	if err := database.MigrateSchema(); err != nil { log.Fatal(err) }
 
-	arena := arena.NewArena(filepath.Join(resourcePath, properties.ArenaResourcePath), properties.GitURL)
-	tournament := tournament.NewTournament(database, arena)
+	matchArena := arena.NewArena(filepath.Join(resourcePath, properties.ArenaResourcePath))
+	repoServer := repo.NewLocal(properties.GitURL)
+	remote := &repo.TempRemote{}
+	bootstrap := arena.MinimalBootstrap{}
+	tournament := tournament.NewTournament(database, matchArena, bootstrap, repoServer, remote)
 
 	server := server.NewServer(tournament, properties)
 	log.Fatal(server.Serve())

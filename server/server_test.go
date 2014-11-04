@@ -15,6 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/arena"
+	"github.com/GlenKelley/battleref/repo"
 )
 
 const (
@@ -37,6 +38,64 @@ func (a MockArena) RunMatch(properties arena.MatchProperties, clock func()time.T
 	return clock(), arena.MatchResult{}, nil
 }
 
+type MockRepo struct {
+}
+
+func (r MockRepo) InitRepository(name, publicKey string) error {
+	return nil
+}
+
+func (r MockRepo) ForkRepository(source, fork, publicKey string) error {
+	return nil
+}
+
+func (r MockRepo) DeleteRepository(name string) error{
+	return nil
+}
+
+func (r MockRepo) RepositoryURL(name string) string {
+	return name
+}
+
+func Check(t *testing.T, err error) {
+	if err != nil {
+		ErrorNow(t, err)
+	}
+}
+
+type MockRemote struct {
+}
+
+func (r MockRemote) CheckoutRepository(repoURL string) (repo.Repository, error) {
+	return MockRepository{}, nil
+}
+
+type MockRepository struct {
+}
+
+func (m MockRepository) CommitFiles(files []string, message string) error {
+	return nil
+}
+
+func (m MockRepository) Push() error {
+	return nil
+}
+
+func (m MockRepository) Delete() error {
+	return nil
+}
+
+func (m MockRepository) RepoDir() string {
+	return ""
+}
+
+type MockBootstrap struct {
+}
+
+func (m MockBootstrap) PopulateRepository(name, repoURL, category string) ([]string, error) {
+	return []string{}, nil
+}
+
 func createServer(t * testing.T) (*ServerState) {
 	if database, err := tournament.NewInMemoryDatabase(); err != nil {
 		ErrorNow(t, err)
@@ -45,7 +104,7 @@ func createServer(t * testing.T) (*ServerState) {
 		ErrorNow(t, err)
 		return nil
 	} else {
-		tournament := tournament.NewTournament(database, MockArena{})
+		tournament := tournament.NewTournament(database, MockArena{}, MockBootstrap{}, MockRepo{}, MockRemote{})
 		properties := Properties {
 			":memory:",
 			"8081",
