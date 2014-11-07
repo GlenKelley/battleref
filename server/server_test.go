@@ -15,7 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/arena"
-	"github.com/GlenKelley/battleref/repo"
+	"github.com/GlenKelley/battleref/git"
 )
 
 const (
@@ -38,22 +38,22 @@ func (a MockArena) RunMatch(properties arena.MatchProperties, clock func()time.T
 	return clock(), arena.MatchResult{}, nil
 }
 
-type MockRepo struct {
+type MockHost struct {
 }
 
-func (r MockRepo) InitRepository(name, publicKey string) error {
+func (r MockHost) InitRepository(name, publicKey string) error {
 	return nil
 }
 
-func (r MockRepo) ForkRepository(source, fork, publicKey string) error {
+func (r MockHost) ForkRepository(source, fork, publicKey string) error {
 	return nil
 }
 
-func (r MockRepo) DeleteRepository(name string) error{
+func (r MockHost) DeleteRepository(name string) error{
 	return nil
 }
 
-func (r MockRepo) RepositoryURL(name string) string {
+func (r MockHost) RepositoryURL(name string) string {
 	return name
 }
 
@@ -66,11 +66,15 @@ func Check(t *testing.T, err error) {
 type MockRemote struct {
 }
 
-func (r MockRemote) CheckoutRepository(repoURL string) (repo.Repository, error) {
-	return MockRepository{}, nil
+func (r MockRemote) CheckoutRepository(repoURL string) (git.Repository, error) {
+	return &MockRepository{}, nil
 }
 
 type MockRepository struct {
+}
+
+func (m MockRepository) AddFiles(files []string) error {
+	return nil
 }
 
 func (m MockRepository) CommitFiles(files []string, message string) error {
@@ -85,8 +89,16 @@ func (m MockRepository) Delete() error {
 	return nil
 }
 
-func (m MockRepository) RepoDir() string {
+func (m MockRepository) Dir() string {
 	return ""
+}
+
+func (m MockRepository) Head() (string, error) {
+	return "", nil
+}
+
+func (m MockRepository) Log() ([]string, error) {
+	return []string{}, nil
 }
 
 type MockBootstrap struct {
@@ -104,7 +116,7 @@ func createServer(t * testing.T) (*ServerState) {
 		ErrorNow(t, err)
 		return nil
 	} else {
-		tournament := tournament.NewTournament(database, MockArena{}, MockBootstrap{}, MockRepo{}, MockRemote{})
+		tournament := tournament.NewTournament(database, MockArena{}, MockBootstrap{}, MockHost{}, MockRemote{})
 		properties := Properties {
 			":memory:",
 			"8081",
