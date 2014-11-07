@@ -6,7 +6,7 @@ import (
 	"runtime"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/arena"
-	"github.com/GlenKelley/battleref/repo"
+	"github.com/GlenKelley/battleref/git"
 )
 
 type MockArena struct {
@@ -35,7 +35,7 @@ func (r MockRepo) ForkRepository(source, fork, publicKey string) error {
 	return nil
 }
 
-func (r MockRepo) DeleteRepository(name string) error{
+func (r MockRepo) DeleteRepository(name string) error {
 	return nil
 }
 
@@ -52,11 +52,15 @@ func Check(t *testing.T, err error) {
 type MockRemote struct {
 }
 
-func (r MockRemote) CheckoutRepository(repoURL string) (repo.Repository, error) {
-	return MockRepository{}, nil
+func (r MockRemote) CheckoutRepository(repoURL string) (git.Repository, error) {
+	return &MockRepository{}, nil
 }
 
 type MockRepository struct {
+}
+
+func (m MockRepository) AddFiles(files []string) error {
+	return nil
 }
 
 func (m MockRepository) CommitFiles(files []string, message string) error {
@@ -71,8 +75,16 @@ func (m MockRepository) Delete() error {
 	return nil
 }
 
-func (m MockRepository) RepoDir() string {
+func (m MockRepository) Dir() string {
 	return ""
+}
+
+func (m MockRepository) Log() ([]string, error) {
+	return []string{}, nil
+}
+
+func (m MockRepository) Head() (string, error) {
+	return "", nil
 }
 
 type MockBootstrap struct {

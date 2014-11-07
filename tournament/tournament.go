@@ -5,7 +5,7 @@ import (
 	"time"
 	"log"
 	"github.com/GlenKelley/battleref/arena"
-	"github.com/GlenKelley/battleref/repo"
+	"github.com/GlenKelley/battleref/git"
 )
 
 type Clock interface {
@@ -31,12 +31,12 @@ type Tournament struct {
 	Database  Database
 	Arena	  arena.Arena
 	Bootstrap arena.Bootstrap
-	GitServer repo.GitServer
-	Remote    repo.Remote
+	GitHost   git.GitHost
+	Remote    git.Remote
 }
 
-func NewTournament(database Database, arena arena.Arena, bootstrap arena.Bootstrap, gitServer repo.GitServer, remote repo.Remote) *Tournament {
-	return &Tournament{database, arena, bootstrap, gitServer, remote}
+func NewTournament(database Database, arena arena.Arena, bootstrap arena.Bootstrap, gitHost git.GitHost, remote git.Remote) *Tournament {
+	return &Tournament{database, arena, bootstrap, gitHost, remote}
 }
 
 func (t *Tournament) UserExists(name string) (bool, error) {
@@ -50,13 +50,13 @@ func (t *Tournament) ListUsers() ([]string, error) {
 }
 
 func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) error {
-	if err := t.GitServer.InitRepository(name, publicKey); err != nil {
+	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
 		return err
-	} else if checkout, err := t.Remote.CheckoutRepository(t.GitServer.RepositoryURL(name)); err != nil {
+	} else if checkout, err := t.Remote.CheckoutRepository(t.GitHost.RepositoryURL(name)); err != nil {
 		return err
 	} else {
 		defer checkout.Delete()
-		if files, err := t.Bootstrap.PopulateRepository(name, checkout.RepoDir(), string(category)); err != nil {
+		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
 			return err
 		} else if err := checkout.CommitFiles(files, "Bootstrap Code"); err != nil {
 			return err
@@ -71,7 +71,7 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 func (t *Tournament) CreateUser(name, publicKey string) error {
 	return t.Database.TransactionBlock(func(tx Statements) error {
 		if err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
-			if err2 := t.GitServer.DeleteRepository(name); err2 != nil {
+			if err2 := t.GitHost.DeleteRepository(name); err2 != nil {
 				log.Println(err2)
 			}
 			return err
@@ -152,8 +152,8 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 		mapName,
 		strings.NewReader(mapSource),
 		string(category),
-		t.GitServer.RepositoryURL(player1.Name),
-		t.GitServer.RepositoryURL(player2.Name),
+		t.GitHost.RepositoryURL(player1.Name),
+		t.GitHost.RepositoryURL(player2.Name),
 		player1.CommitHash,
 		player2.CommitHash,
 		}, func()time.Time{ return clock.Now() }); err != nil {
