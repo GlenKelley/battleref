@@ -234,7 +234,15 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
 		writeJSONError(w, err)
 	} else {
-		writeJSON(w, form)
+		writeJSON(w, struct {
+			Name string `json:"name"`
+			PublicKey string `json:"public_key"`
+			RepoUrl string `json:"repo_url"`
+		}{
+			form.Name,
+			form.PublicKey,
+			s.Tournament.GitHost.ExternalRepositoryURL(form.Name),
+		})
 	}
 }
 

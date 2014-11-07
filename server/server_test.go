@@ -57,6 +57,10 @@ func (r MockHost) RepositoryURL(name string) string {
 	return name
 }
 
+func (r MockHost) ExternalURL(name string) string {
+	return name
+}
+
 func Check(t *testing.T, err error) {
 	if err != nil {
 		ErrorNow(t, err)

@@ -12,6 +12,7 @@ type GitHost interface {
 	ForkRepository(source, fork, publicKey string) error
 	DeleteRepository(name string) error
 	RepositoryURL(name string) string
+	ExternalRepositoryURL(name string) string
 }
 
 type LocalDirHost struct {
@@ -38,6 +39,10 @@ func (g *LocalDirHost) RepositoryURL(name string) string {
 	return fmt.Sprintf("%s.git", filepath.Join(g.Dir, name))
 }
 
+func (g *LocalDirHost) ExternalRepositoryURL(name string) string {
+	return fmt.Sprintf("%s.git", filepath.Join(g.Dir, name))
+}
+
 type GitoliteHost struct {
 	User string
 	Hostname string
@@ -60,5 +65,9 @@ func (g *GitoliteHost) DeleteRepository(name string) error {
 }
 
 func (g *GitoliteHost) RepositoryURL(name string) string {
+	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.Hostname, name)
+}
+
+func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.Hostname, name)
 }

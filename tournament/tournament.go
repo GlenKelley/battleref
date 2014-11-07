@@ -58,6 +58,8 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 		defer checkout.Delete()
 		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
 			return err
+		} else if err := checkout.AddFiles(files); err != nil {
+			return err
 		} else if err := checkout.CommitFiles(files, "Bootstrap Code"); err != nil {
 			return err
 		} else if err := checkout.Push(); err != nil {

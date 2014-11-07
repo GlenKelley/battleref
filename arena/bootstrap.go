@@ -44,7 +44,7 @@ func populateBattlecode2014Player(name, sourceDir string) ([]string, error) {
 	if err := ioutil.WriteFile(sourceFile, []byte(fmt.Sprintf(Battlecode2014Template, name)), os.ModePerm); err != nil {
 		return []string{}, err
 	}
-	if err := ioutil.WriteFile(sourceFile, []byte(Battlecode2014Readme), os.ModePerm); err != nil {
+	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2014Readme), os.ModePerm); err != nil {
 		return []string{}, err
 	}
 	return files, nil
