@@ -3,7 +3,6 @@ package tournament
 import (
 	"os"
 	"fmt"
-	"log"
 	"sort"
 	"errors"
 	"strconv"
@@ -64,7 +63,6 @@ func (db *SQLiteDatabase) TransactionBlock(f func(Statements) error) error {
 		return err
 	} else {
 		if err2 := f(&Commands{tx}); err2 != nil {
-			log.Println("rollback", err2)
 			if err3 := tx.Rollback(); err != nil {
 				return err3
 			} else {
