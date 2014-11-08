@@ -1,9 +1,7 @@
 package tournament
 
 import (
-	"os"
 	"time"
-	"io/ioutil"
 	"testing"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/arena"
@@ -13,11 +11,8 @@ import (
 
 func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
-	if tempDir, err := ioutil.TempDir("", "battleref_test_git_repo"); err != nil {
-		t.ErrorNow(err)
-	} else {
-		defer os.RemoveAll(tempDir)
-		gitHost := git.NewLocalDirHost(tempDir)
+	if host, err := git.CreateGitHost(":temp:"); err != nil {
+		defer host.Cleanup()
 		dummyArena := arena.DummyArena{}
 		remote := &git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
@@ -26,7 +21,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 		} else if err = database.MigrateSchema(); err != nil {
 			t.ErrorNow(err)
 		} else {
-			tournament := NewTournament(database, dummyArena, bootstrap, gitHost, remote)
+			tournament := NewTournament(database, dummyArena, bootstrap, host, remote)
 			f(t, tournament)
 		}
 	}

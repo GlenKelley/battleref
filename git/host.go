@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"errors"
 	"path/filepath"
+	"regexp"
+	"io/ioutil"
 )
 
 type GitHost interface {
@@ -14,14 +16,28 @@ type GitHost interface {
 	DeleteRepository(name string) error
 	RepositoryURL(name string) string
 	ExternalRepositoryURL(name string) string
+	Cleanup() error
 }
 
 type LocalDirHost struct {
 	Dir string
+	RemoveOnCleanup bool
 }
 
-func NewLocalDirHost(dir string) GitHost {
-	return &LocalDirHost{dir}
+var RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
+
+func CreateGitHost(path string) (GitHost, error) {
+	if RemoteRegexp.MatchString(path) {
+		return nil, errors.New("Not implemented")
+	} else if path == ":temp:" {
+		if tempDir, err := ioutil.TempDir(os.TempDir(), "battlecode"); err != nil {
+			return nil, err
+		} else {
+			return &LocalDirHost{tempDir, true}, nil
+		}
+	} else {
+		return &LocalDirHost{path, false}, nil
+	}
 }
 
 func (g *LocalDirHost) InitRepository(name, publicKey string) error {
@@ -51,13 +67,17 @@ func (g *LocalDirHost) ExternalRepositoryURL(name string) string {
 	return fmt.Sprintf("%s.git", filepath.Join(g.Dir, name))
 }
 
+func (g *LocalDirHost) Cleanup() error {
+	if g.RemoveOnCleanup {
+		return os.RemoveAll(g.Dir)
+	} else {
+		return nil
+	}
+}
+
 type GitoliteHost struct {
 	User string
 	Hostname string
-}
-
-func NewGitoliteHost(user, host string) GitHost {
-	return &GitoliteHost{user, host}
 }
 
 func (g *GitoliteHost) InitRepository(name, publicKey string) error {
@@ -79,3 +99,9 @@ func (g *GitoliteHost) RepositoryURL(name string) string {
 func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.Hostname, name)
 }
+
+func (g *GitoliteHost) Cleanup() error {
+	return nil
+}
+
+

@@ -103,15 +103,19 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 type Properties struct {
 	DatabaseURL  string `json:"database_url"`
 	ServerPort   string `json:"server_port"`
+	GitHost      string `json:"git_host"`
 	ResourcePath string `json:"resource_path"`
-	ArenaResourcePath string `json:"arena_resource_path"`
-	GitURL	string `json:"git_url"`
+	GitURL	     string `json:"git_url"`
+}
+
+func (p Properties) ArenaResourcePath() string {
+	return filepath.Join(p.ResourcePath, "arena")
 }
 
 func ReadProperties(env, resourcePath string) (Properties, error) {
 	propertiesFilename := filepath.Join(resourcePath, "env", fmt.Sprintf("server.%s.properties", env))
 	var properties Properties
-	properties.ResourcePath =  resourcePath
+	properties.ResourcePath = resourcePath
 	bs, err := ioutil.ReadFile(propertiesFilename)
 	if err != nil { return properties, err }
 	err = json.Unmarshal(bs, &properties)

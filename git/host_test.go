@@ -22,12 +22,11 @@ func CheckDirectoryContent(t *testutil.T, dir string, expected []string) {
 
 func LocalDirHostTest(test *testing.T, f func(*testutil.T, *LocalDirHost)) {
 	t := (*testutil.T)(test)
-	if dir, err := ioutil.TempDir("","battlref_test_repo_"); err != nil {
+	if local, err := CreateGitHost(":temp:"); err != nil {
 		t.ErrorNow(err)
 	} else {
-		defer os.RemoveAll(dir)
-		local := NewLocalDirHost(dir).(*LocalDirHost)
-		f(t, local)
+		defer local.Cleanup()
+		f(t, local.(*LocalDirHost))
 	}
 }
 

@@ -3,7 +3,6 @@ package server
 import (
 	"io"
 	"net/url"
-	"os"
 	"bytes"
 	"time"
 	"encoding/json"
@@ -26,11 +25,10 @@ const (
 
 func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 	t := (*testutil.T)(test)
-	if tempDir, err := ioutil.TempDir("", "battleref_test_git_repo"); err != nil {
+	if host, err := git.CreateGitHost(":temp:"); err != nil {
 		t.ErrorNow(err)
 	} else {
-		defer os.RemoveAll(tempDir)
-		gitHost := git.NewLocalDirHost(tempDir)
+		defer host.Cleanup()
 		dummyArena := arena.DummyArena{}
 		remote := &git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
@@ -39,13 +37,13 @@ func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 		} else if err = database.MigrateSchema(); err != nil {
 			t.ErrorNow(err)
 		} else {
-			tournament := tournament.NewTournament(database, dummyArena, bootstrap, gitHost, remote)
+			tournament := tournament.NewTournament(database, dummyArena, bootstrap, host, remote)
 			properties := Properties {
 				":memory:",
 				"8081",
-				".",//resource path
-				"../arena",//arena resource path
-				tempDir,
+				":temp:",
+				"../arena",
+				":file:",
 			}
 			server := NewServer(tournament, properties)
 			f(t, server)
