@@ -53,16 +53,21 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
 		return err
 	} else if checkout, err := t.Remote.CheckoutRepository(t.GitHost.RepositoryURL(name)); err != nil {
+		defer t.GitHost.DeleteRepository(name)
 		return err
 	} else {
 		defer checkout.Delete()
 		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
+			defer t.GitHost.DeleteRepository(name)
 			return err
 		} else if err := checkout.AddFiles(files); err != nil {
+			defer t.GitHost.DeleteRepository(name)
 			return err
 		} else if err := checkout.CommitFiles(files, "Bootstrap Code"); err != nil {
+			defer t.GitHost.DeleteRepository(name)
 			return err
 		} else if err := checkout.Push(); err != nil {
+			defer t.GitHost.DeleteRepository(name)
 			return err
 		} else {
 			return nil
@@ -73,12 +78,12 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 func (t *Tournament) CreateUser(name, publicKey string) error {
 	return t.Database.TransactionBlock(func(tx Statements) error {
 		if err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
-			if err2 := t.GitHost.DeleteRepository(name); err2 != nil {
-				log.Println(err2)
-			}
+			return err
+		} else if err := tx.CreateUser(name, publicKey); err != nil {
+			defer t.GitHost.DeleteRepository(name)
 			return err
 		}
-		return tx.CreateUser(name, publicKey)
+		return nil
 	})
 }
 

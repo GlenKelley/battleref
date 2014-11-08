@@ -34,14 +34,14 @@ type Arena interface {
 	RunMatch(properties MatchProperties, clock func()time.Time) (time.Time, MatchResult, error)
 }
 
-type LocalArena struct {
-	ResourceDir string
-}
-
 type MatchResult struct {
 	Winner string `json:"winner"`
 	Reason string `json:"reason"`
 	Replay string `json:"replay"`
+}
+
+type LocalArena struct {
+	ResourceDir string
 }
 
 func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
@@ -86,6 +86,16 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 
 func NewArena(resourceDir string) Arena {
 	return LocalArena{resourceDir}
+}
+
+type DummyArena struct {
+	Finish time.Time
+	Result MatchResult
+	Err    error
+}
+
+func (a DummyArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
+	return a.Finish, a.Result, a.Err
 }
 
 /*

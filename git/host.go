@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"os/exec"
+	"errors"
 	"path/filepath"
 )
 
@@ -24,7 +25,14 @@ func NewLocalDirHost(dir string) GitHost {
 }
 
 func (g *LocalDirHost) InitRepository(name, publicKey string) error {
-	return exec.Command("git","init","--bare",g.RepositoryURL(name)).Run()
+	repoURL := g.RepositoryURL(name)
+	if _, err := os.Stat(repoURL); os.IsNotExist(err) {
+		return exec.Command("git","init","--bare",repoURL).Run()
+	} else if err != nil {
+		return err
+	} else {
+		return errors.New(fmt.Sprintf("%v exists", repoURL))
+	}
 }
 
 func (g *LocalDirHost) ForkRepository(source, fork, publicKey string) error {

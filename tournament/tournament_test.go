@@ -11,13 +11,6 @@ import (
 	"github.com/GlenKelley/battleref/testing"
 )
 
-type MockArena struct {
-}
-
-func (a MockArena) RunMatch(properties arena.MatchProperties, clock func()time.Time) (time.Time, arena.MatchResult, error) {
-	return clock(), arena.MatchResult{}, nil
-}
-
 func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
 	if tempDir, err := ioutil.TempDir("", "battleref_test_git_repo"); err != nil {
@@ -25,7 +18,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	} else {
 		defer os.RemoveAll(tempDir)
 		gitHost := git.NewLocalDirHost(tempDir)
-		mockArena := MockArena{}
+		dummyArena := arena.DummyArena{}
 		remote := &git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
@@ -33,7 +26,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 		} else if err = database.MigrateSchema(); err != nil {
 			t.ErrorNow(err)
 		} else {
-			tournament := NewTournament(database, mockArena, bootstrap, gitHost, remote)
+			tournament := NewTournament(database, dummyArena, bootstrap, gitHost, remote)
 			f(t, tournament)
 		}
 	}

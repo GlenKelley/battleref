@@ -45,6 +45,15 @@ func TestInitLocalRepo(t *testing.T) {
 	})
 }
 
+func TestInitExitingLocalRepoFails(t *testing.T) {
+	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
+		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
+		if err := local.InitRepository("foo", "PublicKeyFoo"); err == nil {
+			t.FailNow()
+		}
+	})
+}
+
 func TestForkLocalRepo(t *testing.T) {
 	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
 		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
