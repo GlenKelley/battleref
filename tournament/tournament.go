@@ -24,7 +24,7 @@ func (c *systemClock) Now() time.Time {
 
 type TournamentCategory string
 const (
-	CategoryGeneral = "battlecode2014"
+	CategoryGeneral = TournamentCategory("battlecode2014")
 )
 
 type Tournament struct {
@@ -39,6 +39,19 @@ func NewTournament(database Database, arena arena.Arena, bootstrap arena.Bootstr
 	return &Tournament{database, arena, bootstrap, gitHost, remote}
 }
 
+func (t *Tournament) InstallDefaultMaps(resourcePath string, category TournamentCategory) error {
+	if defaultMaps, err := arena.DefaultMaps(resourcePath, string(category)); err != nil {
+		return err
+	} else {
+		for name, source := range defaultMaps {
+			if err := t.CreateMap(name, source); err != nil {
+				return nil
+			}
+		}
+		return nil
+	}
+}
+
 func (t *Tournament) UserExists(name string) (bool, error) {
 	exists, err := t.Database.UserExists(name)
 	return exists, err
@@ -49,41 +62,47 @@ func (t *Tournament) ListUsers() ([]string, error) {
 	return users, err
 }
 
-func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) error {
+func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) (string, error) {
 	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
-		return err
+		return "", err
 	} else if checkout, err := t.Remote.CheckoutRepository(t.GitHost.RepositoryURL(name)); err != nil {
 		defer t.GitHost.DeleteRepository(name)
-		return err
+		return "", err
 	} else {
 		defer checkout.Delete()
 		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
 			defer t.GitHost.DeleteRepository(name)
-			return err
+			return "", err
 		} else if err := checkout.AddFiles(files); err != nil {
 			defer t.GitHost.DeleteRepository(name)
-			return err
+			return "", err
 		} else if err := checkout.CommitFiles(files, "Bootstrap Code"); err != nil {
 			defer t.GitHost.DeleteRepository(name)
-			return err
+			return "", err
 		} else if err := checkout.Push(); err != nil {
 			defer t.GitHost.DeleteRepository(name)
-			return err
+			return "", err
+		} else if commitHash, err := checkout.Head(); err != nil {
+			defer t.GitHost.DeleteRepository(name)
+			return "", err
 		} else {
-			return nil
+			return commitHash, nil
 		}
 	}
 }
 
-func (t *Tournament) CreateUser(name, publicKey string) error {
-	return t.Database.TransactionBlock(func(tx Statements) error {
-		if err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
+func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
+	var commitHash string
+	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
+		if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
 			return err
 		} else if err := tx.CreateUser(name, publicKey); err != nil {
 			defer t.GitHost.DeleteRepository(name)
 			return err
+		} else {
+			commitHash = ch
+			return nil
 		}
-		return nil
 	})
 }
 
@@ -284,7 +303,7 @@ type RevisionSubmitForm struct {
 
 func revisionSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	submitForm := parseRevisionSubmitForm(r)
-	err := submitForm.Validate()
+	err := 	submitForm.Validate()
 	if err == nil {
 		var count int
 		count, err = s.Database.CountUsersWithName(submitForm.Repo)

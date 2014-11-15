@@ -109,7 +109,7 @@ func (r SimpleRepository) Head() (string, error) {
 	if output, err := CmdOutput(cmd); err != nil {
 		return "", err
 	} else {
-		return string(output), err
+		return string(bytes.TrimSpace(output)), err
 	}
 }
 

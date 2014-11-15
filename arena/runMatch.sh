@@ -22,6 +22,10 @@ function usage {
   exit 1
 }
 
+function error {
+	echo "$@" >&2
+}
+
 while getopts "?r:p:P:c:C:u:m:M:R" opt; do
   case $opt in
     r) BATTLECODE_TAR="$OPTARG" ;;
@@ -38,38 +42,38 @@ done
 set -e
 
 if [[ -z "$BATTLECODE_TAR" ]] ; then
-  echo "Error: You must define the battlecode root directory."
+  error "Error: You must define the battlecode root directory."
   usage
 elif [[ ! -f "$BATTLECODE_TAR" ]] ; then
-  echo "Error: $BATTLECODE_TAR is not a file."
+  error "Error: $BATTLECODE_TAR is not a file."
   usage
 fi
 
 if [[ -z "$PLAYER1" ]] ; then
-  echo "Error: You must define player1."
+  error "Error: You must define player1."
   usage
 fi
 if [[ -z "$PLAYER2" ]] ; then
-  echo "Error: You must define player2."
+  error "Error: You must define player2."
   usage
 fi
 if [[ -z "$COMMIT1" ]] ; then
-  echo "Error: You must define commit1."
+  error "Error: You must define commit1."
   usage
 fi
 if [[ -z "$COMMIT2" ]] ; then
-  echo "Error: You must define commit2."
+  error "Error: You must define commit2."
   usage
 fi
 if [[ -z "$MAP" ]] ; then
-  echo "Error: You must define a map."
+  error "Error: You must define a map."
   usage
 fi
 if [[ -z "$MAP_FILE" ]] ; then
-  echo "Error: You must define a map file."
+  error "Error: You must define a map file."
   usage
 elif [[ ! -f "$MAP_FILE" ]] ; then
-  echo "Error: $MAP_FILE is not a file."
+  error "Error: $MAP_FILE is not a file."
   usage
 fi
 
@@ -107,14 +111,14 @@ createRepo "$PLAYER1" "$NAME1" "$COMMIT1"
 
 if [[ "$PLAYER1" = "$PLAYER2" ]] ; then
   if [[ "$COMMIT1" != "$COMMIT2" ]] ; then
-    echo "Error: Unable to play different commits of the same player."
+    error "Error: Unable to play different commits of the same player."
     exit 1
   fi
 else
   createRepo "$PLAYER2" "$NAME2" "$COMMIT2"
 fi
 
-echo "Match [$NAME1:$COMMIT1] vs [$NAME2:$COMMIT2] on $MAP" >&2
+error "Match [$NAME1:$COMMIT1] vs [$NAME2:$COMMIT2] on $MAP" >&2
 
 pushd "$BATTLECODE_DIR" >/dev/null
 cp bc.conf.template bc.conf

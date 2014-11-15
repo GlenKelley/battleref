@@ -3,6 +3,7 @@ package arena
 import (
 	"path/filepath"
 	"fmt"
+	"strings"
 	"errors"
 	"os"
 	"io/ioutil"
@@ -49,4 +50,29 @@ func populateBattlecode2014Player(name, sourceDir string) ([]string, error) {
 	}
 	return files, nil
 }
+
+func DefaultMaps(resourcePath, category string) (map[string]string, error) {
+	mapsPath := filepath.Join(resourcePath,"maps")
+	if files, err := ioutil.ReadDir(mapsPath); err != nil {
+		return nil, err
+	} else {
+		maps := make(map[string]string, len(files))
+		for _, file := range files {
+			if filepath.Ext(file.Name()) == ".xml" {
+				filename := filepath.Join(mapsPath, file.Name())
+				if bs, err := ioutil.ReadFile(filename); err != nil {
+					return nil, err
+				} else {
+					basename := filepath.Base(file.Name())
+					mapName := strings.TrimSuffix(basename, filepath.Ext(basename))
+					maps[mapName] = string(bs)
+				}
+			}
+		}
+		return maps, nil
+	}
+}
+
+
+
 

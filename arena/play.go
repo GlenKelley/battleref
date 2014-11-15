@@ -1,7 +1,6 @@
 package arena
 
 import (
-	"path/filepath"
 	"log"
 	"os"
 	"os/exec"
@@ -46,8 +45,7 @@ type LocalArena struct {
 
 func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
 	var result MatchResult
-	script := filepath.Join(a.ResourceDir, "runMatch.sh")
-	tarFile := filepath.Join(a.ResourceDir, "battlecode.tar")
+	tarFile := "battlecode.tar"
 	mapFile, err := ioutil.TempFile(os.TempDir(), p.MapName)
 	if err != nil {
 		return clock(), result, err
@@ -60,7 +58,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	} else {
 		file.Close()
 	}
-	cmd := exec.Command(script,
+	cmd := exec.Command("./runMatch.sh",
 		"-r", tarFile,
 		"-p", p.PlayerRepo1,
 		"-P", p.PlayerRepo2,
@@ -74,10 +72,10 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	buffer := bytes.Buffer{}
 	cmd.Stderr = &buffer
 	if out, err := cmd.Output(); err != nil {
-		log.Println("runMatch Error:", string(buffer.Bytes()))
+		log.Println("runMatch Error: ", string(buffer.Bytes()))
 		return clock(), result, err
 	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
-		log.Println("runMatch Output:", string(out))
+		log.Println("runMatch Output: ", string(out))
 		return clock(), result, err
 	} else {
 		return clock(), result, nil

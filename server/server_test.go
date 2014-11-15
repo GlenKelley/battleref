@@ -257,10 +257,10 @@ func TestSubmitHash(test *testing.T) {
 func TestSubmit(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r := sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash}); r["name"] != "NameFoo" {
+		if r := sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); r["name"] != "NameFoo" {
 			t.ErrorNow(r["name"], " expected ", "NameFoo")
 		} else if r["category"] != string(tournament.CategoryGeneral) {
-			t.ErrorNow(r["category"], " expected ", tournament.CategoryGeneral)
+			t.ErrorNow(r["category"], " expected ", string(tournament.CategoryGeneral))
 		} else if r["commit_hash"] != SampleCommitHash {
 			t.ErrorNow(r["commit_hash"], " expected ", SampleCommitHash)
 		}
@@ -269,7 +269,7 @@ func TestSubmit(t *testing.T) {
 
 func TestSubmitPlayerNameError(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
-		if r := sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash}); r["error"] != "Unknown player" {
+		if r := sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); r["error"] != "Unknown player" {
 			t.ErrorNow(r, "expected 'Unknown player'")
 		}
 	})
@@ -278,7 +278,7 @@ func TestSubmitPlayerNameError(t *testing.T) {
 func TestSubmitCommitHashError(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r:= sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":"InvalidCommitHash"}); r["error"] != "Invalid commit hash" {
+		if r:= sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":"InvalidCommitHash"}); r["error"] != "Invalid commit hash" {
 			t.ErrorNow(r, "expected 'Unknown player'")
 		}
 	})
@@ -287,8 +287,8 @@ func TestSubmitCommitHashError(t *testing.T) {
 func TestSubmitDuplicateCommitError(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash})
-		sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":tournament.CategoryGeneral,"commit_hash":SampleCommitHash})
+		sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash})
+		sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash})
 	})
 }
 

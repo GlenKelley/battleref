@@ -27,9 +27,12 @@ import (
 
 type JSONResponse map[string]interface{}
 
-const HeaderContentType = "Content-Type"
-const ContentTypeJSON = "application/json"
+const (
+	HeaderContentType = "Content-Type"
 
+	ContentTypeJSON = "application/json"
+	ContentTypeXML = "application/xml"
+)
 var (
 	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
 	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)$")	//SSH public key
@@ -56,6 +59,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("GET", "/players", players)
 	s.HandleFunc("GET", "/maps", maps)
 	s.HandleFunc("GET", "/commits", commits)
+	s.HandleFunc("GET", "/map/source", mapSource)
 	s.HandleFunc("POST", "/shutdown", shutdown)
 	s.HandleFunc("POST", "/register", register)
 	s.HandleFunc("POST", "/map/create", createMap)
@@ -124,6 +128,13 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 
 func writeJSONError(w http.ResponseWriter, err error) {
 	writeJSONErrorWithCode(w, err, http.StatusInternalServerError)
+}
+
+func writeXML(w http.ResponseWriter, bs []byte) {
+	w.Header().Add(HeaderContentType, ContentTypeXML)
+	if _, err := w.Write(bs); err != nil {
+		log.Println("failed to send response: ", err)
+	}
 }
 
 func writeJSONErrorWithCode(w http.ResponseWriter, err error, status int) {
@@ -229,23 +240,28 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
 	}
+	category := tournament.CategoryGeneral //Hmmm...
 	if err := parseForm(r, &form); err != nil {
 		writeJSONError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
 		writeJSONError(w, errors.New("Invalid Name"))
 	} else if !PublicKeyRegex.MatchString(form.PublicKey) {
 		writeJSONError(w, errors.New("Invalid Public Key"))
-	} else if err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
+	} else if commitHash, err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
+		writeJSONError(w, err)
+	} else if err := s.Tournament.SubmitCommit(form.Name, category, commitHash, time.Now()); err != nil {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, struct {
 			Name string `json:"name"`
 			PublicKey string `json:"public_key"`
 			RepoUrl string `json:"repo_url"`
+			Commit string `json:"commit_hash"`
 		}{
 			form.Name,
 			form.PublicKey,
 			s.Tournament.GitHost.ExternalRepositoryURL(form.Name),
+			commitHash,
 		})
 	}
 }
@@ -279,6 +295,19 @@ func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, JSONResponse{"maps":maps})
+	}
+}
+
+func mapSource(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Name string `form:"name" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		writeJSONError(w, err)
+	} else if source, err := s.Tournament.GetMapSource(form.Name); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeXML(w, []byte(source))
 	}
 }
 

@@ -39,7 +39,9 @@ func TestCreateUser(t *testing.T) {
 		} else if len(users) != 0 {
 			t.FailNow()
 		}
-		t.CheckError(tm.CreateUser("NameFoo", "PublicKey"))
+		if _, err := tm.CreateUser("NameFoo", "PublicKey"); err != nil {
+			t.ErrorNow(err)
+		}
 		isUser, err := tm.UserExists("NameFoo")
 		if err != nil { t.ErrorNow(err) }
 		if !isUser { t.FailNow() }
@@ -52,8 +54,10 @@ func TestCreateUser(t *testing.T) {
 
 func TestCreateExistingUserError(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		t.CheckError(tm.CreateUser("NameFoo", "PublicKeyFoo"))
-		if err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err == nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+			t.ErrorNow(err)
+		}
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err == nil {
 			t.ErrorNow("expected error")
 		}
 	})
@@ -88,7 +92,9 @@ func TestCreateExistingMapError(t *testing.T) {
 
 func TestSubmitCommit(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		t.CheckError(tm.CreateUser("NameFoo","PublicKey"))
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+			t.ErrorNow(err)
+		}
 		t.CheckError(tm.SubmitCommit("NameFoo", CategoryGeneral, "abcdef", time.Now()))
 		if commits, err := tm.ListCommits("NameFoo", CategoryGeneral); err != nil {
 			t.ErrorNow(err)
