@@ -44,6 +44,7 @@ type ServerState struct {
 	Properties Properties
 	HttpServer *http.Server
 	Listener   net.Listener
+	Routes     map[string]string
 }
 
 func NewServer(tournament *tournament.Tournament, properties Properties) *ServerState {
@@ -54,8 +55,9 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	s := ServerState{tournament, properties, httpServer, nil}
+	s := ServerState{tournament, properties, httpServer, nil, make(map[string]string)}
 	s.HandleFunc("GET", "/version", version)
+	s.HandleFunc("GET", "/api", api)
 	s.HandleFunc("GET", "/players", players)
 	s.HandleFunc("GET", "/maps", maps)
 	s.HandleFunc("GET", "/commits", commits)
@@ -94,6 +96,7 @@ func (s *ServerState) Serve() error {
 }
 
 func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState)) {
+	s.Routes[pattern] = fmt.Sprintf("%v %v", method, pattern)
 	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
 		if r.Method == method {
 			handler(w, r, s)
@@ -179,6 +182,14 @@ func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 			"sourceVersion": gitVersion,
 		})
 	}
+}
+
+func api(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	routes := make([]string, 0, len(s.Routes))
+	for _, message := range s.Routes {
+		routes = append(routes, message)
+	}
+	writeJSON(w, JSONResponse{"routes":routes})
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
