@@ -14,7 +14,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	if host, err := git.CreateGitHost(":temp:"); err != nil {
 		defer host.Cleanup()
 		dummyArena := arena.DummyArena{}
-		remote := &git.TempRemote{}
+		remote := git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
 			t.ErrorNow(err)

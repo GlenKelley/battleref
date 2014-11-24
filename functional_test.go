@@ -2,10 +2,6 @@ package main
 
 import (
 	"time"
-	"path/filepath"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"testing"
 	"github.com/GlenKelley/battleref/testing"
 	"github.com/GlenKelley/battleref/tournament"
@@ -47,32 +43,12 @@ func TestInitToRun(test *testing.T) {
 	}
 }
 
-func CreateKeyPair() (string, string, error) {
-	if dir, err := ioutil.TempDir(os.TempDir(), "battleref_keypair"); err != nil {
-		return "", "", err
-	} else {
-		defer os.RemoveAll(dir)
-		privateKeyFile := filepath.Join(dir, "key")
-		publicKeyFile := privateKeyFile + ".pub"
-		if err := exec.Command("ssh-keygen", "-t", "rsa", "-N", "", "-f", privateKeyFile).Run(); err != nil {
-			return "", "", err
-		}
-		if privateKeyBytes, err := ioutil.ReadFile(privateKeyFile); err != nil {
-			return "", "", err
-		} else if publicKeyBytes, err := ioutil.ReadFile(publicKeyFile); err != nil {
-			return "", "", err
-		} else {
-			return string(privateKeyBytes), string(publicKeyBytes), nil
-		}
-	}
-}
-
 func CreatePlayer(name string) (string, error) {
 	var response struct {
 		CommitHash string `json:"commit_hash"`
 		RepoURL string `json:"repo_url"`
 	}
-	if _, pubKey, err := CreateKeyPair(); err != nil {
+	if _, pubKey, err := testutil.CreateKeyPair(); err != nil {
 		return "", err
 	} else if err := web.SendPostJson("http://localhost:8080/register", web.JsonBody{"name":name, "public_key":pubKey}, &response); err != nil {
 		return "", err

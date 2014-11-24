@@ -4,7 +4,7 @@ GIT_ROOT=`git rev-parse --show-toplevel`
 
 function testPackage {
 	pushd $1 >/dev/null
-	go test
+	go test -v
 	popd >/dev/null
 }
 

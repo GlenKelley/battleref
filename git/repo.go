@@ -14,14 +14,17 @@ type Repository interface {
 	AddFiles(files []string) error
 	CommitFiles(files []string, message string) error
 	Push() error
+	ForcePush() error
 	Delete() error
 	Dir() string
 	Log() ([]string, error)
 	Head() (string, error)
+	HardReset(commit string) (error)
 }
 
 type Remote interface {
 	CheckoutRepository(repoURL string) (Repository, error)
+	CheckoutRepositoryWithKeyFile(repoURL string, privateKeyFile string) (Repository, error)
 }
 
 type TempRemote struct {
@@ -58,13 +61,55 @@ func (r TempRemote) CheckoutRepository(repoURL string) (Repository, error) {
 			if err2 := os.RemoveAll(tempDir); err2 != nil { log.Println(err2) }
 			return nil, err
 		} else {
-			return &SimpleRepository{tempDir}, nil
+			return &SimpleRepository{tempDir, ""}, nil
+		}
+	}
+}
+
+func CreateGitSSHWrapper(privateKeyFile string) (string, error) {
+	if file, err := ioutil.TempFile(os.TempDir(), "battleref_ssh_wrapper"); err != nil {
+		return "", err
+	} else if err := file.Chmod(0755); err != nil {
+		os.Remove(file.Name())
+		return "", err
+	} else if _, err := file.WriteString(fmt.Sprintf("ssh -i %v $@", privateKeyFile)); err != nil {
+		os.Remove(file.Name())
+		return "", err
+	} else {
+		file.Close()
+		return file.Name(), nil
+	}
+}
+
+func (r TempRemote) CheckoutRepositoryWithKeyFile(repoURL string, privateKeyFile string) (Repository, error) {
+	if tempDir, err := ioutil.TempDir(os.TempDir(), "battleref"); err != nil {
+		return nil, err
+	} else if sshWrapper, err := CreateGitSSHWrapper(privateKeyFile); err != nil {
+		os.RemoveAll(tempDir)
+		return nil, err
+	} else {
+		cmd := exec.Command("git","clone",repoURL,tempDir)
+		repo := SimpleRepository{tempDir, sshWrapper}
+		repo.setWrapper(cmd)
+		if err := RunCmd(cmd); err != nil {
+			os.Remove(sshWrapper)
+			os.RemoveAll(tempDir)
+			return nil, err
+		} else {
+			return &repo, nil
 		}
 	}
 }
 
 type SimpleRepository struct {
 	dir string
+	sshWrapper string
+}
+
+func (r *SimpleRepository) setWrapper(cmd *exec.Cmd) {
+	if r.sshWrapper != "" {
+		cmd.Env = append(os.Environ(), "GIT_SSH=" + r.sshWrapper)
+	}
 }
 
 func (r *SimpleRepository) Dir() string {
@@ -86,10 +131,21 @@ func (r *SimpleRepository) CommitFiles(files []string, message string) error {
 func (r *SimpleRepository) Push() error {
 	cmd := exec.Command("git","push","origin","master")
 	cmd.Dir = r.dir
+	r.setWrapper(cmd)
+	return RunCmd(cmd)
+}
+
+func (r *SimpleRepository) ForcePush() error {
+	cmd := exec.Command("git","push","--force","origin","master")
+	cmd.Dir = r.dir
+	r.setWrapper(cmd)
 	return RunCmd(cmd)
 }
 
 func (r SimpleRepository) Delete() error {
+	if (r.sshWrapper != "") {
+		os.Remove(r.sshWrapper)
+	}
 	return os.RemoveAll(r.dir)
 }
 
@@ -113,4 +169,9 @@ func (r SimpleRepository) Head() (string, error) {
 	}
 }
 
+func (r SimpleRepository) HardReset(commit string) error {
+	cmd := exec.Command("git","reset",commit,"--hard")
+	cmd.Dir = r.dir
+	return RunCmd(cmd)
+}
 

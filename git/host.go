@@ -3,6 +3,7 @@ package git
 import (
 	"os"
 	"fmt"
+	"bytes"
 	"os/exec"
 	"errors"
 	"path/filepath"
@@ -78,9 +79,46 @@ func (g *LocalDirHost) Cleanup() error {
 type GitoliteHost struct {
 	User string
 	Hostname string
+	AdminKeyFile string
+}
+
+func (g *GitoliteHost) checkoutAdminRepo() (Repository, error) {
+	if g.AdminKeyFile == "" {
+		repo, err := TempRemote{}.CheckoutRepository(g.RepositoryURL("gitolite-admin"))
+		return repo, err
+	} else {
+		repo, err := TempRemote{}.CheckoutRepositoryWithKeyFile(g.RepositoryURL("gitolite-admin"), g.AdminKeyFile)
+		return repo, err
+	}
 }
 
 func (g *GitoliteHost) InitRepository(name, publicKey string) error {
+	if repo, err := g.checkoutAdminRepo(); err != nil {
+		return err
+	} else {
+		defer repo.Delete()
+		dir := repo.Dir()
+		keyFile := filepath.Join(dir, "keydir", name + ".pub")
+		confFile := filepath.Join(dir, "conf", "gitolite.conf")
+		//TODO: check edge case where user key is duplicated
+		files := []string{keyFile, confFile}
+		confLine := fmt.Sprintf("\nrepo %v\n    RW+    =   webserver %v", name, name)
+		if err := ioutil.WriteFile(keyFile, []byte(publicKey), 0644); err != nil {
+			return err
+		} else if conf, err := os.OpenFile(confFile, os.O_RDWR, 0644); err != nil {
+			return err
+		} else if _, err := conf.Seek(0, os.SEEK_END); err != nil {
+			return err
+		} else if _, err := conf.WriteString(confLine); err != nil {
+			return err
+		} else if err := repo.AddFiles(files); err != nil {
+			return err
+		} else if err := repo.CommitFiles(files, fmt.Sprintf("added repo %v", name)); err != nil {
+			return err
+		} else if err := repo.Push(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -102,6 +140,25 @@ func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 
 func (g *GitoliteHost) Cleanup() error {
 	return nil
+}
+
+func (g *GitoliteHost) Reset() error {
+	if repo, err := g.checkoutAdminRepo(); err != nil {
+		return err
+	} else {
+		defer repo.Delete()
+		cmd := exec.Command("git","rev-list","--max-parents=0","HEAD")
+		cmd.Dir = repo.Dir()
+		if initalCommit, err := CmdOutput(cmd); err != nil {
+			return err
+		} else if err := repo.HardReset(string(bytes.TrimSpace(initalCommit))); err != nil {
+			return err
+		} else if err := repo.ForcePush(); err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
 
 

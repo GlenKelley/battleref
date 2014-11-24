@@ -1,8 +1,6 @@
 package git
 
 import (
-	//"path/filepath"
-	"fmt"
 	"testing"
 	"io/ioutil"
 	"os"
@@ -81,20 +79,19 @@ func TestDeleteLocalRepo(t *testing.T) {
 	})
 }
 
-var gitoliteHost = GitoliteHost { "git_test", "localhost" }
+var gitoliteHost = GitoliteHost { "git-test", "localhost", "~/.ssh/webserver" }
 
 func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	t := (*testutil.T)(test)
-	if gitoliteUser, err := user.Lookup(gitoliteHost.User); err != nil {
+	if _, err := user.Lookup(gitoliteHost.User); err != nil {
 		switch err.(type) {
 		case user.UnknownUserError:
 			t.Skipf("%v, skipping gitolite tests", err)
 			t.SkipNow()
 		default: t.ErrorNow(err)
 		}
-	} else if err != nil {
+	} else if err := gitoliteHost.Reset(); err != nil {
 		t.ErrorNow(err)
-		fmt.Println(gitoliteUser, err)
 	} else {
 		f(t, &gitoliteHost)
 	}
@@ -102,6 +99,27 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 
 func TestInitGioliteRepo(t *testing.T) {
 	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
+			t.ErrorNow(err)
+		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
+			t.ErrorNow(err)
+		} else if _, err := file.WriteString(privateKey); err != nil {
+			file.Close()
+			os.Remove(file.Name())
+			t.ErrorNow(err)
+		} else {
+			file.Close()
+			defer os.Remove(file.Name())
+			t.CheckError(host.InitRepository("foo", publicKey))
+			repoURL := host.RepositoryURL("foo")
+			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err != nil {
+				t.ErrorNow(err)
+			} else {
+				defer repo.Delete()
+				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
+			}
+		}
 	})
 }
+
 
