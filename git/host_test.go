@@ -20,7 +20,7 @@ func CheckDirectoryContent(t *testutil.T, dir string, expected []string) {
 
 func LocalDirHostTest(test *testing.T, f func(*testutil.T, *LocalDirHost)) {
 	t := (*testutil.T)(test)
-	if local, err := CreateGitHost(":temp:"); err != nil {
+	if local, err := CreateGitHost(":temp:", nil); err != nil {
 		t.ErrorNow(err)
 	} else {
 		defer local.Cleanup()
@@ -79,21 +79,28 @@ func TestDeleteLocalRepo(t *testing.T) {
 	})
 }
 
-var gitoliteHost = GitoliteHost { "git-test", "localhost", "~/.ssh/webserver" }
+var gitoliteTestConf = GitoliteConf {
+	"localhost",
+	"foobar",
+	"git-test",
+	"~/.ssh/webserver",
+}
 
 func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	t := (*testutil.T)(test)
-	if _, err := user.Lookup(gitoliteHost.User); err != nil {
+	if host, err := CreateGitoliteHost(gitoliteTestConf); err != nil {
+		t.ErrorNow(err)
+	} else if _, err := user.Lookup(host.User); err != nil {
 		switch err.(type) {
 		case user.UnknownUserError:
 			t.Skipf("%v, skipping gitolite tests", err)
 			t.SkipNow()
 		default: t.ErrorNow(err)
 		}
-	} else if err := gitoliteHost.Reset(); err != nil {
+	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
 	} else {
-		f(t, &gitoliteHost)
+		f(t, host)
 	}
 }
 

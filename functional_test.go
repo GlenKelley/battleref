@@ -18,8 +18,8 @@ func TestInitToRun(test *testing.T) {
 		":memory:",
 		"8080",
 		":temp:",
+		nil,
 		".",
-		":file:",
 	}); err != nil {
 		t.FailNow()
 	} else if err := webserver.Tournament.InstallDefaultMaps(webserver.Properties.ArenaResourcePath(), tournament.CategoryGeneral); err != nil {

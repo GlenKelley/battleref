@@ -25,7 +25,7 @@ const (
 
 func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 	t := (*testutil.T)(test)
-	if host, err := git.CreateGitHost(":temp:"); err != nil {
+	if host, err := git.CreateGitHost(":temp:", nil); err != nil {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
@@ -42,8 +42,8 @@ func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 				":memory:",
 				"8081",
 				":temp:",
+				nil,
 				"../arena",
-				":file:",
 			}
 			server := NewServer(tournament, properties)
 			f(t, server)

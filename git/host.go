@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"bytes"
 	"os/exec"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"regexp"
@@ -27,18 +28,48 @@ type LocalDirHost struct {
 
 var RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
 
-func CreateGitHost(path string) (GitHost, error) {
-	if RemoteRegexp.MatchString(path) {
-		return nil, errors.New("Not implemented")
-	} else if path == ":temp:" {
+func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
+	switch hostType {
+	case ":temp:":
 		if tempDir, err := ioutil.TempDir(os.TempDir(), "battlecode"); err != nil {
 			return nil, err
 		} else {
 			return &LocalDirHost{tempDir, true}, nil
 		}
-	} else {
-		return &LocalDirHost{path, false}, nil
+	case ":gitolite:":
+		var gitoliteConf GitoliteConf
+		if err := MarshalMap(conf, &gitoliteConf); err != nil {
+			return nil, err
+		} else if host, err := CreateGitoliteHost(gitoliteConf); err != nil {
+			return nil, err
+		} else {
+			return host, err
+		}
+	default: return nil, errors.New(fmt.Sprintf("Unkown host type %v", hostType))
 	}
+}
+
+func MarshalMap(conf map[string]string, v interface{}) error {
+	if bs, err := json.Marshal(conf); err != nil {
+		return err
+	} else {
+		return json.Unmarshal(bs, v)
+	}
+}
+
+type GitoliteConf struct {
+	InternalHostname string `json:"internal_hostname"`
+	ExternalHostname string `json:"external_hostname"`
+	User		 string `json:"user"`
+	AdminKey	 string `json:"admin_key"`
+}
+
+func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
+	if conf.InternalHostname == "" { return nil, errors.New("Gitolite host missing internal hostname property.") }
+	if conf.ExternalHostname == "" { return nil, errors.New("Gitolite host missing external hostname property.") }
+	if conf.User == "" { return nil, errors.New("Gitolite host missing user property.") }
+	if conf.AdminKey == "" { return nil, errors.New("Gitolite host missing admin key property.") }
+	return &GitoliteHost{conf}, nil
 }
 
 func (g *LocalDirHost) InitRepository(name, publicKey string) error {
@@ -77,17 +108,15 @@ func (g *LocalDirHost) Cleanup() error {
 }
 
 type GitoliteHost struct {
-	User string
-	Hostname string
-	AdminKeyFile string
+	GitoliteConf
 }
 
 func (g *GitoliteHost) checkoutAdminRepo() (Repository, error) {
-	if g.AdminKeyFile == "" {
+	if g.AdminKey == "" {
 		repo, err := TempRemote{}.CheckoutRepository(g.RepositoryURL("gitolite-admin"))
 		return repo, err
 	} else {
-		repo, err := TempRemote{}.CheckoutRepositoryWithKeyFile(g.RepositoryURL("gitolite-admin"), g.AdminKeyFile)
+		repo, err := TempRemote{}.CheckoutRepositoryWithKeyFile(g.RepositoryURL("gitolite-admin"), g.AdminKey)
 		return repo, err
 	}
 }
@@ -123,19 +152,19 @@ func (g *GitoliteHost) InitRepository(name, publicKey string) error {
 }
 
 func (g *GitoliteHost) ForkRepository(source, fork, publicKey string) error {
-	return nil
+	return errors.New("Not implemented.")
 }
 
 func (g *GitoliteHost) DeleteRepository(name string) error {
-	return nil
+	return errors.New("Not implemented.")
 }
 
 func (g *GitoliteHost) RepositoryURL(name string) string {
-	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.Hostname, name)
+	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.InternalHostname, name)
 }
 
 func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
-	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.Hostname, name)
+	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.ExternalHostname, name)
 }
 
 func (g *GitoliteHost) Cleanup() error {

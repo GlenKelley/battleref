@@ -11,7 +11,7 @@ import (
 
 func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
-	if host, err := git.CreateGitHost(":temp:"); err != nil {
+	if host, err := git.CreateGitHost(":temp:", nil); err != nil {
 		defer host.Cleanup()
 		dummyArena := arena.DummyArena{}
 		remote := git.TempRemote{}

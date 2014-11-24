@@ -105,11 +105,11 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 
 // Environment variables
 type Properties struct {
-	DatabaseURL  string `json:"database_url"`
-	ServerPort   string `json:"server_port"`
-	GitHost      string `json:"git_host"`
-	ResourcePath string `json:"resource_path"`
-	GitURL	     string `json:"git_url"`
+	DatabaseURL	string `json:"database_url"`
+	ServerPort	string `json:"server_port"`
+	GitServerType	string `json:"git_server"`
+	GitServerConf   map[string]string `json:"git_server_conf"`
+	ResourcePath	string `json:"resource_path"`
 }
 
 func (p Properties) ArenaResourcePath() string {

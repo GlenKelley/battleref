@@ -1,0 +1,16 @@
+{
+	"database_uri":":memory:",
+	"database_uri":"battleref.sqlite3",
+	"server_port":"8080",
+	"git_server":":gitolite:",
+	"git_server_conf": {
+		"local_hostname":"localhost",
+		"external_hostname":"localhost",
+		"user":"git",
+		"admin_key":"~/.ssh/webserver",
+	},
+	"git_server":":temp:",
+	"git_server_conf": {
+		"external_hostname":"localhost",
+	}
+}
