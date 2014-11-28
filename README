@@ -5,7 +5,7 @@
 
 # Installation
 
-scripts/deploy.sh -r repo-url -h host
+scripts/deploy.sh -r repo-url -h host [-c]
 
 Installs the application on a remote host, this will create a git and webserver user accounts
 

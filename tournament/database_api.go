@@ -12,6 +12,7 @@ type Statements interface {
 	CreateMap(name, source string) error
 	GetMapSource(name string) (string, error)
 	ListMaps() ([]string, error)
+	ListMatches() ([]Match, error)
 	MapExists(name string) (bool, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
@@ -101,6 +102,27 @@ func (c *Commands) ListMaps() ([]string, error) {
 	return maps, err
 }
 
+func (c *Commands) ListMatches() ([]Match, error) {
+	if rows, err := c.tx.Query("select player1, player2, commit1, commit2, map, category from match"); err != nil {
+		return nil, err
+	} else {
+		var values []Match
+		for rows.Next() {
+			var match Match
+			if err2 := rows.Scan(&match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category); err2 != nil {
+				return nil, err2
+			} else {
+				values = append(values, match)
+			}
+		}
+		if values == nil {
+			return []Match{}, nil
+		} else {
+			return values, nil
+		}
+	}
+}
+
 func (c *Commands) CreateCommit(playerName string, category TournamentCategory, commitHash string, time time.Time) error {
 	_, err := c.tx.Exec("insert into submission(commitHash, name, category, date_created) values (?,?,?,?)", commitHash, playerName, string(category), time)
 	return err
@@ -112,9 +134,15 @@ func (c *Commands) ListCommits(name string, category TournamentCategory) ([]stri
 }
 
 func (c *Commands) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error {
-	_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, result) values (?, ?, ?, ?, ?, ?, ?, ?)",
-		string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, MatchResultInProgress)
-	return err
+	var exists bool
+	if err := c.tx.QueryRow("select count(*) > 0 from match where player1 = ? and player2 = ? and commit1 = ? and commit2 = ? and map = ? and category = ?", player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, mapName, string(category)).Scan(&exists); err != nil {
+		return err
+	} else if exists {
+		return nil
+	} else {
+		_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, result) values (?, ?, ?, ?, ?, ?, ?, ?)", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, MatchResultInProgress)
+		return err
+	}
 }
 
 func (c *Commands) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {

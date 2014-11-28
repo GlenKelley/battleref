@@ -83,6 +83,9 @@ function cleanup {
 }
 trap cleanup EXIT
 
+LOG=~/.battleref/arena.log
+echo "`date` START" >> $LOG
+
 tar -xf "$BATTLECODE_TAR" -C "$BATTLECODE_DIR/"
 #Create teams directory
 mkdir -p "$BATTLECODE_DIR/teams/"
@@ -105,6 +108,8 @@ function createRepo {
 }
 
 #Create teams
+NAME1=`basename "${PLAYER1%.git}" | sed 's/^.*://'`
+NAME2=`basename "${PLAYER2%.git}" | sed 's/^.*://'`
 NAME1=`basename "${PLAYER1%.git}"`
 NAME2=`basename "${PLAYER2%.git}"`
 createRepo "$PLAYER1" "$NAME1" "$COMMIT1"
@@ -128,7 +133,8 @@ echo "bc.game.team-a=${NAME1}" >> bc.conf
 echo "bc.game.team-b=${NAME2}" >> bc.conf
 echo "bc.game.save-file=match.rms" >> bc.conf
 
-if ! ant file -Dc=bc.conf > output.log 2> error.log ; then
+echo "`date` RUN MATCH" >> $LOG
+if ! ant file -Dc=bc.conf 2> error.log | tee -a $LOG > output.log ; then
 	cat output.log error.log >&2
 	exit 1
 fi

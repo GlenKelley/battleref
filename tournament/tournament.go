@@ -120,6 +120,21 @@ func (t *Tournament) ListMaps() ([]string, error) {
 	return users, err
 }
 
+type Match struct {
+	Player1 string
+	Player2 string
+	Commit1 string
+	Commit2 string
+	Map string
+	Category string
+	Result MatchResult
+}
+
+func (t *Tournament) ListMatches() ([]Match, error) {
+	matches, err := t.Database.ListMatches()
+	return matches, err
+}
+
 func (t *Tournament) MapExists(name string) (bool, error) {
 	exists, err := t.Database.MapExists(name)
 	return exists, err

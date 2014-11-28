@@ -12,8 +12,10 @@ import (
 func main() {
 	var environment string
 	var resourcePath string
+	var clear bool
 	flag.StringVar(&environment, "e", "", "environment parameters for application")
 	flag.StringVar(&resourcePath, "r", ".", "root directory for resource files")
+	flag.BoolVar(&clear, "c", false, "clear all state from the server")
 	flag.Parse()
 	if environment == "" {
 		flag.Usage()
@@ -22,13 +24,27 @@ func main() {
 
 	if properties, err := server.ReadProperties(environment, resourcePath); err != nil {
 		log.Fatal(err)
-	} else if webserver, err := CreateServer(properties); err != nil {
-		log.Fatal(err)
-	} else if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), tournament.CategoryGeneral); err != nil {
-		log.Fatal(err)
 	} else {
-		//TODO: Cleanup repo/host
-		log.Fatal(webserver.Serve())
+		if clear {
+			if err := tournament.RemoveDatabase(properties.DatabaseURL); err != nil {
+				log.Fatal(err)
+			}
+		}
+		if webserver, err := CreateServer(properties); err != nil {
+			log.Fatal(err)
+		} else {
+			if clear {
+				if err := webserver.Tournament.GitHost.Reset(); err != nil {
+					log.Fatal(err)
+				}
+			}
+			if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), tournament.CategoryGeneral); err != nil {
+				log.Fatal(err)
+			} else {
+				//TODO: Cleanup repo/host
+				log.Fatal(webserver.Serve())
+			}
+		}
 	}
 }
 

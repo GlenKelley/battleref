@@ -19,6 +19,7 @@ type GitHost interface {
 	RepositoryURL(name string) string
 	ExternalRepositoryURL(name string) string
 	Cleanup() error
+	Reset() error
 }
 
 type LocalDirHost struct {
@@ -107,6 +108,14 @@ func (g *LocalDirHost) Cleanup() error {
 	}
 }
 
+func (g *LocalDirHost) Reset() error {
+	if err := os.RemoveAll(g.Dir); err != nil {
+		return err
+	} else {
+		return os.Mkdir(g.Dir, 0644)
+	}
+}
+
 type GitoliteHost struct {
 	GitoliteConf
 }
@@ -131,7 +140,7 @@ func (g *GitoliteHost) InitRepository(name, publicKey string) error {
 		confFile := filepath.Join(dir, "conf", "gitolite.conf")
 		//TODO: check edge case where user key is duplicated
 		files := []string{keyFile, confFile}
-		confLine := fmt.Sprintf("\nrepo %v\n    RW+    =   webserver %v", name, name)
+		confLine := fmt.Sprintf("repo %v\n    RW+    =   webserver %v\n", name, name)
 		if err := ioutil.WriteFile(keyFile, []byte(publicKey), 0644); err != nil {
 			return err
 		} else if conf, err := os.OpenFile(confFile, os.O_RDWR, 0644); err != nil {
@@ -160,11 +169,11 @@ func (g *GitoliteHost) DeleteRepository(name string) error {
 }
 
 func (g *GitoliteHost) RepositoryURL(name string) string {
-	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.InternalHostname, name)
+	return fmt.Sprintf("%s@%s:%s.git", g.User, g.InternalHostname, name)
 }
 
 func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
-	return fmt.Sprintf("%s@%s:/%s.git", g.User, g.ExternalHostname, name)
+	return fmt.Sprintf("%s@%s:%s.git", g.User, g.ExternalHostname, name)
 }
 
 func (g *GitoliteHost) Cleanup() error {

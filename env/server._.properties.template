@@ -1,6 +1,6 @@
 {
-	"database_uri":":memory:",
-	"database_uri":"battleref.sqlite3",
+	"database_url":":memory:",
+	"database_url":"battleref.sqlite3",
 	"server_port":"8080",
 	"git_server":":gitolite:",
 	"git_server_conf": {

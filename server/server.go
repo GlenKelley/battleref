@@ -35,7 +35,7 @@ const (
 )
 var (
 	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)$")	//SSH public key
+	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa (AAAA[0-9A-Za-z+/]+[=]{0,3}) ([^@]+@[^@]+)$")	//SSH public key
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
 )
 
@@ -67,6 +67,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/map/create", createMap)
 	s.HandleFunc("POST", "/submit", submit)
 	s.HandleFunc("POST", "/match/run", runMatch)
+	s.HandleFunc("GET", "/matches", matches)
 
 	return &s
 
@@ -251,12 +252,13 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
 	}
-	category := tournament.CategoryGeneral //Hmmm...
+
+	category := tournament.CategoryGeneral //TODO: sort out categories Hmmm...
 	if err := parseForm(r, &form); err != nil {
 		writeJSONError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
 		writeJSONError(w, errors.New("Invalid Name"))
-	} else if !PublicKeyRegex.MatchString(form.PublicKey) {
+	} else if !PublicKeyRegex.MatchString(strings.TrimSpace(form.PublicKey)+"\n") {
 		writeJSONError(w, errors.New("Invalid Public Key"))
 	} else if commitHash, err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
 		writeJSONError(w, err)
@@ -358,6 +360,14 @@ func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else {
 		writeJSON(w, JSONResponse{"commits":commits})
+	}
+}
+
+func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	if matches, err := s.Tournament.ListMatches(); err != nil {
+		writeJSONError(w, err)
+	} else {
+		writeJSON(w, JSONResponse{"matches":matches})
 	}
 }
 

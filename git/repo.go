@@ -34,7 +34,7 @@ func RunCmd(cmd *exec.Cmd) error {
 	bs := bytes.Buffer{}
 	cmd.Stderr = &bs
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v: %v\n", cmd.Path, cmd.Args, string(bs.Bytes()))
+		fmt.Printf("Error running %v %v %v: %v\n", cmd.Path, cmd.Args, cmd.Env, string(bs.Bytes()))
 		return err
 	} else {
 		return nil

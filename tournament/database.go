@@ -45,7 +45,11 @@ func OpenDatabase(filename string) (Database, error) {
 
 func RemoveDatabase(filename string) error {
 	if filename != ":memory:" {
-		return  os.Remove(filename)
+		if _, err := os.Stat(filename); err == nil {
+			return os.Remove(filename)
+		} else {
+			return nil
+		}
 	} else {
 		return nil
 	}
