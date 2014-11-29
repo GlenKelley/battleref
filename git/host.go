@@ -14,6 +14,7 @@ import (
 
 type GitHost interface {
 	InitRepository(name, publicKey string) error
+	CloneRepository(remote Remote, name string) (Repository, error)
 	ForkRepository(source, fork, publicKey string) error
 	DeleteRepository(name string) error
 	RepositoryURL(name string) string
@@ -84,6 +85,11 @@ func (g *LocalDirHost) InitRepository(name, publicKey string) error {
 	}
 }
 
+func (g *LocalDirHost) CloneRepository(remote Remote, name string) (Repository, error) {
+	repo, err := remote.CheckoutRepository(g.RepositoryURL(name))
+	return repo, err
+}
+
 func (g *LocalDirHost) ForkRepository(source, fork, publicKey string) error {
 	return exec.Command("git","clone","--bare",g.RepositoryURL(source),g.RepositoryURL(fork)).Run()
 }
@@ -121,13 +127,8 @@ type GitoliteHost struct {
 }
 
 func (g *GitoliteHost) checkoutAdminRepo() (Repository, error) {
-	if g.AdminKey == "" {
-		repo, err := TempRemote{}.CheckoutRepository(g.RepositoryURL("gitolite-admin"))
-		return repo, err
-	} else {
-		repo, err := TempRemote{}.CheckoutRepositoryWithKeyFile(g.RepositoryURL("gitolite-admin"), g.AdminKey)
-		return repo, err
-	}
+	repo, err := g.CloneRepository(TempRemote{}, "gitolite-admin")
+	return repo, err
 }
 
 func (g *GitoliteHost) InitRepository(name, publicKey string) error {
@@ -158,6 +159,16 @@ func (g *GitoliteHost) InitRepository(name, publicKey string) error {
 		}
 	}
 	return nil
+}
+
+func (g *GitoliteHost) CloneRepository(remote Remote, name string) (Repository, error) {
+	if g.AdminKey == "" {
+		repo, err := remote.CheckoutRepository(g.RepositoryURL(name))
+		return repo, err
+	} else {
+		repo, err := remote.CheckoutRepositoryWithKeyFile(g.RepositoryURL(name), g.AdminKey)
+		return repo, err
+	}
 }
 
 func (g *GitoliteHost) ForkRepository(source, fork, publicKey string) error {

@@ -65,7 +65,7 @@ func (t *Tournament) ListUsers() ([]string, error) {
 func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) (string, error) {
 	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
 		return "", err
-	} else if checkout, err := t.Remote.CheckoutRepository(t.GitHost.RepositoryURL(name)); err != nil {
+	} else if checkout, err := t.GitHost.CloneRepository(t.Remote, name); err != nil {
 		defer t.GitHost.DeleteRepository(name)
 		return "", err
 	} else {
