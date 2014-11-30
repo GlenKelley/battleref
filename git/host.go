@@ -33,7 +33,7 @@ var RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
 func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
 	switch hostType {
 	case ":temp:":
-		if tempDir, err := ioutil.TempDir(os.TempDir(), "battlecode"); err != nil {
+		if tempDir, err := ioutil.TempDir(os.TempDir(), "battlecode_temp_host"); err != nil {
 			return nil, err
 		} else {
 			return &LocalDirHost{tempDir, true}, nil
