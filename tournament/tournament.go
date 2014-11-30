@@ -76,7 +76,7 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 		} else if err := checkout.AddFiles(files); err != nil {
 			defer t.GitHost.DeleteRepository(name)
 			return "", err
-		} else if err := checkout.CommitFiles(files, "Bootstrap Code"); err != nil {
+		} else if err := checkout.CommitFiles(files, "Bootstrap_Code"); err != nil {
 			defer t.GitHost.DeleteRepository(name)
 			return "", err
 		} else if err := checkout.Push(); err != nil {
@@ -204,7 +204,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 		return MatchResultError, err
 	} else {
 		matchResult := GetMatchResult(result)
-		if err := t.UpdateMatch(category, mapName, player1, player2, finished, GetMatchResult(result), result.Replay); err != nil {
+		if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, result.Replay); err != nil {
 			return MatchResultError, err
 		}
 		return matchResult, err

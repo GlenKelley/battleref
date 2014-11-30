@@ -110,8 +110,8 @@ function createRepo {
 #Create teams
 NAME1=`basename "${PLAYER1%.git}" | sed 's/^.*://'`
 NAME2=`basename "${PLAYER2%.git}" | sed 's/^.*://'`
-NAME1=`basename "${PLAYER1%.git}"`
-NAME2=`basename "${PLAYER2%.git}"`
+#NAME1=`basename "${PLAYER1%.git}"`
+#NAME2=`basename "${PLAYER2%.git}"`
 createRepo "$PLAYER1" "$NAME1" "$COMMIT1"
 
 if [[ "$PLAYER1" = "$PLAYER2" ]] ; then
