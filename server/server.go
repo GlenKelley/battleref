@@ -37,7 +37,7 @@ const (
 )
 var (
 	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa (AAAA[0-9A-Za-z+/]+[=]{0,3}) ([^@]+@[^@]+)$")	//SSH public key
+	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa (AAAA[0-9A-Za-z+/]+[=]{0,3})( [^@]+@[^@]+)?\\s*$")	//SSH public key
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
 )
 
