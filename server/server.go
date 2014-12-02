@@ -29,6 +29,8 @@ type JSONResponse map[string]interface{}
 
 const (
 	HeaderContentType = "Content-Type"
+	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
+
 
 	ContentTypeJSON = "application/json"
 	ContentTypeXML = "application/xml"
@@ -136,6 +138,7 @@ func writeJSONError(w http.ResponseWriter, err error) {
 
 func writeXML(w http.ResponseWriter, bs []byte) {
 	w.Header().Add(HeaderContentType, ContentTypeXML)
+	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 	if _, err := w.Write(bs); err != nil {
 		log.Println("failed to send response: ", err)
 	}
@@ -147,6 +150,7 @@ func writeJSONErrorWithCode(w http.ResponseWriter, err error, status int) {
 		w.Write([]byte(err.Error()))
 	} else {
 		w.Header().Add(HeaderContentType, ContentTypeJSON)
+		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 		w.WriteHeader(http.StatusInternalServerError)
 		if _, err := w.Write(bs); err != nil {
 			log.Println("Failed to send error response: ", err)
@@ -159,6 +163,7 @@ func writeJSON(w http.ResponseWriter, response interface{}) {
 		writeJSONError(w, err)
 	} else {
 		w.Header().Add(HeaderContentType, ContentTypeJSON)
+		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 		if _, err := w.Write(bs); err != nil {
 			log.Println("Failed to send response: ", err)
 		}
