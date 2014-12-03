@@ -20,6 +20,8 @@ import (
 
 const (
 	SamplePublicKey = "ssh-rsa AAAA01234abcd sample@public.key.com"
+	SamplePublicKey2 = "ssh-rsa AAAA01234abcde sample@public.key.com"
+	SimilarPublicKey = "ssh-rsa AAAA01234abcd similar@public.key.com"
 	SampleCommitHash = "012345"
 )
 
@@ -66,6 +68,15 @@ func sendPost(t *testutil.T, server *ServerState, url string, body io.Reader) JS
 		return nil
 	} else {
 		return sendRequest(t, server, http.StatusOK, req)
+	}
+}
+
+func sendPostExpectStatus(t *testutil.T, server *ServerState, expectedCode int, url string, body io.Reader) JSONResponse {
+	if req, err := http.NewRequest("POST", url, body); err != nil {
+		t.ErrorNow(err)
+		return nil
+	} else {
+		return sendRequest(t, server, expectedCode, req)
 	}
 }
 
@@ -175,6 +186,17 @@ func TestRegisterForm(t *testing.T) {
 	})
 }
 
+func TestSimilarPublicKeysFail(t *testing.T) {
+	ServerTest(t, func(t *testutil.T, server *ServerState) {
+		r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
+		if r["name"] != "NameFoo" { t.FailNow() }
+		if r["public_key"] != SamplePublicKey { t.FailNow() }
+		if r := sendPostExpectStatus(t, server, http.StatusInternalServerError, "/register", strings.NewReader("name=NameBar&public_key="+url.QueryEscape(SimilarPublicKey))); r["error"] != "UNIQUE constraint failed: user.public_key" {
+			t.ErrorNow(r, "expected 'Key already in use'")
+		}
+	})
+}
+
 func TestRegisterQuery(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendPost(t, server, "/register?name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey), nil)
@@ -217,7 +239,7 @@ func TestPlayers(t *testing.T) {
 		if r := sendGet(t, server, "/players"); !compareStrings(r["players"].([]interface{}), []string{"NameFoo"}) {
 			t.ErrorNow("expected single player NameFoo", r)
 		}
-		sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":SamplePublicKey})
+		sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":SamplePublicKey2})
 		if r := sendGet(t, server, "/players"); !compareStringsUnordered(r["players"].([]interface{}), []string{"NameFoo", "NameBar"}) {
 			t.ErrorNow("expected two players NameFoo, NameBar", r)
 		}

@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"github.com/GlenKelley/battleref/tournament"
+	"github.com/GlenKelley/battleref/git"
 )
 
 type JSONResponse map[string]interface{}
@@ -37,7 +38,6 @@ const (
 )
 var (
 	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-	PublicKeyRegex = regexp.MustCompile("^ssh-(r|d)sa (AAAA[0-9A-Za-z+/]+[=]{0,3})( [^@]+@[^@]+)?\\s*$")	//SSH public key
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
 )
 
@@ -263,9 +263,9 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		writeJSONError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
 		writeJSONError(w, errors.New("Invalid Name"))
-	} else if !PublicKeyRegex.MatchString(strings.TrimSpace(form.PublicKey)+"\n") {
+	} else if match := git.PublicKeyRegex.FindStringSubmatch(strings.TrimSpace(form.PublicKey)); match == nil {
 		writeJSONError(w, errors.New("Invalid Public Key"))
-	} else if commitHash, err := s.Tournament.CreateUser(form.Name, form.PublicKey); err != nil {
+	} else if commitHash, err := s.Tournament.CreateUser(form.Name, match[1]); err != nil {
 		writeJSONError(w, err)
 	} else if err := s.Tournament.SubmitCommit(form.Name, category, commitHash, time.Now()); err != nil {
 		writeJSONError(w, err)

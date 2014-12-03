@@ -8,6 +8,20 @@ import (
 	"github.com/GlenKelley/battleref/testing"
 )
 
+func TestPublicKeyParsing(t *testing.T) {
+	for _, key := range []string{
+			"ssh-rsa AAAA1234",
+			"ssh-rsa AAAA1234 email@address.com",
+			"ssh-rsa AAAA1234 other text",
+			"ssh-rsa AAAA1234\n",
+			"ssh-rsa AAAA1234 other text\n",
+		} {
+		if !PublicKeyRegex.MatchString(key) {
+			t.Errorf("'%v' is not a public key", key)
+		}
+	}
+}
+
 func CheckDirectoryContent(t *testutil.T, dir string, expected []string) {
 	if ls, err := ioutil.ReadDir(dir); err != nil {
 		t.ErrorNow(err)
@@ -84,6 +98,7 @@ var gitoliteTestConf = GitoliteConf {
 	"foobar",
 	"git-test",
 	"~/.ssh/webserver",
+	"~/.ssh/git",
 }
 
 func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {

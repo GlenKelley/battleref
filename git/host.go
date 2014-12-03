@@ -4,6 +4,8 @@ import (
 	"os"
 	"fmt"
 	"bytes"
+	"os/user"
+	"strings"
 	"os/exec"
 	"encoding/json"
 	"errors"
@@ -28,7 +30,11 @@ type LocalDirHost struct {
 	RemoveOnCleanup bool
 }
 
-var RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
+var (
+	RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
+	PublicKeyRegex = regexp.MustCompile("^(ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3})\\s*.*\\n?$")    //SSH public key
+)
+
 
 func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
 	switch hostType {
@@ -64,6 +70,7 @@ type GitoliteConf struct {
 	ExternalHostname string `json:"external_hostname"`
 	User		 string `json:"user"`
 	AdminKey	 string `json:"admin_key"`
+	SSHKey		 string `json:"ssh_key"`
 }
 
 func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
@@ -126,12 +133,42 @@ type GitoliteHost struct {
 	GitoliteConf
 }
 
+func ExpandTilde(filename string) (string, error) {
+	if u, err := user.Current(); err != nil {
+		return "", err
+	} else {
+		return strings.Replace(filename, "~", u.HomeDir, -1), nil
+	}
+}
+
+func (g *GitoliteHost) IsReservedKey(publicKey string) (bool, error) {
+	for _, keyFile := range []string{g.AdminKey, g.SSHKey} {
+		if keyFile == "" {
+			return false, nil
+		} else if expandedKeyFile, err := ExpandTilde(keyFile + ".pub"); err != nil {
+			return false, err
+		} else if key, err := ioutil.ReadFile(expandedKeyFile); err != nil {
+			return false, err
+		} else if match := PublicKeyRegex.FindStringSubmatch(string(key)); match == nil {
+			return false, errors.New(fmt.Sprintf("Invalid Key Format %v", string(key)))
+		} else if match[1] == publicKey {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (g *GitoliteHost) checkoutAdminRepo() (Repository, error) {
 	repo, err := g.CloneRepository(TempRemote{}, "gitolite-admin")
 	return repo, err
 }
 
 func (g *GitoliteHost) InitRepository(name, publicKey string) error {
+	if isReserved, err := g.IsReservedKey(publicKey); err != nil {
+		return err
+	} else if isReserved {
+		return errors.New("Reserved Key")
+	}
 	if repo, err := g.checkoutAdminRepo(); err != nil {
 		return err
 	} else {
