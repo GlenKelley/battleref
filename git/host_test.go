@@ -1,6 +1,7 @@
 package git
 
 import (
+	"os/exec"
 	"testing"
 	"io/ioutil"
 	"os"
@@ -97,20 +98,23 @@ var gitoliteTestConf = GitoliteConf {
 	"localhost",
 	"foobar",
 	"git-test",
-	"~/.ssh/webserver",
-	"~/.ssh/git",
+	".ssh/webserver",
+	".ssh/git",
 }
 
 func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	t := (*testutil.T)(test)
-	if host, err := CreateGitoliteHost(gitoliteTestConf); err != nil {
+	conf := gitoliteTestConf
+	conf.AdminKey = testutil.PathRelativeToUserHome(t, conf.AdminKey)
+	conf.SSHKey = testutil.PathRelativeToUserHome(t, conf.SSHKey)
+	if host, err := CreateGitoliteHost(conf); err != nil {
 		t.ErrorNow(err)
 	} else if _, err := user.Lookup(host.User); err != nil {
 		switch err.(type) {
 		case user.UnknownUserError:
 			t.Skipf("%v, skipping gitolite tests", err)
 			t.SkipNow()
-		default: t.ErrorNow(err)
+			default: t.ErrorNow(err)
 		}
 	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
@@ -119,7 +123,7 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	}
 }
 
-func TestInitGioliteRepo(t *testing.T) {
+func TestInitGitoliteRepo(t *testing.T) {
 	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
 		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
 			t.ErrorNow(err)
@@ -140,6 +144,27 @@ func TestInitGioliteRepo(t *testing.T) {
 				defer repo.Delete()
 				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
 			}
+		}
+	})
+}
+
+func TestDeleteGitoliteRepo(t *testing.T) {
+	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
+			t.ErrorNow(err)
+		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
+			t.ErrorNow(err)
+		} else if _, err := file.WriteString(privateKey); err != nil {
+			file.Close()
+			os.Remove(file.Name())
+			t.ErrorNow(err)
+		} else {
+			file.Close()
+			defer os.Remove(file.Name())
+			t.CheckError(host.InitRepository("foo", publicKey))
+			t.CheckError(host.DeleteRepository("foo"))
+			cmd := exec.Command("ssh", "-v", "-v", "-i", host.SSHKey, host.User+"@"+host.InternalHostname, "[[ ! -d repositories/foo.git ]]")
+			t.CheckError(cmd.Run())
 		}
 	})
 }

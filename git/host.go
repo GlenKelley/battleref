@@ -4,8 +4,6 @@ import (
 	"os"
 	"fmt"
 	"bytes"
-	"os/user"
-	"strings"
 	"os/exec"
 	"encoding/json"
 	"errors"
@@ -133,21 +131,11 @@ type GitoliteHost struct {
 	GitoliteConf
 }
 
-func ExpandTilde(filename string) (string, error) {
-	if u, err := user.Current(); err != nil {
-		return "", err
-	} else {
-		return strings.Replace(filename, "~", u.HomeDir, -1), nil
-	}
-}
-
 func (g *GitoliteHost) IsReservedKey(publicKey string) (bool, error) {
 	for _, keyFile := range []string{g.AdminKey, g.SSHKey} {
 		if keyFile == "" {
 			return false, nil
-		} else if expandedKeyFile, err := ExpandTilde(keyFile + ".pub"); err != nil {
-			return false, err
-		} else if key, err := ioutil.ReadFile(expandedKeyFile); err != nil {
+		} else if key, err := ioutil.ReadFile(keyFile + ".pub"); err != nil {
 			return false, err
 		} else if match := PublicKeyRegex.FindStringSubmatch(string(key)); match == nil {
 			return false, errors.New(fmt.Sprintf("Invalid Key Format %v", string(key)))
@@ -213,7 +201,8 @@ func (g *GitoliteHost) ForkRepository(source, fork, publicKey string) error {
 }
 
 func (g *GitoliteHost) DeleteRepository(name string) error {
-	return errors.New("Not implemented.")
+	cmd := exec.Command("ssh", "-i", g.SSHKey, fmt.Sprintf("%v@%v", g.User, g.InternalHostname), fmt.Sprintf("rm -rf repositories/%v.git", name))
+	return cmd.Run()
 }
 
 func (g *GitoliteHost) RepositoryURL(name string) string {
@@ -242,6 +231,9 @@ func (g *GitoliteHost) Reset() error {
 		} else if err := repo.ForcePush(); err != nil {
 			return err
 		}
+		cmd = exec.Command("ssh", "-i", g.SSHKey, fmt.Sprintf("%v@%v", g.User, g.InternalHostname), "set -x ; find repositories -maxdepth 1 -mindepth 1 -type d | grep -v '/gitolite-admin.git$' | grep -v '/testing.git$' | xargs rm -rf")
+		return cmd.Run()
+
 	}
 	return nil
 

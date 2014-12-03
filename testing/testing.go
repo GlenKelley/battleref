@@ -5,6 +5,7 @@ import (
 	"testing"
 	"path/filepath"
 	"os/exec"
+	"os/user"
 	"io/ioutil"
 )
 
@@ -63,4 +64,12 @@ func CreateKeyPair() (string, string, error) {
 	}
 }
 
+func PathRelativeToUserHome(t *T, path string) string {
+        if u, err := user.Current(); err != nil {
+		t.ErrorNow(err)
+		return ""
+	} else {
+		return filepath.Join(u.HomeDir, path)
+	}
+}
 
