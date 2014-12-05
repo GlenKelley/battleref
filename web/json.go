@@ -92,4 +92,21 @@ func MarshalValues(query map[string]interface{}) (url.Values, error) {
 	return values, nil
 }
 
+type Json struct {
+	Data interface{} `json:",omitempty"`
+	Error Error `json:",omitempty"`
+}
+
+type Error struct {
+	Code int
+	Message string
+	Errors []FieldError
+}
+
+type FieldError struct {
+	Reason string
+	Message string
+	Location string
+	LocationType string
+}
 
