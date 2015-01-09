@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log"
 	"fmt"
 	"bytes"
 	"errors"
@@ -14,6 +15,7 @@ type JsonBody map[string]interface{}
 
 const (
 	HeaderContentType = "Content-Type"
+	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
 )
 
 const (
@@ -93,20 +95,98 @@ func MarshalValues(query map[string]interface{}) (url.Values, error) {
 }
 
 type Json struct {
-	Data interface{} `json:",omitempty"`
-	Error Error `json:",omitempty"`
+	Data interface{} `json:"data,omitempty"`
+	Error Error `json:"error,omitempty"`
 }
 
-type Error struct {
-	Code int
-	Message string
-	Errors []FieldError
+type Error interface {
+	Code() int
+	Error() string
+	Errors() []ErrorItem
+	AddError(item ErrorItem)
 }
 
-type FieldError struct {
+type Err struct {
+	Code_ int `json:"code"`
+	Message_ string `json:"message"`
+	Errors_ []ErrorItem `json:"errors,omitempty"`
+}
+
+func (e *Err) AddError(i ErrorItem) {
+	e.Errors_ = append(e.Errors_, i)
+}
+
+func (e *Err) Code() int {
+	return e.Code_
+}
+
+func (e *Err) Error() string {
+	return e.Message_
+}
+
+func (e *Err) Errors() []ErrorItem {
+	return e.Errors_
+}
+
+func NewError(code int, message string) Error {
+	return &Err{code, message, nil}
+}
+
+func SimpleError(err error) Error {
+	return &Err{http.StatusInternalServerError, err.Error(), nil}
+}
+
+type ErrorItem struct {
 	Reason string
 	Message string
 	Location string
 	LocationType string
 }
+
+func NewErrorItem(reason, message, location, locationType string) ErrorItem {
+	return ErrorItem{reason, message, location, locationType}
+}
+
+func WriteJsonError(w http.ResponseWriter, err error) {
+	WriteJsonWebError(w, SimpleError(err))
+}
+
+func WriteJsonErrorWithCode(w http.ResponseWriter, err error, statusCode int) {
+	WriteJsonWebError(w, &Err{statusCode, err.Error(), nil})
+}
+
+func WriteJsonWebError(w http.ResponseWriter, err Error) {
+	if bs, e2 := json.Marshal(Json{nil, err}); e2 != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	} else {
+		w.Header().Add(HeaderContentType, ContentTypeJson)
+		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+		w.WriteHeader(err.Code())
+		if _, err := w.Write(bs); err != nil {
+			log.Println("Failed to send error response: ", err)
+		}
+	}
+}
+
+func WriteJson(w http.ResponseWriter, data interface{}) {
+	if bs, err := json.Marshal(Json{data, nil}); err != nil {
+		WriteJsonError(w, err)
+	} else {
+		w.Header().Add(HeaderContentType, ContentTypeJson)
+		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+		if _, err := w.Write(bs); err != nil {
+			log.Println("Failed to send response: ", err)
+		}
+	}
+}
+
+func WriteXml(w http.ResponseWriter, bs []byte) {
+	w.Header().Add(HeaderContentType, ContentTypeXml)
+	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+	if _, err := w.Write(bs); err != nil {
+		log.Println("failed to send response: ", err)
+	}
+}
+
 

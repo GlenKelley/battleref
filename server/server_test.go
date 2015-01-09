@@ -1,6 +1,7 @@
 package server
 
 import (
+	"reflect"
 	"io"
 	"net/url"
 	"bytes"
@@ -136,7 +137,7 @@ func TestShutdown(t *testing.T) {
 		time.Sleep(time.Millisecond)
 		r := sendPost(t, server, "/shutdown", nil)
 		if r["shutdown"] == "" { t.FailNow() }
-		sendGetExpectStatus(t, server, http.StatusInternalServerError, "/shutdown")
+		sendPostExpectStatus(t, server, http.StatusInternalServerError, "/shutdown", nil)
 	})
 }
 
@@ -181,17 +182,17 @@ func TestParseFormJSON(test *testing.T) {
 func TestRegisterForm(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
-		if r["name"] != "NameFoo" { t.FailNow() }
-		if r["public_key"] != SamplePublicKey { t.FailNow() }
+		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
+		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
 	})
 }
 
 func TestSimilarPublicKeysFail(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
-		if r["name"] != "NameFoo" { t.FailNow() }
-		if r["public_key"] != SamplePublicKey { t.FailNow() }
-		if r := sendPostExpectStatus(t, server, http.StatusInternalServerError, "/register", strings.NewReader("name=NameBar&public_key="+url.QueryEscape(SimilarPublicKey))); r["error"] != "UNIQUE constraint failed: user.public_key" {
+		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
+		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
+		if r := sendPostExpectStatus(t, server, http.StatusInternalServerError, "/register", strings.NewReader("name=NameBar&public_key="+url.QueryEscape(SimilarPublicKey))); Json(t,r).Key("error").Key("message").String() != "UNIQUE constraint failed: user.public_key" {
 			t.ErrorNow(r, "expected 'Key already in use'")
 		}
 	})
@@ -200,16 +201,16 @@ func TestSimilarPublicKeysFail(t *testing.T) {
 func TestRegisterQuery(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendPost(t, server, "/register?name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey), nil)
-		if r["name"] != "NameFoo" { t.FailNow() }
-		if r["public_key"] != SamplePublicKey { t.FailNow() }
+		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
+		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
 	})
 }
 
 func TestRegisterJSON(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r["name"] != "NameFoo" { t.FailNow() }
-		if r["public_key"] != SamplePublicKey { t.FailNow() }
+		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
+		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
 	})
 }
 
@@ -230,17 +231,89 @@ func compareStringsUnordered(a []interface{}, b []string) bool {
 	return true
 }
 
+type JsonWrapper struct {
+	T *testutil.T
+	Node interface{}
+}
+
+func Json(t *testutil.T, node interface{}) JsonWrapper {
+	return JsonWrapper{t, node}
+}
+
+func (j JsonWrapper) Key(key string) JsonWrapper {
+	if j.Node == nil {
+		j.T.ErrorNow("json is null")
+	}
+	switch n := j.Node.(type) {
+	case map[string]interface{}:
+		if _, ok := n[key]; !ok {
+			j.T.ErrorNow("no value for key", key, n)
+		}
+		return JsonWrapper{j.T, n[key]}
+	case JSONResponse:
+		if _, ok := n[key]; !ok {
+			j.T.ErrorNow("no value for key", key, n)
+		}
+		return JsonWrapper{j.T, n[key]}
+	default:
+		j.T.ErrorNow("invalid json map", reflect.TypeOf(n))
+		return JsonWrapper{}
+	}
+}
+
+func (j JsonWrapper) Array() []interface{} {
+	if j.Node == nil {
+		j.T.ErrorNow("json map is null")
+	}
+	switch n := j.Node.(type) {
+	case []interface{}: return n
+	default:
+		j.T.ErrorNow("invalid json array", reflect.TypeOf(n))
+		return nil
+	}
+}
+
+func (j JsonWrapper) At(i int) JsonWrapper {
+	if j.Node == nil {
+		j.T.ErrorNow("json array is null")
+	}
+	switch n := j.Node.(type) {
+	case []interface{}: return JsonWrapper{j.T, n[i]}
+	default:
+		j.T.ErrorNow("invalid json array", n)
+		return JsonWrapper{}
+	}
+}
+
+func (j JsonWrapper) String() string {
+	switch n := j.Node.(type) {
+	case string: return n
+	default:
+		j.T.ErrorNow("invalid json string", n)
+		return ""
+	}
+}
+
+func (j JsonWrapper) Len() int {
+	switch n := j.Node.(type) {
+	case []interface{}: return len(n)
+	default:
+		j.T.ErrorNow("invalid json array", n)
+		return 0
+	}
+}
+
 func TestPlayers(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
-		if r := sendGet(t, server, "/players"); len(r["players"].([]interface{})) > 0 {
+		if r := sendGet(t, server, "/players"); Json(t,r).Key("data").Key("players").Len() > 0 {
 			t.ErrorNow("expected no players", r)
 		}
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r := sendGet(t, server, "/players"); !compareStrings(r["players"].([]interface{}), []string{"NameFoo"}) {
+		if r := sendGet(t, server, "/players"); !compareStrings(Json(t, r).Key("data").Key("players").Array(), []string{"NameFoo"}) {
 			t.ErrorNow("expected single player NameFoo", r)
 		}
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameBar","public_key":SamplePublicKey2})
-		if r := sendGet(t, server, "/players"); !compareStringsUnordered(r["players"].([]interface{}), []string{"NameFoo", "NameBar"}) {
+		if r := sendGet(t, server, "/players"); !compareStringsUnordered(Json(t,r).Key("data").Key("players").Array(), []string{"NameFoo", "NameBar"}) {
 			t.ErrorNow("expected two players NameFoo, NameBar", r)
 		}
 	})
@@ -248,17 +321,17 @@ func TestPlayers(t *testing.T) {
 
 func TestMaps(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
-		if r := sendGet(t, server, "/maps"); len(r["maps"].([]interface{})) > 0 {
+		if r := sendGet(t, server, "/maps"); Json(t,r).Key("data").Key("maps").Len() > 0 {
 			t.Error("expected no maps", r)
 			t.FailNow()
 		}
 		sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameFoo","source":"SourceFoo"})
-		if r := sendGet(t, server, "/maps"); !compareStrings(r["maps"].([]interface{}), []string{"NameFoo"}) {
+		if r := sendGet(t, server, "/maps"); !compareStrings(Json(t,r).Key("data").Key("maps").Array(), []string{"NameFoo"}) {
 			t.Error("expected single player NameFoo", r)
 			t.FailNow()
 		}
 		sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameBar","source":"SourceBar"})
-		if r := sendGet(t, server, "/maps"); !compareStringsUnordered(r["maps"].([]interface{}), []string{"NameFoo", "NameBar"}) {
+		if r := sendGet(t, server, "/maps"); !compareStringsUnordered(Json(t,r).Key("data").Key("maps").Array(), []string{"NameFoo", "NameBar"}) {
 			t.ErrorNow("expected two maps NameFoo, NameBar", r)
 		}
 	})
@@ -279,11 +352,11 @@ func TestSubmitHash(test *testing.T) {
 func TestSubmit(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r := sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); r["name"] != "NameFoo" {
+		if r := sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); Json(t,r).Key("data").Key("name").String() != "NameFoo" {
 			t.ErrorNow(r["name"], " expected ", "NameFoo")
-		} else if r["category"] != string(tournament.CategoryGeneral) {
+		} else if Json(t,r).Key("data").Key("category").String() != string(tournament.CategoryGeneral) {
 			t.ErrorNow(r["category"], " expected ", string(tournament.CategoryGeneral))
-		} else if r["commit_hash"] != SampleCommitHash {
+		} else if Json(t,r).Key("data").Key("commit_hash").String() != SampleCommitHash {
 			t.ErrorNow(r["commit_hash"], " expected ", SampleCommitHash)
 		}
 	})
@@ -291,7 +364,7 @@ func TestSubmit(t *testing.T) {
 
 func TestSubmitPlayerNameError(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
-		if r := sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); r["error"] != "Unknown player" {
+		if r := sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":SampleCommitHash}); Json(t,r).Key("error").Key("message").String() != "Unknown player" {
 			t.ErrorNow(r, "expected 'Unknown player'")
 		}
 	})
@@ -300,7 +373,7 @@ func TestSubmitPlayerNameError(t *testing.T) {
 func TestSubmitCommitHashError(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r:= sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":"InvalidCommitHash"}); r["error"] != "Invalid commit hash" {
+		if r:= sendJSONPostExpectStatus(t, server, http.StatusInternalServerError, "/submit", map[string]string{"name":"NameFoo","category":string(tournament.CategoryGeneral),"commit_hash":"InvalidCommitHash"}); Json(t,r).Key("error").Key("message").String() != "Invalid commit hash" {
 			t.ErrorNow(r, "expected 'Unknown player'")
 		}
 	})
@@ -317,15 +390,15 @@ func TestSubmitDuplicateCommitError(t *testing.T) {
 func TestCommits(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
-		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); len(r["commits"].([]interface{})) > 0 {
+		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); Json(t,r).Key("data").Key("commits").Len() > 0 {
 			t.ErrorNow("expected no commits", r)
 		}
 		sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":"General","commit_hash":"abcdef"})
-		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(r["commits"].([]interface{}), []string{"abcdef"}) {
+		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(Json(t,r).Key("data").Key("commits").Array(), []string{"abcdef"}) {
 			t.ErrorNow("expected single commit abcdef", r)
 		}
 		sendJSONPost(t, server, "/submit", map[string]string{"name":"NameFoo","category":"General","commit_hash":"012345"})
-		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(r["commits"].([]interface{}), []string{"abcdef","012345"}) {
+		if r := sendGet(t, server, "/commits?name=NameFoo&category=General"); !compareStringsUnordered(Json(t,r).Key("data").Key("commits").Array(), []string{"abcdef","012345"}) {
 			t.ErrorNow("expected two commits abcdef, 012345", r)
 		}
 	})

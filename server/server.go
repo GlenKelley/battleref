@@ -24,18 +24,21 @@ import (
 	"encoding/json"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/web"
 )
 
 type JSONResponse map[string]interface{}
 
+/*
 const (
 	HeaderContentType = "Content-Type"
 	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
 
-
 	ContentTypeJSON = "application/json"
 	ContentTypeXML = "application/xml"
 )
+*/
+
 var (
 	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
@@ -104,7 +107,7 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 		if r.Method == method {
 			handler(w, r, s)
 		} else {
-			writeJSONErrorWithCode(w, errors.New(fmt.Sprintf("Expected method %v", method)), http.StatusMethodNotAllowed)
+			web.WriteJsonErrorWithCode(w, errors.New(fmt.Sprintf("Expected method %v not %v", method, r.Method)), http.StatusMethodNotAllowed)
 		}
 	})
 }
@@ -131,9 +134,9 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 	err = json.Unmarshal(bs, &properties)
 	return properties, err
 }
-
-func writeJSONError(w http.ResponseWriter, err error) {
-	writeJSONErrorWithCode(w, err, http.StatusInternalServerError)
+/*
+func web.WriteJsonError(w http.ResponseWriter, err error) {
+	web.WriteJsonErrorWithCode(w, err, http.StatusInternalServerError)
 }
 
 func writeXML(w http.ResponseWriter, bs []byte) {
@@ -144,7 +147,7 @@ func writeXML(w http.ResponseWriter, bs []byte) {
 	}
 }
 
-func writeJSONErrorWithCode(w http.ResponseWriter, err error, status int) {
+func web.WriteJsonErrorWithCode(w http.ResponseWriter, err error, status int) {
 	if bs, e2 := json.Marshal(JSONResponse{"error":err.Error()}); e2 != nil {
 		w.WriteHeader(status)
 		w.Write([]byte(err.Error()))
@@ -158,9 +161,9 @@ func writeJSONErrorWithCode(w http.ResponseWriter, err error, status int) {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, response interface{}) {
+func web.WriteJson(w http.ResponseWriter, response interface{}) {
 	if bs, err := json.Marshal(response); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
 		w.Header().Add(HeaderContentType, ContentTypeJSON)
 		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
@@ -169,7 +172,7 @@ func writeJSON(w http.ResponseWriter, response interface{}) {
 		}
 	}
 }
-
+*/
 func GitVersion(path string) (string, error) {
 	cmd := exec.Command("git", "rev-parse","HEAD")
 	cmd.Dir = path
@@ -179,11 +182,11 @@ func GitVersion(path string) (string, error) {
 
 func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if schemaVersion, err := s.Tournament.Database.SchemaVersion(); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if gitVersion, err := GitVersion(s.Properties.ResourcePath); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{
+		web.WriteJson(w, JSONResponse{
 			"schemaVersion": schemaVersion,
 			"sourceVersion": gitVersion,
 		})
@@ -195,14 +198,14 @@ func api(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	for _, message := range s.Routes {
 		routes = append(routes, message)
 	}
-	writeJSON(w, JSONResponse{"routes":routes})
+	web.WriteJson(w, JSONResponse{"routes":routes})
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if s.Listener == nil {
-		writeJSONError(w, errors.New("Server not listening"))
+		web.WriteJsonError(w, errors.New("Server not listening"))
 	} else {
-		writeJSON(w, JSONResponse{"message":"Shutting Down"})
+		web.WriteJson(w, JSONResponse{"message":"Shutting Down"})
 		if err := s.Listener.Close(); err != nil {
 			log.Print(err)
 		}
@@ -210,23 +213,23 @@ func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 }
 
-func parseForm(r *http.Request, form interface{}) error {
+func parseForm(r *http.Request, form interface{}) web.Error {
 	formType := reflect.TypeOf(form).Elem()
 	formValue := reflect.ValueOf(form).Elem()
 	contentTypes := r.Header["Content-Type"]
 	if len(contentTypes) > 0 && contentTypes[0] == "application/json" {
 		if r.Body != nil {
 			if err := json.NewDecoder(r.Body).Decode(form); err != nil {
-				return err
+				return web.SimpleError(err)
 			}
 		}
 	} else {
 		var postValues url.Values
 		if r.Method == "POST" && r.Body != nil {
 			if bs, err := ioutil.ReadAll(r.Body); err != nil {
-				return err
+				return web.SimpleError(err)
 			} else if postValues, err = url.ParseQuery(string(bs)); err != nil {
-				return err
+				return web.SimpleError(err)
 			}
 		}
 		r.ParseForm()
@@ -241,15 +244,20 @@ func parseForm(r *http.Request, form interface{}) error {
 			}
 		}
 	}
+	err := web.NewError(http.StatusInternalServerError, "Validation errors")
 	for i, n := 0, formType.NumField(); i < n; i++ {
 		field := formType.Field(i)
 		value := formValue.Field(i)
 		validateTag := field.Tag.Get("validate")
 		if validateTag == "required" && value.String() == "" {
-			return errors.New(fmt.Sprintf("Missing required field %v", field.Name))
+			err.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
 		}
 	}
-	return nil
+	if err.Errors() == nil {
+		return nil
+	} else {
+		return err
+	}
 }
 
 func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
@@ -257,20 +265,19 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
 	}
-
 	category := tournament.CategoryGeneral //TODO: sort out categories Hmmm...
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
-		writeJSONError(w, errors.New("Invalid Name"))
+		web.WriteJsonError(w, errors.New("Invalid Name"))
 	} else if match := git.PublicKeyRegex.FindStringSubmatch(strings.TrimSpace(form.PublicKey)); match == nil {
-		writeJSONError(w, errors.New("Invalid Public Key"))
+		web.WriteJsonError(w, errors.New("Invalid Public Key"))
 	} else if commitHash, err := s.Tournament.CreateUser(form.Name, match[1]); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if err := s.Tournament.SubmitCommit(form.Name, category, commitHash, time.Now()); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, struct {
+		web.WriteJson(w, struct {
 			Name string `json:"name"`
 			PublicKey string `json:"public_key"`
 			RepoUrl string `json:"repo_url"`
@@ -286,9 +293,9 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 
 func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if userNames, err := s.Tournament.ListUsers(); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{"players":userNames})
+		web.WriteJson(w, JSONResponse{"players":userNames})
 	}
 }
 
@@ -298,21 +305,21 @@ func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Source string `json:"source" form:"source" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
-		writeJSONError(w, errors.New("Invalid Name"))
+		web.WriteJsonError(w, errors.New("Invalid Name"))
 	} else if err := s.Tournament.CreateMap(form.Name, form.Source); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, form)
+		web.WriteJson(w, form)
 	}
 }
 
 func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if maps, err := s.Tournament.ListMaps(); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{"maps":maps})
+		web.WriteJson(w, JSONResponse{"maps":maps})
 	}
 }
 
@@ -321,11 +328,11 @@ func mapSource(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Name string `form:"name" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if source, err := s.Tournament.GetMapSource(form.Name); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeXML(w, []byte(source))
+		web.WriteXml(w, []byte(source))
 	}
 }
 
@@ -336,17 +343,17 @@ func submit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if exists, err := s.Tournament.UserExists(form.Name); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if !exists {
-		writeJSONError(w, errors.New("Unknown player"))
+		web.WriteJsonError(w, errors.New("Unknown player"))
 	} else if !CommitHashRegex.MatchString(form.CommitHash) {
-		writeJSONError(w, errors.New("Invalid commit hash"))
+		web.WriteJsonError(w, errors.New("Invalid commit hash"))
 	} else if err := s.Tournament.SubmitCommit(form.Name, form.Category, form.CommitHash, time.Now()); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, form)
+		web.WriteJson(w, form)
 	}
 }
 
@@ -356,23 +363,23 @@ func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if exists, err := s.Tournament.UserExists(form.Name); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if !exists {
-		writeJSONError(w, errors.New("Unknown player"))
+		web.WriteJsonError(w, errors.New("Unknown player"))
 	} else if commits, err := s.Tournament.ListCommits(form.Name, form.Category); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{"commits":commits})
+		web.WriteJson(w, JSONResponse{"commits":commits})
 	}
 }
 
 func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if matches, err := s.Tournament.ListMatches(); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{"matches":matches})
+		web.WriteJson(w, JSONResponse{"matches":matches})
 	}
 }
 
@@ -386,27 +393,27 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Map string `json:"map" form:"map" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if exists, err := s.Tournament.UserExists(form.Player1); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if !exists {
-		writeJSONError(w, errors.New("Unknown player1"))
+		web.WriteJsonError(w, errors.New("Unknown player1"))
 	} else if exists, err := s.Tournament.UserExists(form.Player2); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if !exists {
-		writeJSONError(w, errors.New("Unknown player2"))
+		web.WriteJsonError(w, errors.New("Unknown player2"))
 	} else if exists, err := s.Tournament.MapExists(form.Map); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else if !exists {
-		writeJSONError(w, errors.New("Unknown map"))
+		web.WriteJsonError(w, errors.New("Unknown map"))
 	} else if !CommitHashRegex.MatchString(form.Commit1) {
-		writeJSONError(w, errors.New("Invalid commit hash 1"))
+		web.WriteJsonError(w, errors.New("Invalid commit hash 1"))
 	} else if !CommitHashRegex.MatchString(form.Commit2) {
-		writeJSONError(w, errors.New("Invalid commit hash 2"))
+		web.WriteJsonError(w, errors.New("Invalid commit hash 2"))
 	} else if result, err := s.Tournament.RunMatch(form.Category, form.Map, tournament.Submission{form.Player1, form.Commit1}, tournament.Submission{form.Player2, form.Commit2}, tournament.SystemClock()); err != nil {
-		writeJSONError(w, err)
+		web.WriteJsonError(w, err)
 	} else {
-		writeJSON(w, JSONResponse{"result":result})
+		web.WriteJson(w, JSONResponse{"result":result})
 	}
 }
 

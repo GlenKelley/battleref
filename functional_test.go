@@ -45,29 +45,33 @@ func TestInitToRun(test *testing.T) {
 
 func CreatePlayer(name string) (string, error) {
 	var response struct {
-		CommitHash string `json:"commit_hash"`
-		RepoURL string `json:"repo_url"`
+		Data struct {
+			CommitHash string `json:"commit_hash"`
+			RepoURL string `json:"repo_url"`
+		} `json:"data"`
 	}
 	if _, pubKey, err := testutil.CreateKeyPair(); err != nil {
 		return "", err
 	} else if err := web.SendPostJson("http://localhost:8080/register", web.JsonBody{"name":name, "public_key":pubKey}, &response); err != nil {
 		return "", err
-	} else if repo, err := (git.TempRemote{}).CheckoutRepository(response.RepoURL); err != nil {
+	} else if repo, err := (git.TempRemote{}).CheckoutRepository(response.Data.RepoURL); err != nil {
 		return "", err
 	} else {
 		defer repo.Delete()
-		return response.CommitHash, nil
+		return response.Data.CommitHash, nil
 	}
 }
 
 func GetMaps() ([]string, error) {
 	var response struct {
-		Maps []string `json:"maps"`
+		Data struct {
+			Maps []string `json:"maps"`
+		} `json:"data"`
 	}
 	if err := web.SendGetJson("http://localhost:8080/maps", web.JsonBody{}, &response); err != nil {
 		return nil, err
 	} else {
-		return response.Maps, nil
+		return response.Data.Maps, nil
 	}
 }
 
