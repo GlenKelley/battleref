@@ -4,7 +4,7 @@ import (
 	"os"
 	"log"
 	"fmt"
-	"debug"
+	"runtime/debug"
 	"bytes"
 	"strings"
 	"os/exec"

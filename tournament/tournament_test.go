@@ -54,6 +54,17 @@ func TestCreateUser(t *testing.T) {
 	})
 }
 
+func TestCreateDuplicateUserError(t *testing.T) {
+	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+			t.ErrorNow(err)
+		}
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err == nil {
+			t.ErrorNow("expected error")
+		}
+	})
+}
+
 func TestCreateExistingUserError(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {

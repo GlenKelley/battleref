@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"strings"
+	"errors"
 	"time"
 	"log"
 	"github.com/GlenKelley/battleref/arena"
@@ -94,7 +95,11 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 	var commitHash string
 	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
-		if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
+		if exists, err := tx.UserExists(name); err != nil {
+			return err
+		} else if exists && false {
+			return errors.New("User already exists")
+		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
 			return err
 		} else if err := tx.CreateUser(name, publicKey); err != nil {
 			defer t.GitHost.DeleteRepository(name)
