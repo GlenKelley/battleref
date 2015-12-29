@@ -51,7 +51,7 @@ func RunCmd(cmd *exec.Cmd) error {
 	cmd.Stdout = &bs1
 	cmd.Stderr = &bs2
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v %v: %v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
+		fmt.Printf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
 		debug.PrintStack()
 		return err
 	} else {
@@ -63,7 +63,7 @@ func CmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	bs := bytes.Buffer{}
 	cmd.Stderr = &bs
 	if output, err := cmd.Output(); err != nil {
-		fmt.Printf("Error running %v %v: %v\n", cmd.Path, cmd.Args, string(bs.Bytes()))
+		fmt.Printf("Error running %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, string(output), string(bs.Bytes()))
 		debug.PrintStack()
 		return nil, err
 	} else {
@@ -142,9 +142,6 @@ func (r *SimpleRepository) AddFiles(files []string) error {
 }
 
 func (r *SimpleRepository) CommitFiles(files []string, message string) error {
-	cmd0 := exec.Command("git", "status")
-	cmd0.Dir = r.dir
-	DebugCmd(cmd0)
 	cmd := exec.Command("git", append([]string{"commit","-m",message}, files ...) ...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)

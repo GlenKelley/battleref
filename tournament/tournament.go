@@ -97,7 +97,7 @@ func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
 		if exists, err := tx.UserExists(name); err != nil {
 			return err
-		} else if exists && false {
+		} else if exists {
 			return errors.New("User already exists")
 		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
 			return err
