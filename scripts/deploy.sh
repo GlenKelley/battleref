@@ -1,7 +1,7 @@
 #! /bin/bash
 
 #
-# Deploys the battleref app to a server
+# Deploys the battleref backend to a server
 # 
 # Author: Glen Kelley
 #

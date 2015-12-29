@@ -32,10 +32,13 @@
 					<label for="name">Name</label>
 					{{input type="text" class="form-control" placeholder="Name" value=name disabled=frozen}}
 				</div>
-				<div class="form-group">
-					<label for="publicKey">Public Key</label>
-					{{textarea type="text" class="form-control" placeholder="Public Key" rows="6" value=public_key disabled=frozen}}
+				<div class="form-group has-error">
+					<label for="publickey" class="control-label">Public Key</label>
+					{{textarea type="text" class="form-control" id="public_key" placeholder="Public Key" rows="6" value=public_key disabled=frozen}}
 				</div>
+				<div class="alert alert-danger" role="alert">
+					<a href="#" class="alert-link"><b>Ooops!</b></a>
+				 </div>
 				<button class="btn btn-primary" {{action "register"}}>Register</button>
 			</form>
 		</div>
