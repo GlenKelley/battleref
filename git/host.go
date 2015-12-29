@@ -30,7 +30,7 @@ type LocalDirHost struct {
 
 var (
 	RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
-	PublicKeyRegex = regexp.MustCompile("^(ssh-(r|d)sa AAAA[0-9A-Za-z+/]+[=]{0,3})\\s*.*\\n?$")    //SSH public key
+	PublicKeyRegex = regexp.MustCompile("^(ssh-(r|d)sa AAAA[0-9A-Za-z+/]{256,}[=]{0,3})\\s*.*\\n?$")    //SSH public key
 )
 
 

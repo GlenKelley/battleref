@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	SamplePublicKey = "ssh-rsa AAAA01234abcd sample@public.key.com"
-	SamplePublicKey2 = "ssh-rsa AAAA01234abcde sample@public.key.com"
-	SimilarPublicKey = "ssh-rsa AAAA01234abcd similar@public.key.com"
+	UnescapedSamplePublicKey = "ssh-rsa+AAAAB4NzaC1yc2EAAAADAQABAAABAQCTxaDi3ImnIVHDeu3Gy/qjB/P2Bnv2JSiJa12b8obRAHhdE0cA3D5i26fnBQtssixapgwtDeADkeyKm+KhCtGbXdObQFDiDnWmUAxhjPyXwIHfvWwjYSIoPB9w8137wtOEVh9L2FtU3gL948VO589a5PsTeNTLmyJP07KcOdOtdKzgg14/rfRv6/jfzPKfRCz4b36siYdeLYc4Qg4L2TjGiP/4UtwfkkvrEBisw54v2hNCjzqBfKzwq3gzwZk8/KKQvYChdqypMN6GP18JDMv4ztroJt9awcEbk43iuQiMwDBE73ePs6ColoPKHB+OFCa/cQBS6ZzaNJd2OL3AUy1==+sample@public.key.com"
+	SamplePublicKey  = "ssh-rsa AAAAB4NzaC1yc2EAAAADAQABAAABAQCTxaDi3ImnIVHDeu3Gy/qjB/P2Bnv2JSiJa12b8obRAHhdE0cA3D5i26fnBQtssixapgwtDeADkeyKm+KhCtGbXdObQFDiDnWmUAxhjPyXwIHfvWwjYSIoPB9w8137wtOEVh9L2FtU3gL948VO589a5PsTeNTLmyJP07KcOdOtdKzgg14/rfRv6/jfzPKfRCz4b36siYdeLYc4Qg4L2TjGiP/4UtwfkkvrEBisw54v2hNCjzqBfKzwq3gzwZk8/KKQvYChdqypMN6GP18JDMv4ztroJt9awcEbk43iuQiMwDBE73ePs6ColoPKHB+OFCa/cQBS6ZzaNJd2OL3AUy1== sample@public.key.com"
+	SamplePublicKey2 = "ssh-rsa AAAAB4NzaC1yc2EAAAADAQABAAABAQCTxaDi3ImnIVHDeu3Gy/qjB/P2Bnv2JSiJa12b8obRAHhdE0cA3D5i26fnBQtssixapgwtDeADkeyKm+KhCtGbXdObQFDiDnWmUAxhjPyXwIHfvWwjYSIoPB9w8137wtOEVh9L2FtU3gL948VO589a5PsTeNTLmyJP07KcOdOtdKzgg14/rfRv6/jfzPKfRCz4b36siYdeLYc4Qg4L2TjGiP/4UtwfkkvrEBisw54v2hNCjzqBfKzwq3gzwZk8/KKQvYChdqypMN6GP18JDMv4ztroJt9awcEbk43iuQiMwDBE73ePs6ColoPKHB+OFCa/cQBS6ZzaNJd2OL3AUy2== sample@public.key.com"
+	SimilarPublicKey = "ssh-rsa AAAAB4NzaC1yc2EAAAADAQABAAABAQCTxaDi3ImnIVHDeu3Gy/qjB/P2Bnv2JSiJa12b8obRAHhdE0cA3D5i26fnBQtssixapgwtDeADkeyKm+KhCtGbXdObQFDiDnWmUAxhjPyXwIHfvWwjYSIoPB9w8137wtOEVh9L2FtU3gL948VO589a5PsTeNTLmyJP07KcOdOtdKzgg14/rfRv6/jfzPKfRCz4b36siYdeLYc4Qg4L2TjGiP/4UtwfkkvrEBisw54v2hNCjzqBfKzwq3gzwZk8/KKQvYChdqypMN6GP18JDMv4ztroJt9awcEbk43iuQiMwDBE73ePs6ColoPKHB+OFCa/cQBS6ZzaNJd2OL3AUy1== similar@public.key.com"
 	SampleCommitHash = "012345"
 )
 
@@ -184,6 +185,14 @@ func TestRegisterForm(t *testing.T) {
 		r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
 		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
 		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
+	})
+}
+
+func TestUnescaptedParsingFails(t *testing.T) {
+	ServerTest(t, func(t *testutil.T, server *ServerState) {
+		if r := sendPostExpectStatus(t, server, http.StatusInternalServerError, "/register", strings.NewReader("name=NameFoo&public_key="+UnescapedSamplePublicKey)); Json(t,r).Key("error").Key("message").String() != "Invalid Public Key" {
+			t.ErrorNow("expected 'Invalid Public Key'")
+		}
 	})
 }
 
