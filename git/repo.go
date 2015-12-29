@@ -4,6 +4,7 @@ import (
 	"os"
 	"log"
 	"fmt"
+	"debug"
 	"bytes"
 	"strings"
 	"os/exec"
@@ -35,6 +36,7 @@ func RunCmd(cmd *exec.Cmd) error {
 	cmd.Stderr = &bs
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error running %v %v %v: %v\n", cmd.Path, cmd.Args, cmd.Env, string(bs.Bytes()))
+		debug.PrintStack()
 		return err
 	} else {
 		return nil
@@ -46,6 +48,7 @@ func CmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	cmd.Stderr = &bs
 	if output, err := cmd.Output(); err != nil {
 		fmt.Printf("Error running %v %v: %v\n", cmd.Path, cmd.Args, string(bs.Bytes()))
+		debug.PrintStack()
 		return nil, err
 	} else {
 		return output, nil
