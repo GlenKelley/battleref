@@ -5,7 +5,7 @@
 
 # Installation
 
-scripts/deploy.sh -r repo-url -h host [-c]
+scripts/deploy.sh -r github.com/GlenKelley/battleref -h api.akusete.com -e prod -v
 
 Installs the application on a remote host, this will create a git and webserver user accounts
 

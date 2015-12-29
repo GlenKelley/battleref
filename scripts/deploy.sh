@@ -6,19 +6,31 @@
 # Author: Glen Kelley
 #
 
+function header {
+  echo -e "\033[1;32m$@\033[0;30m" 
+}
+
 function usage {
+  if [[ -n "$@" ]]; then
+    header "$@"
+  fi
   echo ""
-  echo "$0 -r repo-url -h host"
+  echo "$0 -r repo-url [-h host] [-e env] [-v] [-h]"
   echo ""
   echo "Deploys a battleref server to a remote host. Requires sudo"
   echo ""
-  echo "        -r repo-url          The URL of the battleref source code to install on the server"
+  echo "        -r repo-url          The go package of the battleref source code to install on the server"
   echo "        -h host-url          The connection url (user@hostname) of the target server"
   echo "        -e environment       The environment to use when running the webserver"
+  echo "        -v                   Verbose output"
+  echo "        -h                   Prints this message"
   echo "" 
   exit 1
 }
 
+REPO="github.com/GlenKelley/battleref"
+HOST="ec2-user@api.akusete.com"
+ENV="prod"
 SHUTDOWN_PORT=8080
 while getopts "h:r:e:p:v?" opt; do
   case $opt in
@@ -34,25 +46,21 @@ done
 set -e
 
 if [[ -z "$HOST" ]] ; then
-  echo "Error: You must define a host."
-  usage
+  usage "Error: You must define a host."
 fi
 
 if [[ -z "$REPO" ]] ; then
-  echo "Error: You must define a repo."
-  usage
+  usage "Error: You must define a repo."
 fi
 
 ENVIRONMENTS="dev\nprod"
 if [[ -z "$ENV" ]] ; then
-  echo "Error: You must define an environment."
-  usage
+  usage "Error: You must define an environment."
 elif ! ( echo -e "$ENVIRONMENTS" | grep "$ENV" > /dev/null ) ; then
-  echo -e "Error: Environment $ENV is not one of the following:\n$ENVIRONMENTS"
-  usage
+  usage "Error: Environment $ENV is not one of the following:\n$ENVIRONMENTS"
 fi
 
-if [[ -z "$VERBOSE" ]] ; then
+if [[ -n "$VERBOSE" ]] ; then
 	set -x
 fi
 
@@ -64,20 +72,27 @@ SUBMISSION_DIR=/opt/battleref
 
 ssh -T $HOST <<EOF
 set -e
-if [[ -z "$VERBOSE" ]] ; then
+if [[ -n "$VERBOSE" ]] ; then
 	set -x
 fi
 
+function header {
+  echo -e "\033[1;32m\$@\033[0;30m" 
+}
+
+# Checking if webserver user exitsts.
 if id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
+  echo "Account $WEBSERVER_USER exists."
   WEBSERVER_HOME=\`getent passwd $WEBSERVER_USER | cut -d: -f6\`
   if sudo -u "$WEBSERVER_USER" test -d "\$WEBSERVER_HOME/.battleref" ; then
     echo "Shutting down existing server."
     echo "Shutdown by $0 to install" | sudo -u "$WEBSERVER_USER" tee \$WEBSERVER_HOME/.battleref/.shutdown
     curl localhost:$SHUTDOWN_PORT/shutdown > /dev/null 2>&1 | true
+    # TODO:(gkelley) verify application has been shutdown.
   fi
 fi
 
-echo "Starting: Installing applications."
+header "Starting: Installing applications."
 
 if ! which git > /dev/null 2>&1 ; then
   echo "Installing git."
@@ -102,9 +117,9 @@ go version
 
 #TODO: sudo yum install curl libcurl
 
-echo "Finished: Installing applications."
+header "Finished: Installing applications."
 
-echo "Starting: Creating key pairs."
+header "Starting: Creating key pairs."
 
 if [[ ! -f .ssh/git ]] ; then
   ssh-keygen -f .ssh/git -P "" -C "battleref git ssh key"
@@ -114,9 +129,9 @@ if [[ ! -f .ssh/webserver ]] ; then
   ssh-keygen -f .ssh/webserver -P "" -C "battleref webserver key"
 fi
 
-echo "Finished: Creating key pairs."
+header "Finished: Creating key pairs."
 
-echo "Starting: Installing gitolite."
+header "Starting: Installing gitolite."
 
 if ! id -u "$GIT_USER" > /dev/null 2>&1 ; then
    echo "Creating $GIT_USER user."
@@ -138,7 +153,7 @@ if [[ -e "$SUBMISSION_DIR" ]] ; then
   sudo rm -r "$SUBMISSION_DIR"
 fi
 
-echo "Creating ${SUBMISSION_DIR}."
+header "Creating ${SUBMISSION_DIR}."
 sudo mkdir -p -m 755 "$SUBMISSION_DIR"
 sudo chown "${GIT_USER}:${GIT_USER}" "$SUBMISSION_DIR"
 
@@ -152,6 +167,10 @@ sudo chown -R "${GIT_USER}:${GIT_USER}" \${GIT_HOME}/.ssh/
 sudo su "$GIT_USER"
 set -e
 cd
+
+function header {
+  echo -e "\033[1;32m\$@\033[0;30m" 
+}
 
 if [[ ! -d gitolite ]] ; then
   git clone git://github.com/sitaramc/gitolite gitolite
@@ -169,14 +188,14 @@ gitolite/install -ln
 rm -f repositories
 ln -s "$SUBMISSION_DIR" repositories
 
-echo "Running gitolite setup."
+header "Running gitolite setup."
 bin/gitolite setup -pk .ssh/webserver.pub
 
 exit
 
-echo "Finished: Installing gitolite." 
+header "Finished: Installing gitolite." 
 
-echo "Starting: Installing webserver."
+header "Starting: Installing webserver."
 
 if ! id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
    echo "Creating $WEBSERVER_USER user."
@@ -184,7 +203,7 @@ if ! id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
 fi
 
 
-echo "Finished: Installing webserver."
+header "Finished: Installing webserver."
 
 WEBSERVER_HOME=\`getent passwd $WEBSERVER_USER | cut -d: -f6\`
 if [[ -z "\$WEBSERVER_HOME" ]] ; then
@@ -198,6 +217,10 @@ sudo chown -R "${WEBSERVER_USER:$WEBSERVER_USER}" \${WEBSERVER_HOME}/.ssh/
 sudo su "$WEBSERVER_USER"
 set -e
 cd
+
+function header {
+  echo -e "\033[1;32m\$@\033[0;30m" 
+}
 
 mkdir -p golib
 
@@ -226,4 +249,4 @@ exit
 
 EOF
 
-echo "Success."
+header "Success."
