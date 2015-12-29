@@ -190,8 +190,7 @@ GIT_HOME=\`getent passwd $GIT_USER | cut -d: -f6\`
 sudo -u $GIT_USER mkdir -p -m 0700 "\${GIT_HOME}/.ssh"
 sudo cp .ssh/git.pub \${GIT_HOME}/.ssh/authorized_keys
 sudo chmod 0655 \${GIT_HOME}/.ssh/authorized_keys
-sudo cp .ssh/webserver.pub \${GIT_HOME}/.ssh/ 
-sudo cp .ssh/webserver.pub \${GIT_HOME}/.ssh/id_rsa
+sudo cp .ssh/webserver.pub \${GIT_HOME}/.ssh/webserver.pub
 sudo chown -R "${GIT_USER}:${GIT_USER}" \${GIT_HOME}/.ssh/
 
 sudo su "$GIT_USER"
@@ -245,6 +244,7 @@ fi
 sudo -u $WEBSERVER_USER mkdir -p -m 0700 "\${WEBSERVER_HOME}/.ssh"
 sudo cp .ssh/webserver \${WEBSERVER_HOME}/.ssh/webserver
 sudo cp .ssh/webserver.pub \${WEBSERVER_HOME}/.ssh/
+sudo cp .ssh/webserver.pub \${WEBSERVER_HOME}/.ssh/id_rsa
 sudo cp .ssh/git.pub \${WEBSERVER_HOME}/.ssh/
 sudo cp .ssh/ec2-user.pub \${WEBSERVER_HOME}/.ssh/
 sudo chown -R "${WEBSERVER_USER:$WEBSERVER_USER}" \${WEBSERVER_HOME}/.ssh/
