@@ -31,11 +31,27 @@ type Remote interface {
 type TempRemote struct {
 }
 
-func RunCmd(cmd *exec.Cmd) error {
-	bs := bytes.Buffer{}
-	cmd.Stderr = &bs
+func DebugCmd(cmd *exec.Cmd) error {
+	bs1 := bytes.Buffer{}
+	bs2 := bytes.Buffer{}
+	cmd.Stdout = &bs1
+	cmd.Stderr = &bs2
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v %v: %v\n", cmd.Path, cmd.Args, cmd.Env, string(bs.Bytes()))
+		fmt.Printf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
+		debug.PrintStack()
+		return err
+	} else {
+		return nil
+	}
+}
+
+func RunCmd(cmd *exec.Cmd) error {
+	bs1 := bytes.Buffer{}
+	bs2 := bytes.Buffer{}
+	cmd.Stdout = &bs1
+	cmd.Stderr = &bs2
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error running %v %v %v: %v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
 		debug.PrintStack()
 		return err
 	} else {
@@ -126,6 +142,9 @@ func (r *SimpleRepository) AddFiles(files []string) error {
 }
 
 func (r *SimpleRepository) CommitFiles(files []string, message string) error {
+	cmd0 := exec.Command("git", "status")
+	cmd0.Dir = r.dir
+	DebugCmd(cmd0)
 	cmd := exec.Command("git", append([]string{"commit","-m",message}, files ...) ...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)

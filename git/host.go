@@ -76,6 +76,7 @@ func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
 	if conf.ExternalHostname == "" { return nil, errors.New("Gitolite host missing external hostname property.") }
 	if conf.User == "" { return nil, errors.New("Gitolite host missing user property.") }
 	if conf.AdminKey == "" { return nil, errors.New("Gitolite host missing admin key property.") }
+	if conf.SSHKey == "" { return nil, errors.New("Gitolite host missing ssh key property.") }
 	return &GitoliteHost{conf}, nil
 }
 

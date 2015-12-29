@@ -1,6 +1,7 @@
 package git
 
 import (
+	"strings"
 	"os/exec"
 	"testing"
 	"io/ioutil"
@@ -10,15 +11,25 @@ import (
 )
 
 func TestPublicKeyParsing(t *testing.T) {
+	padding := strings.Repeat("1",256)
 	for _, key := range []string{
-			"ssh-rsa AAAA1234",
-			"ssh-rsa AAAA1234 email@address.com",
-			"ssh-rsa AAAA1234 other text",
-			"ssh-rsa AAAA1234\n",
-			"ssh-rsa AAAA1234 other text\n",
+			"ssh-rsa AAAA1234"+padding,
+			"ssh-rsa AAAA1234"+padding+" email@address.com",
+			"ssh-rsa AAAA1234"+padding+" other text",
+			"ssh-rsa AAAA1234"+padding+"\n",
+			"ssh-rsa AAAA1234"+padding+" other text\n",
 		} {
 		if !PublicKeyRegex.MatchString(key) {
 			t.Errorf("'%v' is not a public key", key)
+		}
+	}
+	for _, key := range []string{
+			"ssh-rsa AAAA1234",
+			"ssh-rsa AAAA1234"+" email@address.com",
+			"ssh-rsa AAAA12!34"+" email@address.com",
+		} {
+		if PublicKeyRegex.MatchString(key) {
+			t.Errorf("Expected failure for invalid key '%v'", key)
 		}
 	}
 }
