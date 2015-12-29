@@ -63,6 +63,10 @@ func (t *Tournament) ListUsers() ([]string, error) {
 	return users, err
 }
 
+func (t *Tournament) ListCategories() ([]TournamentCategory, error) {
+	return []TournamentCategory{CategoryGeneral}, nil
+}
+
 func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) (string, error) {
 	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
 		return "", err

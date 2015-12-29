@@ -64,6 +64,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("GET", "/version", version)
 	s.HandleFunc("GET", "/api", api)
 	s.HandleFunc("GET", "/players", players)
+	s.HandleFunc("GET", "/categories", categories)
 	s.HandleFunc("GET", "/maps", maps)
 	s.HandleFunc("GET", "/commits", commits)
 	s.HandleFunc("GET", "/map/source", mapSource)
@@ -296,6 +297,14 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, JSONResponse{"players":userNames})
+	}
+}
+
+func categories(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	if categories, err := s.Tournament.ListCategories(); err != nil {
+		web.WriteJsonError(w, err)
+	} else {
+		web.WriteJson(w, JSONResponse{"categories":categories})
 	}
 }
 

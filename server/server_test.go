@@ -312,6 +312,14 @@ func (j JsonWrapper) Len() int {
 	}
 }
 
+func TestCategories(t *testing.T) {
+	ServerTest(t, func(t *testutil.T, server *ServerState) {
+		if r := sendGet(t, server, "/categories"); !compareStringsUnordered(Json(t,r).Key("data").Key("categories").Array(), []string{string(tournament.CategoryGeneral)}) {
+			t.ErrorNow("expected 1 category", r)
+		}
+	})
+}
+
 func TestPlayers(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		if r := sendGet(t, server, "/players"); Json(t,r).Key("data").Key("players").Len() > 0 {

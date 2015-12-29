@@ -29,6 +29,18 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	}
 }
 
+func TestListCategories(t *testing.T) {
+	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
+		if categories, err := tm.ListCategories(); err != nil {
+			t.ErrorNow(err)
+		} else if len(categories) != 1 {
+			t.ErrorNowf("expected 1 category, got %v", len(categories))
+		} else if categories[0] != CategoryGeneral {
+			t.ErrorNowf("expected %v category, got %v", CategoryGeneral, categories[0])
+		}
+	})
+}
+
 func TestCreateUser(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		if isUser, err := tm.UserExists("NameFoo"); err != nil {

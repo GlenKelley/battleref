@@ -22,7 +22,7 @@ func main() {
 		log.Fatal("You must define a environment")
 	}
 
-	log.Println("HELLO")
+	log.Println("Starting webserver.")
 	if properties, err := server.ReadProperties(environment, resourcePath); err != nil {
 		log.Fatal(err)
 	} else {
