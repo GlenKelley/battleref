@@ -110,6 +110,7 @@ fi
 
 rm -f ~/.ssh/webserver*
 if id -u webserver > /dev/null 2>&1; then
+  skill -KILL -u webserver
   sudo pkill -u webserver | true
   sudo userdel webserver
 fi
@@ -117,6 +118,7 @@ sudo rm -r /home/webserver
 
 rm -f ~/.ssh/git*
 if id -u git > /dev/null 2>&1; then
+  skill -KILL -u git
   sudo pkill -u git | true
   sudo userdel git
 fi

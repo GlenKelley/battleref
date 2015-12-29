@@ -243,8 +243,8 @@ if [[ -z "\$WEBSERVER_HOME" ]] ; then
 fi
 sudo -u $WEBSERVER_USER mkdir -p -m 0700 "\${WEBSERVER_HOME}/.ssh"
 sudo cp .ssh/webserver \${WEBSERVER_HOME}/.ssh/webserver
+sudo cp .ssh/webserver \${WEBSERVER_HOME}/.ssh/id_rsa
 sudo cp .ssh/webserver.pub \${WEBSERVER_HOME}/.ssh/
-sudo cp .ssh/webserver.pub \${WEBSERVER_HOME}/.ssh/id_rsa
 sudo cp .ssh/git.pub \${WEBSERVER_HOME}/.ssh/
 sudo cp .ssh/ec2-user.pub \${WEBSERVER_HOME}/.ssh/
 sudo chown -R "${WEBSERVER_USER:$WEBSERVER_USER}" \${WEBSERVER_HOME}/.ssh/
@@ -262,6 +262,9 @@ function failure {
 function header {
   echo -e "\033[1;32m\$@\033[0;30m" 
 }
+
+ssh-keyscan -H localhost > ~/.ssh/known_hosts
+chmod 0700 ~/.ssh/known_hosts
 
 mkdir -p golib
 
