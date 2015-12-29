@@ -279,7 +279,7 @@ go install "github.com/mattn/go-sqlite3"
 go get -u "$REPO"
 go build -o ~/bin/startBattlerefServer "$REPO"
 
-git config --global user.email ""
+git config --global user.email "noreply@akusete.com"
 git config --global user.name "Battlecode Server"
 
 header "Installing crontab entry."
