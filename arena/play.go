@@ -59,8 +59,16 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	} else {
 		file.Close()
 	}
+
+	tempDir, err := ioutil.TempDir("", "battlecode")
+	if err != nil {
+		return clock(), result, err
+	}
+	defer os.RemoveAll(tempDir)
+
 	cmd := exec.Command("./runMatch.sh",
 		"-r", tarFile,
+		"-d", tempDir,
 		"-p", p.PlayerRepo1,
 		"-P", p.PlayerRepo2,
 		"-c", p.Commit1,

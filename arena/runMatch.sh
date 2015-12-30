@@ -11,6 +11,7 @@ function usage {
   echo "$0"
   echo ""
   echo "	-r battlecode tar	The tar file of the battlecode application"
+  echo "	-d temp_directory       A temporary directory for the script to do work in"	
   echo "	-p player1		The git repo of the first player"
   echo "	-P player2		The git repo of the second player"
   echo "	-c commit1		The git commit hash of the first player repo"
@@ -26,9 +27,10 @@ function error {
 	echo "$@" >&2
 }
 
-while getopts "?r:p:P:c:C:u:m:M:R" opt; do
+while getopts "?r:d:p:P:c:C:u:m:M:R" opt; do
   case $opt in
     r) BATTLECODE_TAR="$OPTARG" ;;
+    d) BATTLECODE_DIR="$OPTARG" ;;
     p) PLAYER1="$OPTARG" ;;
     P) PLAYER2="$OPTARG" ;;
     c) COMMIT1="$OPTARG" ;;
@@ -77,11 +79,13 @@ elif [[ ! -f "$MAP_FILE" ]] ; then
   usage
 fi
 
-BATTLECODE_DIR=$(mktemp -d -t battlecode)
-function cleanup {
-	rm -rf "$BATTLECODE_DIR"
-}
-trap cleanup EXIT
+if [[ -z "$BATTLECODE_DIR" ]] ; then
+  error "Error: You must define a temp directory."
+  usage
+elif [[ ! -d "$BATTLECODE_DIR" ]] ; then
+  error "Error: $MAP_FILE is not a file."
+  usage
+fi
 
 LOG=~/.battleref/arena.log
 echo "`date` START" >> $LOG
