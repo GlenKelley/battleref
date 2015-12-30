@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 	"log"
-	"runtime/debug"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
 )
@@ -209,15 +208,12 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 		player2.CommitHash,
 		}, func()time.Time{ return clock.Now() }); err != nil {
 		if err2 := t.UpdateMatch(category, mapName, player1, player2, clock.Now(), MatchResultError, ""); err2 != nil {
-			debug.PrintStack()
 			log.Println(err2)
 		}
 		return MatchResultError, err
 	} else {
 		matchResult := GetMatchResult(result)
 		if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, result.Replay); err != nil {
-			debug.PrintStack()
-			log.Println(err)
 			return MatchResultError, err
 		}
 		return matchResult, err

@@ -86,9 +86,12 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 		log.Println("runMatch Output: ", string(out))
 		return clock(), result, err
 	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
+		log.Println("runMatch Error: ", string(buffer.Bytes()))
 		log.Println("runMatch Output: ", string(out))
 		return clock(), result, err
 	} else {
+		log.Println("runMatch Error: ", string(buffer.Bytes()))
+		log.Println("runMatch Output: ", string(out))
 		return clock(), result, nil
 	}
 }
