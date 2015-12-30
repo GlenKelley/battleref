@@ -45,9 +45,9 @@ var (
 )
 
 type Route struct {
-	method string
-	pattern string
-	help string
+	Method string
+	Pattern string
+	Help string
 }
 
 type ServerState struct {
