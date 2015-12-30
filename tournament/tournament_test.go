@@ -15,7 +15,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{}
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "UkVQTEFZIEJBU0U2NAo="}, nil}
 		remote := git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
@@ -175,7 +175,25 @@ func TestUpdateMatch(t *testing.T) {
 
 func TestRunMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		//TODO
+		p1 := Submission{"p1","c1"}
+		p2 := Submission{"p2","c2"}
+		t.CheckError(tm.CreateMap("MapFoo", "SourceFoo"))
+		if result, err := tm.RunMatch(CategoryGeneral, "MapFoo", p1, p2, SystemClock()); err != nil {
+			t.ErrorNow(err)
+		} else if result != "WinA" {
+			t.ErrorNowf("Expected WinA not %v\n", result)
+		} else if result2, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+			t.ErrorNow(err)
+		} else if result != result2 {
+			t.ErrorNowf("Expected %v not %v\n", result, result2)
+		} else if matches, err := tm.ListMatches(); err != nil {
+			t.ErrorNow(err)
+		} else if len(matches) != 1 {
+			t.ErrorNowf("Expected 1 match not %v\n", len(matches))
+		} else if matches[0].Result != result {
+			t.ErrorNowf("Expected %v not %v\n", result, matches[0].Result)
+		}
+
 	})
 }
 
