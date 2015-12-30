@@ -157,6 +157,7 @@ func WriteJsonErrorWithCode(w http.ResponseWriter, err error, statusCode int) {
 
 func WriteJsonWebError(w http.ResponseWriter, err Error) {
 	if bs, e2 := json.Marshal(Json{nil, err}); e2 != nil {
+		fmt.Println(e2)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	} else {
