@@ -94,14 +94,14 @@ if id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
     echo "Battleref installation exists."
     echo "Shutting down server."
     echo "Shutdown by $0 to install" | sudo -u "$WEBSERVER_USER" tee \$WEBSERVER_HOME/.battleref/.shutdown
-    if curl localhost:$SHUTDOWN_PORT/api > /dev/null 2>&1 ; then
+    if curl localhost:$SHUTDOWN_PORT/version > /dev/null 2>&1 ; then
       echo "Server is running."
       curl -X POST localhost:$SHUTDOWN_PORT/shutdown > /dev/null 2>&1 | true
       echo "Waiting for server to shutdown."
       ATTEMPTS=0
       IS_SHUTDOWN=
       while [[ -z "\$IS_SHUTDOWN" ]] && [[ "\$ATTEMPTS" -le 10 ]] && sleep 1; do
-        if ! curl localhost:$SHUTDOWN_PORT/api > /dev/null 2>&1 ; then
+        if ! curl localhost:$SHUTDOWN_PORT/version > /dev/null 2>&1 ; then
 	  echo "SHUTDOWN"
           IS_SHUTDOWN=TRUE
 	else
@@ -307,7 +307,7 @@ header "Waiting until server comes online."
 ONLINE=
 ATTEMPTS=0
 while [[ -z "\$ONLINE" ]] && [[ "\$ATTEMPTS" -le 90 ]] && sleep 1 ; do
-  if curl localhost:$SHUTDOWN_PORT/api > /dev/null 2>&1 ; then
+  if curl localhost:$SHUTDOWN_PORT/version > /dev/null 2>&1 ; then
     header "Server online."
     ONLINE=TRUE
   else
