@@ -253,11 +253,9 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 		value := formValue.Field(i)
 		validateTag := field.Tag.Get("validate")
 		if validateTag == "required" && value.String() == "" {
-			fmt.Printf("error %v %v %v\n", field, value, len(err.Errors()))
 			err.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
 		}
 	}
-	fmt.Printf("debug error %v %v %v\n", err, len(err.Errors()), err.Errors())
 	if err.Errors() == nil {
 		return nil
 	} else {
@@ -406,7 +404,7 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		Map string `json:"map" form:"map" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
-		web.WriteJsonError(w, err)
+		web.WriteJsonWebError(w, err)
 	} else if exists, err := s.Tournament.UserExists(form.Player1); err != nil {
 		web.WriteJsonError(w, err)
 	} else if !exists {
