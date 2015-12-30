@@ -157,11 +157,11 @@ func WriteJsonErrorWithCode(w http.ResponseWriter, err error, statusCode int) {
 
 func WriteJsonWebError(w http.ResponseWriter, err Error) {
 	if bs, e2 := json.Marshal(Json{nil, err}); e2 != nil {
-		fmt.Println("Failed to marshal error", e2)
+		fmt.Println("Failed to marshal error", e2, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	} else {
-		fmt.Println("Marshal error", string(bs))
+		fmt.Println("Marshal error", string(bs), err)
 		w.Header().Add(HeaderContentType, ContentTypeJson)
 		w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 		w.WriteHeader(err.Code())
