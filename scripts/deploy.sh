@@ -206,22 +206,21 @@ function header {
 
 if [[ ! -d gitolite ]] ; then
   git clone git://github.com/sitaramc/gitolite gitolite
+  rm -rf .gitolite
+  
+  mkdir -p bin
+  gitolite/install -ln
+  
+  rm -f repositories
+  ln -s "$SUBMISSION_DIR" repositories
+  
+  header "Running gitolite setup."
+  bin/gitolite setup -pk .ssh/webserver.pub
 else
   pushd gitolite > /dev/null
   git pull
   popd > /dev/null
 fi
-
-rm -rf .gitolite
-
-mkdir -p bin
-gitolite/install -ln
-
-rm -f repositories
-ln -s "$SUBMISSION_DIR" repositories
-
-header "Running gitolite setup."
-bin/gitolite setup -pk .ssh/webserver.pub
 
 exit
 
