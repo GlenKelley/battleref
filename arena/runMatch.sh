@@ -39,7 +39,7 @@ while getopts "?r:p:P:c:C:u:m:M:R" opt; do
     ? ) usage
   esac
 done
-set -e
+set -ex
 
 if [[ -z "$BATTLECODE_TAR" ]] ; then
   error "Error: You must define the battlecode root directory."
