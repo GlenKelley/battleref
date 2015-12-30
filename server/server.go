@@ -44,12 +44,18 @@ var (
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
 )
 
+type Route struct {
+	method string
+	pattern string
+	help string
+}
+
 type ServerState struct {
 	Tournament *tournament.Tournament
 	Properties Properties
 	HttpServer *http.Server
 	Listener   net.Listener
-	Routes     map[string]string
+	Routes     map[string]Route
 }
 
 func NewServer(tournament *tournament.Tournament, properties Properties) *ServerState {
@@ -60,20 +66,20 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	s := ServerState{tournament, properties, httpServer, nil, make(map[string]string)}
-	s.HandleFunc("GET", "/version", version)
-	s.HandleFunc("GET", "/api", api)
-	s.HandleFunc("GET", "/players", players)
-	s.HandleFunc("GET", "/categories", categories)
-	s.HandleFunc("GET", "/maps", maps)
-	s.HandleFunc("GET", "/commits", commits)
-	s.HandleFunc("GET", "/map/source", mapSource)
-	s.HandleFunc("POST", "/shutdown", shutdown)
-	s.HandleFunc("POST", "/register", register)
-	s.HandleFunc("POST", "/map/create", createMap)
-	s.HandleFunc("POST", "/submit", submit)
-	s.HandleFunc("POST", "/match/run", runMatch)
-	s.HandleFunc("GET", "/matches", matches)
+	s := ServerState{tournament, properties, httpServer, nil, make(map[string]Route)}
+	s.HandleFunc("GET", "/version", version, "The code version running this server.")
+	s.HandleFunc("GET", "/api", api, "API documentation.")
+	s.HandleFunc("GET", "/players", players, "A list of registered players.")
+	s.HandleFunc("GET", "/categories", categories, "A list of tournament categories.")
+	s.HandleFunc("GET", "/maps", maps, "A list of all maps.")
+	s.HandleFunc("GET", "/commits", commits, "A list of submitted commits for a player in a category.")
+	s.HandleFunc("GET", "/map/source", mapSource, "")
+	s.HandleFunc("POST", "/shutdown", shutdown, "Turn off the server.")
+	s.HandleFunc("POST", "/register", register, "Registers a player name to a public key.")
+	s.HandleFunc("POST", "/map/create", createMap, "Create a map.")
+	s.HandleFunc("POST", "/submit", submit, "Register a commit for a player into a category.")
+	s.HandleFunc("POST", "/match/run", runMatch, "")
+	s.HandleFunc("GET", "/matches", matches, "")
 
 	return &s
 
@@ -102,8 +108,8 @@ func (s *ServerState) Serve() error {
 	}
 }
 
-func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState)) {
-	s.Routes[pattern] = fmt.Sprintf("%v %v", method, pattern)
+func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState), help string) {
+	s.Routes[pattern] = Route{method, pattern, help}
 	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
 		if r.Method == method {
 			handler(w, r, s)
@@ -195,11 +201,7 @@ func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func api(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	routes := make([]string, 0, len(s.Routes))
-	for _, message := range s.Routes {
-		routes = append(routes, message)
-	}
-	web.WriteJson(w, JSONResponse{"routes":routes})
+	web.WriteJson(w, JSONResponse{"routes":s.Routes})
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
