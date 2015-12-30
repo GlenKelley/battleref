@@ -114,8 +114,6 @@ function createRepo {
 #Create teams
 NAME1=`basename "${PLAYER1%.git}" | sed 's/^.*://'`
 NAME2=`basename "${PLAYER2%.git}" | sed 's/^.*://'`
-#NAME1=`basename "${PLAYER1%.git}"`
-#NAME2=`basename "${PLAYER2%.git}"`
 createRepo "$PLAYER1" "$NAME1" "$COMMIT1"
 
 if [[ "$PLAYER1" = "$PLAYER2" ]] ; then
@@ -156,12 +154,10 @@ REASON=`grep "Reason:" output.log | perl -i -n -e '
 		if ($1 eq "The winning team won on tiebreakers.") { print "TIE" }
 		if ($1 =~ /Team (A|B) won by default./) { print "TIE" }
 	}'`
-REPLAY=
 if [[ -n "$CAPTURE_REPLAY" ]] ; then
-	REPLAY=`cat match.rms | base64`
+	cat match.rms | base64 | tr -d '\n\t' > replay.txt
 fi
-
-echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\",\"replay\":\"$REPLAY\"}"
+echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\"}"
 
 popd > /dev/null
 echo "`date` FINISH MATCH" >> $LOG

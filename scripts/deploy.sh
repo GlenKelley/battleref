@@ -144,6 +144,11 @@ if ! which go > /dev/null 2>&1 ; then
 fi
 go version
 
+if ! which ant > /dev/null 2>&1 ; then
+  echo "Installing ant."
+  yes | sudo yum install ant
+fi
+
 #TODO: sudo yum install curl libcurl
 
 header "Finished: Installing applications."
@@ -214,14 +219,14 @@ if [[ ! -d gitolite ]] ; then
   
   rm -f repositories
   ln -s "$SUBMISSION_DIR" repositories
-  
-  header "Running gitolite setup."
-  bin/gitolite setup -pk .ssh/webserver.pub
 else
   pushd gitolite > /dev/null
   git pull
   popd > /dev/null
 fi
+
+header "Running gitolite setup."
+bin/gitolite setup -pk .ssh/webserver.pub
 
 exit
 
