@@ -177,9 +177,10 @@ if [[ -e "$SUBMISSION_DIR" ]] ; then
   if [[ "\$OWNER" != "$GIT_USER" ]] ; then
     echo "$SUBMISSION_DIR exists but has owner \${OWNER}."
     exit 1
-  fi 
-  echo "Removing existing ${SUBMISSION_DIR}."
-  sudo rm -r "$SUBMISSION_DIR"
+  fi
+
+  #echo "Removing existing ${SUBMISSION_DIR}."
+  #sudo rm -r "$SUBMISSION_DIR"
 fi
 
 header "Creating ${SUBMISSION_DIR}."

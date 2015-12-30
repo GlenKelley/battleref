@@ -1,12 +1,11 @@
 package tournament
 
 import (
-	"fmt"
 	"strings"
 	"errors"
 	"time"
 	"log"
-	"reflect/debug"
+	"runtime/debug"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
 )
