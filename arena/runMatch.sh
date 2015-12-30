@@ -164,4 +164,5 @@ fi
 echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\",\"replay\":\"$REPLAY\"}"
 
 popd > /dev/null
+echo "`date` FINISH MATCH" >> $LOG
 
