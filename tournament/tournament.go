@@ -43,10 +43,18 @@ func NewTournament(database Database, arena arena.Arena, bootstrap arena.Bootstr
 func (t *Tournament) InstallDefaultMaps(resourcePath string, category TournamentCategory) error {
 	if defaultMaps, err := arena.DefaultMaps(resourcePath, string(category)); err != nil {
 		return err
+	} else if maps, err := t.ListMaps(); err != nil {
+		return err
 	} else {
+		lookup := make(map[string]bool)
+		for _, m := range maps {
+			lookup[m] = true
+		}
 		for name, source := range defaultMaps {
-			if err := t.CreateMap(name, source); err != nil {
-				return err
+			if !lookup[name] {
+				if err := t.CreateMap(name, source); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
