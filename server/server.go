@@ -45,9 +45,9 @@ var (
 )
 
 type Route struct {
-	Method string
-	Pattern string
-	Help string
+	Method string `json:"method"`
+	Pattern string `json:"pattern"`
+	Help string `json:"help,omitempty"`
 }
 
 type ServerState struct {
@@ -253,9 +253,11 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 		value := formValue.Field(i)
 		validateTag := field.Tag.Get("validate")
 		if validateTag == "required" && value.String() == "" {
+			fmt.Printf("error %v %v\n", field, value)
 			err.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
 		}
 	}
+	fmt.Printf("debug error %v\n", err)
 	if err.Errors() == nil {
 		return nil
 	} else {
