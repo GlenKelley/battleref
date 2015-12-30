@@ -8,6 +8,7 @@ import (
 	"io"
 	"bytes"
 	"io/ioutil"
+	"runtime/debug"
 	"encoding/json"
 )
 
@@ -72,7 +73,9 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	buffer := bytes.Buffer{}
 	cmd.Stderr = &buffer
 	if out, err := cmd.Output(); err != nil {
+		debug.PrintStack()
 		log.Println("runMatch Error: ", string(buffer.Bytes()))
+		log.Println("runMatch Output: ", string(out))
 		return clock(), result, err
 	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
 		log.Println("runMatch Output: ", string(out))
