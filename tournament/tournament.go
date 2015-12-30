@@ -229,6 +229,35 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 	}
 }
 
+func (t *Tournament) LatestCommits(category TournamentCategory) ([]Submission, error) {
+	if latestCommits, err := t.Database.LatestCommits(category); err != nil {
+		return nil, err
+	} else {
+		return latestCommits, nil
+	}
+}
+
+func (t *Tournament) RunLatestMatches(category TournamentCategory) error {
+	if latestCommits, err := t.LatestCommits(category); err != nil {
+		return err
+	} else if maps, err := t.ListMaps(); err != nil {
+		return err
+	} else {
+		for _, submission1 := range latestCommits {
+			for _, submission2 := range latestCommits {
+				if submission1.Name != submission2.Name {
+					for _, mapName := range maps {
+						if _, err := t.RunMatch(category, mapName, submission1, submission2, SystemClock()); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func GetMatchResult(a arena.MatchResult) MatchResult {
 	if a.Reason == arena.ReasonVictory {
 		if a.Winner == arena.WinnerA {

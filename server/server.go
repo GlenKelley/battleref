@@ -78,7 +78,8 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/register", register, "Registers a player name to a public key.")
 	s.HandleFunc("POST", "/map/create", createMap, "Create a map.")
 	s.HandleFunc("POST", "/submit", submit, "Register a commit for a player into a category.")
-	s.HandleFunc("POST", "/match/run", runMatch, "")
+	s.HandleFunc("POST", "/match/run", runMatch, "Run a single match between two submissions.")
+	s.HandleFunc("POST", "/match/run/latest", runLatestMatches, "Run matches between all recent submissions.")
 	s.HandleFunc("GET", "/matches", matches, "")
 
 	return &s
@@ -427,6 +428,20 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJson(w, JSONResponse{"result":result})
 	}
 }
+
+func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		web.WriteJsonWebError(w, err)
+	} else if err := s.Tournament.RunLatestMatches(form.Category); err != nil {
+		web.WriteJsonError(w, err)
+	} else {
+		web.WriteJson(w, JSONResponse{"success":true})
+	}
+}
+
 
 //type EventType int
 //

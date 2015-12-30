@@ -13,6 +13,7 @@ type Statements interface {
 	GetMapSource(name string) (string, error)
 	ListMaps() ([]string, error)
 	ListMatches() ([]Match, error)
+	LatestCommits(category TournamentCategory) ([]Submission, error)
 	MapExists(name string) (bool, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
@@ -122,6 +123,23 @@ func (c *Commands) ListMatches() ([]Match, error) {
 		} else {
 			return values, nil
 		}
+	}
+}
+
+func (c *Commands) LatestCommits(category TournamentCategory) ([]Submission, error) {
+	if rows, err := c.tx.Query("select s1.name, s1.commithash from submission s1 left join submission s2 on s1.name = s2.name and s1.category = s2.category and s1.date_created < s2.date_created where s2.name is null and s1.category = ?", string(category)); err != nil {
+		return nil, err
+	} else {
+		var latestCommits []Submission
+		for rows.Next() {
+			var name, commit string
+			if err2 := rows.Scan(&name, &commit); err2 != nil {
+				return nil, err2
+			} else {
+				latestCommits = append(latestCommits, Submission{name, commit})
+			}
+		}
+		return latestCommits, nil
 	}
 }
 

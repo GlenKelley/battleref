@@ -196,5 +196,38 @@ func TestRunMatch(t *testing.T) {
 	})
 }
 
+func TestRunLatestMatches(t *testing.T) {
+	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
+		if _, err := tm.CreateUser("Name1", "PublicKey1"); err != nil {
+			t.ErrorNow(err)
+		}
+		if _, err := tm.CreateUser("Name2", "PublicKey2"); err != nil {
+			t.ErrorNow(err)
+		}
+		if _, err := tm.CreateUser("Name3", "PublicKey3"); err != nil {
+			t.ErrorNow(err)
+		}
+		t.CheckError(tm.CreateMap("Map1", "MapSource"))
+		t.CheckError(tm.CreateMap("Map2", "MapSource"))
+		t.CheckError(tm.CreateMap("Map3", "MapSource"))
+		date := time.Now()
+		t.CheckError(tm.SubmitCommit("Name1", CategoryGeneral, "a1", date))
+		t.CheckError(tm.SubmitCommit("Name1", CategoryGeneral, "a2", date.Add(time.Hour)))
+		t.CheckError(tm.SubmitCommit("Name2", CategoryGeneral, "b1", date))
+		t.CheckError(tm.SubmitCommit("Name2", CategoryGeneral, "b2", date.Add(time.Hour)))
+		t.CheckError(tm.SubmitCommit("Name3", CategoryGeneral, "c1", date))
+		t.CheckError(tm.SubmitCommit("Name3", CategoryGeneral, "c2", date.Add(time.Hour)))
+		if err := tm.RunLatestMatches(CategoryGeneral); err != nil {
+			t.ErrorNow(err)
+		}
+		if matches, err := tm.ListMatches(); err != nil {
+			t.ErrorNow(err)
+		} else if len(matches) != 18 {
+			t.ErrorNow("Expected 1 got", len(matches))
+		}
+
+	})
+}
+
 
 
