@@ -1,7 +1,7 @@
 package web
 
 import (
-//	"fmt"
+	"fmt"
 	"net/http"
 	"testing"
 	"github.com/GlenKelley/battleref/testing"
