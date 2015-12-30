@@ -295,6 +295,8 @@ header "Removing shutdown file."
 # Remove shutdown lock file.
 rm -f ~/.battleref/.shutdown
 
+nohup \$GOPATH/src/$REPO/scripts/restartServer.sh -e $ENV -r \$GOPATH/src/$REPO >> \$WEBSERVER_HOME/cron.log 2>&1 &
+
 header "Waiting until server comes online."
 ONLINE=
 ATTEMPTS=0
