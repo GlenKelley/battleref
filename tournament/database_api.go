@@ -103,14 +103,14 @@ func (c *Commands) ListMaps() ([]string, error) {
 }
 
 func (c *Commands) ListMatches() ([]Match, error) {
-	if rows, err := c.tx.Query("select player1, player2, commit1, commit2, map, category, result from match"); err != nil {
+	if rows, err := c.tx.Query("select player1, player2, commit1, commit2, map, category, result, updated from match"); err != nil {
 		return nil, err
 	} else {
 		var values []Match
 		for rows.Next() {
 			var match Match
 			var result string
-			if err2 := rows.Scan(&match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result); err2 != nil {
+			if err2 := rows.Scan(&match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result, &match.Time); err2 != nil {
 				return nil, err2
 			} else {
 				match.Result = MatchResult(result)

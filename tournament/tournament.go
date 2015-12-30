@@ -145,6 +145,7 @@ type Match struct {
 	Map string
 	Category string
 	Result MatchResult
+	Time time.Time
 }
 
 func (t *Tournament) ListMatches() ([]Match, error) {

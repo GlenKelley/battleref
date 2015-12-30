@@ -193,7 +193,6 @@ func TestRunMatch(t *testing.T) {
 		} else if matches[0].Result != result {
 			t.ErrorNowf("Expected %v not %v\n", result, matches[0].Result)
 		}
-
 	})
 }
 
