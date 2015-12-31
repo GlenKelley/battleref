@@ -226,12 +226,15 @@ func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 }
 
 func (g *GitoliteHost) Validate() error {
+	fmt.Errorf("Validating user %v\n", g.User)
 	if _, err := user.Lookup(g.User); err != nil {
 		return err
 	}
+	fmt.Errorf("Validating Admin key %v\n", g.Admin)
 	if _, err := os.Stat(g.AdminKey); err != nil {
 		return err
 	}
+	fmt.Errorf("Validating SSH key %v\n", g.SSHKey)
 	if _, err := os.Stat(g.SSHKey); err != nil {
 		return err
 	}
