@@ -129,13 +129,13 @@ func TestCreateExistingUserError(t *testing.T) {
 	})
 }
 
-func TestCreateExistingKeyError(t *testing.T) {
+func TestCreateExistingKey(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("NameBar", "PublicKeyFoo"); err == nil {
-			t.ErrorNow("expected error")
+		if _, err := tm.CreateUser("NameBar", "PublicKeyFoo"); err != nil {
+			t.ErrorNow(err)
 		}
 	})
 }

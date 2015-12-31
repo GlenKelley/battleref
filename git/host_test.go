@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"strings"
 	"os/exec"
 	"testing"
@@ -56,7 +57,7 @@ func LocalDirHostTest(test *testing.T, f func(*testutil.T, *LocalDirHost)) {
 
 func TestInitLocalRepo(t *testing.T) {
 	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
-		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
+		t.CheckError(local.InitRepository("foo", nil, nil))
 		repoURL := local.RepositoryURL("foo")
 		if stat, err := os.Stat(repoURL); err != nil {
 			t.ErrorNow(err)
@@ -70,8 +71,8 @@ func TestInitLocalRepo(t *testing.T) {
 
 func TestInitExitingLocalRepoFails(t *testing.T) {
 	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
-		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
-		if err := local.InitRepository("foo", "PublicKeyFoo"); err == nil {
+		t.CheckError(local.InitRepository("foo", nil, nil))
+		if err := local.InitRepository("foo", nil, nil); err == nil {
 			t.FailNow()
 		}
 	})
@@ -79,8 +80,8 @@ func TestInitExitingLocalRepoFails(t *testing.T) {
 
 func TestForkLocalRepo(t *testing.T) {
 	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
-		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
-		t.CheckError(local.ForkRepository("foo", "bar", "PublicKeyFoo"))
+		t.CheckError(local.InitRepository("foo", nil, nil))
+		t.CheckError(local.ForkRepository("foo", "bar", nil, nil))
 		repoURL := local.RepositoryURL("bar")
 		if stat, err := os.Stat(repoURL); err != nil {
 			t.ErrorNow(err)
@@ -94,7 +95,7 @@ func TestForkLocalRepo(t *testing.T) {
 
 func TestDeleteLocalRepo(t *testing.T) {
 	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
-		t.CheckError(local.InitRepository("foo", "PublicKeyFoo"))
+		t.CheckError(local.InitRepository("foo", nil, nil))
 		t.CheckError(local.DeleteRepository("foo"))
 		repoURL := local.RepositoryURL("foo")
 		if _, err := os.Stat(repoURL); err == nil {
@@ -118,6 +119,7 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	conf := gitoliteTestConf
 	conf.AdminKey = testutil.PathRelativeToUserHome(t, conf.AdminKey)
 	conf.SSHKey = testutil.PathRelativeToUserHome(t, conf.SSHKey)
+	fmt.Println("Gitolite test with config", gitoliteTestConf)
 	if host, err := CreateGitoliteHost(conf); err != nil {
 		t.ErrorNow(err)
 	} else if _, err := user.Lookup(host.User); err != nil {
@@ -139,7 +141,7 @@ func createRepo(host *GitoliteHost, name string) error {
 	if _, publicKey, err := testutil.CreateKeyPair(); err != nil {
 		return err
 	} else {
-		return host.InitRepository(name, publicKey)
+		return host.InitRepository(name, map[string]int64{name:1}, map[int64]string{1:publicKey})
 	}
 }
 
@@ -154,7 +156,7 @@ func TestInitGitoliteRepo(t *testing.T) {
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			if err := host.InitRepository("foo", publicKey); err != nil {
+			if err := host.InitRepository("foo", map[string]int64{"foo":1}, map[int64]string{1:publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 			defer host.DeleteRepository("foo")
@@ -189,7 +191,7 @@ func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			if err := host.InitRepository("foo", publicKey); err != nil {
+			if err := host.InitRepository("foo", map[string]int64{"foo":1}, map[int64]string{1:publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 
@@ -200,9 +202,9 @@ func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
 				defer repo.Delete()
 				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
 			}
-
 			defer host.DeleteRepository("foo")
-			if err := host.InitRepository("bar", publicKey); err != nil {
+
+			if err := host.InitRepository("bar", map[string]int64{"foo":1, "bar":1}, map[int64]string{1:publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 			defer host.DeleteRepository("bar")
@@ -215,9 +217,11 @@ func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
 				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
 			}
 
-			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err == nil {
+			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err != nil {
+				t.ErrorNow(err)
+			} else {
 				defer repo.Delete()
-				t.ErrorNow("Expected failure")
+				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
 			}
 		}
 	})

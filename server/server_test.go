@@ -196,14 +196,14 @@ func TestUnescaptedParsingFails(t *testing.T) {
 	})
 }
 
-func TestSimilarPublicKeysFail(t *testing.T) {
+func TestSimilarPublicKeys(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
 		r := sendPost(t, server, "/register", strings.NewReader("name=NameFoo&public_key="+url.QueryEscape(SamplePublicKey)))
 		if Json(t,r).Key("data").Key("name").String() != "NameFoo" { t.FailNow() }
 		if Json(t,r).Key("data").Key("public_key").String() != SamplePublicKey { t.FailNow() }
-		if r := sendPostExpectStatus(t, server, http.StatusInternalServerError, "/register", strings.NewReader("name=NameBar&public_key="+url.QueryEscape(SimilarPublicKey))); Json(t,r).Key("error").Key("message").String() != "UNIQUE constraint failed: user.public_key" {
-			t.ErrorNow(r, "expected 'Key already in use'")
-		}
+		r = sendPost(t, server, "/register", strings.NewReader("name=NameBar&public_key="+url.QueryEscape(SimilarPublicKey)))
+		if Json(t,r).Key("data").Key("name").String() != "NameBar" { t.FailNow() }
+		if Json(t,r).Key("data").Key("public_key").String() != SimilarPublicKey { t.FailNow() }
 	})
 }
 

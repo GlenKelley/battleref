@@ -6,6 +6,9 @@ import (
 
 // Logical database operations for a tournament
 type Statements interface {
+	RegisterKey(publicKey string) (int64, error)
+	ListKeys() (map[int64]string, error)
+	PlayerKeys() (map[string]int64, error)
 	CreateUser(name, publicKey string) error
 	UserExists(name string) (bool, error)
 	ListUsers() ([]string, error)
@@ -44,9 +47,59 @@ func (c *Commands) SchemaVersion() (string, error) {
 	return maxSchemaVersion, nil
 }
 
+func (c *Commands) RegisterKey(publicKey string) (int64, error) {
+	var id int64
+	if _, err := c.tx.Exec("insert or ignore into pkey(key) values (?)", publicKey); err != nil {
+		return 0, err
+	} else if err := c.tx.QueryRow("select id from pkey where key = ?", publicKey).Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (c *Commands) ListKeys() (map[int64]string, error) {
+	if rows, err := c.tx.Query("select id, key from pkey"); err != nil {
+		return nil, err
+	} else {
+		keys := make(map[int64]string)
+		for rows.Next() {
+			var id int64
+			var public_key string
+			if err2 := rows.Scan(&id, &public_key); err2 != nil {
+				return nil, err2
+			} else {
+				keys[id] = public_key
+			}
+		}
+		return keys, nil
+	}
+}
+
+func (c *Commands) PlayerKeys() (map[string]int64, error) {
+	if rows, err := c.tx.Query("select name, public_key from user"); err != nil {
+		return nil, err
+	} else {
+		playerKeys := make(map[string]int64)
+		for rows.Next() {
+			var name string
+			var id int64
+			if err2 := rows.Scan(&name, &id); err2 != nil {
+				return nil, err2
+			} else {
+				playerKeys[name] = id
+			}
+		}
+		return playerKeys, nil
+	}
+}
+
 func (c *Commands) CreateUser(name, publicKey string) error {
-	_, err := c.tx.Exec("insert into user(name, public_key) values(?,?)", name, publicKey)
-	return err
+	if id, err := c.RegisterKey(publicKey); err != nil {
+		return err
+	} else {
+		_, err := c.tx.Exec("insert into user(name, public_key) values(?,?)", name, id)
+		return err
+	}
 }
 
 func (c *Commands) UserExists(name string) (bool, error) {

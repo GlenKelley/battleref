@@ -85,7 +85,11 @@ func (t *Tournament) deleteRepository(name string) error {
 }
 
 func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) (string, error) {
-	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
+	if publicKeys, err := t.Database.ListKeys(); err != nil {
+		return "", err
+	} else if playerKeys, err := t.Database.PlayerKeys(); err != nil {
+		return "", err
+	} else if err = t.GitHost.InitRepository(name, playerKeys, publicKeys); err != nil {
 		return "", err
 	} else if checkout, err := t.GitHost.CloneRepository(t.Remote, name); err != nil {
 		defer t.deleteRepository(name)
@@ -115,21 +119,21 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 
 func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 	var commitHash string
-	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
-		if exists, err := tx.UserExists(name); err != nil {
-			return err
+	//TODO:(gkelley) this didn't work with a transaction. There is a race condition without one.
+//	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
+		if exists, err := t.Database.UserExists(name); err != nil {
+			return "", err
 		} else if exists {
-			return errors.New("User already exists")
+			return "", errors.New("User already exists")
 		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
-			return err
-		} else if err := tx.CreateUser(name, publicKey); err != nil {
-			defer t.deleteRepository(name)
-			return err
+			return "", err
+		} else if err := t.Database.CreateUser(name, publicKey); err != nil {
+			return "", err
 		} else {
 			commitHash = ch
-			return nil
+			return commitHash, nil
 		}
-	})
+//	})
 }
 
 func (t *Tournament) CreateMap(name, source string) error {

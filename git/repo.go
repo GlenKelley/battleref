@@ -12,6 +12,7 @@ import (
 
 type Repository interface {
 	AddFiles(files []string) error
+	DeleteFiles(files []string) error
 	CommitFiles(files []string, message string) error
 	Push() error
 	ForcePush() error
@@ -28,19 +29,6 @@ type Remote interface {
 }
 
 type TempRemote struct {
-}
-
-func DebugCmd(cmd *exec.Cmd) error {
-	bs1 := bytes.Buffer{}
-	bs2 := bytes.Buffer{}
-	cmd.Stdout = &bs1
-	cmd.Stderr = &bs2
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
-		return err
-	} else {
-		return nil
-	}
 }
 
 func RunCmd(cmd *exec.Cmd) error {
@@ -66,7 +54,6 @@ func CmdOutput(cmd *exec.Cmd) ([]byte, error) {
 		fmt.Printf("Error running %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, string(output), string(bs.Bytes()))
 		return nil, err
 	} else {
-		fmt.Printf("Success %v %v\n", cmd.Path, cmd.Args)
 		return output, nil
 	}
 }
@@ -137,6 +124,12 @@ func (r *SimpleRepository) Dir() string {
 
 func (r *SimpleRepository) AddFiles(files []string) error {
 	cmd := exec.Command("git", append([]string{"add"}, files ...) ...)
+	cmd.Dir = r.dir
+	return RunCmd(cmd)
+}
+
+func (r *SimpleRepository) DeleteFiles(files []string) error {
+	cmd := exec.Command("git", append([]string{"rm", "-r"}, files ...) ...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)
 }

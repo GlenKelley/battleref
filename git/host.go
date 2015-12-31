@@ -14,9 +14,9 @@ import (
 )
 
 type GitHost interface {
-	InitRepository(name, publicKey string) error
+	InitRepository(name string, repos map[string]int64, publicKeys map[int64]string) error
 	CloneRepository(remote Remote, name string) (Repository, error)
-	ForkRepository(source, fork, publicKey string) error
+	ForkRepository(source, fork string, repos map[string]int64, publicKeys map[int64]string) error
 	DeleteRepository(name string) error
 	RepositoryURL(name string) string
 	ExternalRepositoryURL(name string) string
@@ -82,7 +82,7 @@ func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
 	return &GitoliteHost{conf}, nil
 }
 
-func (g *LocalDirHost) InitRepository(name, publicKey string) error {
+func (g *LocalDirHost) InitRepository(name string, repos map[string]int64, publicKeys map[int64]string) error {
 	repoURL := g.RepositoryURL(name)
 	if _, err := os.Stat(repoURL); os.IsNotExist(err) {
 		return RunCmd(exec.Command("git","init","--bare",repoURL))
@@ -98,7 +98,7 @@ func (g *LocalDirHost) CloneRepository(remote Remote, name string) (Repository, 
 	return repo, err
 }
 
-func (g *LocalDirHost) ForkRepository(source, fork, publicKey string) error {
+func (g *LocalDirHost) ForkRepository(source, fork string, repos map[string]int64, publicKeys map[int64]string) error {
 	return exec.Command("git","clone","--bare",g.RepositoryURL(source),g.RepositoryURL(fork)).Run()
 }
 
@@ -163,35 +163,99 @@ func (g *GitoliteHost) checkoutAdminRepo() (Repository, error) {
 	return repo, err
 }
 
-func (g *GitoliteHost) InitRepository(name, publicKey string) error {
-	if isReserved, err := g.IsReservedKey(publicKey); err != nil {
-		return err
-	} else if isReserved {
-		return errors.New("Reserved Key")
+const confHeader = `repo gitolite-admin
+    RW+     =   webserver
+
+    repo testing
+        RW+     =   @all
+
+`
+func (g *GitoliteHost) InitRepository(name string, repos map[string]int64, publicKeys map[int64]string) error {
+	// Validate keys
+	for _, publicKey := range publicKeys {
+		if isReserved, err := g.IsReservedKey(publicKey); err != nil {
+			return err
+		} else if isReserved {
+			return errors.New("Reserved Key")
+		}
 	}
+	for repoName, id := range repos {
+		if _, ok := publicKeys[id]; !ok {
+			return fmt.Errorf("Repo %v has an invalid key id %v.", repoName, id)
+		}
+	}
+	if _, ok := repos[name]; !ok {
+		return fmt.Errorf("Repo %v has no public key mapping.", name)
+	}
+
 	if repo, err := g.checkoutAdminRepo(); err != nil {
 		return err
 	} else {
 		defer repo.Delete()
 		dir := repo.Dir()
-		keyFile := filepath.Join(dir, "keydir", name + ".pub")
-		confFile := filepath.Join(dir, "conf", "gitolite.conf")
-		//TODO: check edge case where user key is duplicated
-		files := []string{keyFile, confFile}
-		confLine := fmt.Sprintf("repo %v\n    RW+    =   webserver %v\n", name, name)
-		if err := ioutil.WriteFile(keyFile, []byte(publicKey), 0644); err != nil {
+		userKeyDir := filepath.Join(dir, "keydir", "users")
+		confDir := filepath.Join(dir, "conf")
+		confFile := filepath.Join(confDir, "gitolite.conf")
+
+		// Delete files to be modified 
+		files := []string{confFile, userKeyDir}
+		toDelete := []string{}
+		for _, file := range files {
+			if _, err := os.Stat(file); err == nil {
+				toDelete = append(toDelete, file)
+			}
+		}
+		if len(toDelete) > 0 {
+			if err := repo.DeleteFiles(toDelete); err != nil {
+				return err
+			}
+		}
+		for _, file := range files {
+			if err := os.RemoveAll(file); err != nil {
+				return err
+			}
+		}
+
+		// Update conf file
+		if err := os.MkdirAll(confDir, os.ModeDir | 0755); err != nil {
 			return err
-		} else if conf, err := os.OpenFile(confFile, os.O_RDWR, 0644); err != nil {
+		}
+		if conf, err := os.OpenFile(confFile, os.O_WRONLY | os.O_CREATE, 0644); err != nil {
 			return err
-		} else if _, err := conf.Seek(0, os.SEEK_END); err != nil {
+		} else {
+			if _, err := conf.WriteString(confHeader); err != nil {
+				return err
+			}
+			for repoName, id := range repos {
+				if _, err := conf.WriteString(fmt.Sprintf("repo %v\n    RW+    =   webserver key_%v\n", repoName, id)); err != nil {
+					return err
+				}
+			}
+			if err := conf.Close(); err != nil {
+				return err
+			}
+		}
+
+		// Create user keys
+		if err := os.Mkdir(userKeyDir, os.ModeDir | 0755); err != nil {
 			return err
-		} else if _, err := conf.WriteString(confLine); err != nil {
+		}
+		for id, publicKey := range publicKeys {
+			keyFile := filepath.Join(userKeyDir, fmt.Sprintf("key_%v.pub", id))
+			if err := ioutil.WriteFile(keyFile, []byte(publicKey), 0644); err != nil {
+				return err
+			}
+			files = append(files, keyFile)
+		}
+
+		// Commit changed files
+		if err := repo.AddFiles(files); err != nil {
 			return err
-		} else if err := repo.AddFiles(files); err != nil {
+		}
+		if err := repo.CommitFiles(files, fmt.Sprintf("added repo %v", name)); err != nil {
 			return err
-		} else if err := repo.CommitFiles(files, fmt.Sprintf("added repo %v", name)); err != nil {
-			return err
-		} else if err := repo.Push(); err != nil {
+		}
+		if err := repo.Push(); err != nil {
 			return err
 		}
 	}
@@ -208,7 +272,7 @@ func (g *GitoliteHost) CloneRepository(remote Remote, name string) (Repository, 
 	}
 }
 
-func (g *GitoliteHost) ForkRepository(source, fork, publicKey string) error {
+func (g *GitoliteHost) ForkRepository(source, fork string, repos map[string]int64, publicKeys map[int64]string) error {
 	return errors.New("Not implemented.")
 }
 
