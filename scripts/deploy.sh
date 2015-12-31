@@ -100,15 +100,16 @@ if id -u "$WEBSERVER_USER" > /dev/null 2>&1 ; then
       echo "Waiting for server to shutdown."
       ATTEMPTS=0
       IS_SHUTDOWN=
+      echo -n "."
       while [[ -z "\$IS_SHUTDOWN" ]] && [[ "\$ATTEMPTS" -le 10 ]] && sleep 1; do
         if ! curl localhost:$SHUTDOWN_PORT/version > /dev/null 2>&1 ; then
-	  echo "SHUTDOWN"
           IS_SHUTDOWN=TRUE
 	else
           echo -n "."
 	fi
 	ATTEMPTS=\$((ATTEMPTS + 1))
      done
+     echo
      if [[ -n "\$IS_SHUTDOWN" ]] ; then
        echo "Server has been shutdown."
      else
@@ -250,7 +251,7 @@ sudo -u $WEBSERVER_USER mkdir -p -m 0700 "\${WEBSERVER_HOME}/.ssh"
 sudo cp .ssh/webserver \${WEBSERVER_HOME}/.ssh/webserver
 sudo cp .ssh/webserver \${WEBSERVER_HOME}/.ssh/id_rsa
 sudo cp .ssh/webserver.pub \${WEBSERVER_HOME}/.ssh/
-#sudo cp .ssh/git.pub \${WEBSERVER_HOME}/.ssh/
+sudo cp .ssh/git.pub \${WEBSERVER_HOME}/.ssh/
 sudo cp .ssh/git \${WEBSERVER_HOME}/.ssh/
 sudo cp .ssh/ec2-user.pub \${WEBSERVER_HOME}/.ssh/
 sudo chown -R "${WEBSERVER_USER:$WEBSERVER_USER}" \${WEBSERVER_HOME}/.ssh/
@@ -307,18 +308,21 @@ nohup \$GOPATH/src/$REPO/scripts/restartServer.sh -e $ENV -r \$GOPATH/src/$REPO 
 header "Waiting until server comes online."
 ONLINE=
 ATTEMPTS=0
+echo -n "."
 while [[ -z "\$ONLINE" ]] && [[ "\$ATTEMPTS" -le 90 ]] && sleep 1 ; do
   if curl localhost:$SHUTDOWN_PORT/version > /dev/null 2>&1 ; then
-    header "Server online."
     ONLINE=TRUE
   else
     echo -n "."
   fi
   ATTEMPTS=\$((ATTEMPTS + 1))
 done
+echo
 if [[ -z "\$ONLINE" ]] ; then
  failure "Server did not come online."
  exit 1
+else
+    header "Server online."
 fi
 
 exit
