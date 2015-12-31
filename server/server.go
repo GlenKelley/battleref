@@ -115,7 +115,7 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 		if r.Method == method {
 			handler(w, r, s)
 		} else {
-			web.WriteJsonErrorWithCode(w, errors.New(fmt.Sprintf("Expected method %v not %v", method, r.Method)), http.StatusMethodNotAllowed)
+			web.WriteJsonErrorWithCode(w, fmt.Errorf("Expected method %v not %v", method, r.Method), http.StatusMethodNotAllowed)
 		}
 	})
 }

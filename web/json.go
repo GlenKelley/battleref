@@ -4,7 +4,6 @@ import (
 	"log"
 	"fmt"
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"net/url"
 	"net/http"
@@ -68,7 +67,7 @@ func RoundTripJson (req *http.Request, jsonResponse interface{}) error {
 	} else if response.StatusCode != http.StatusOK {
 		return NewHttpResponseError(response)
 	} else if response.Header.Get(HeaderContentType) != ContentTypeJson {
-		return errors.New(fmt.Sprintf("Unexpected %v %v", HeaderContentType, response.Header.Get(HeaderContentType)))
+		return fmt.Errorf("Unexpected %v %v", HeaderContentType, response.Header.Get(HeaderContentType))
 	} else {
 		return json.NewDecoder(response.Body).Decode(jsonResponse)
 	}
@@ -88,7 +87,7 @@ func MarshalValues(query map[string]interface{}) (url.Values, error) {
 	for k, v := range query {
 		switch v := v.(type) {
 		case string: values.Add(k, v)
-		default: return nil, errors.New(fmt.Sprintf("unhandled type of %v", v))
+		default: return nil, fmt.Errorf("unhandled type of %v", v)
 		}
 	}
 	return values, nil

@@ -4,7 +4,6 @@ import (
 	"os"
 	"fmt"
 	"sort"
-	"errors"
 	"strconv"
 	"regexp"
 	"database/sql"
@@ -93,7 +92,7 @@ var SchemaVersionRegex = regexp.MustCompile("(\\d+).(\\d+).(\\d+)")
 func ParseSchemaVersion(s string) (int, int, int, error) {
 	ss := SchemaVersionRegex.FindStringSubmatch(s)
 	if ss == nil {
-		return 0,0,0, errors.New(fmt.Sprintf("Unable to parse %s", s))
+		return 0,0,0, fmt.Errorf("Unable to parse %s", s)
 	}
 	major, err := strconv.Atoi(ss[1])
 	if err != nil { return 0,0,0,err }

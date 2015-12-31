@@ -78,7 +78,7 @@ func (t *Tournament) ListCategories() ([]TournamentCategory, error) {
 
 func (t *Tournament) deleteRepository(name string) error {
 	if err := t.GitHost.DeleteRepository(name); err != nil {
-		fmt.Errorf("Failed to delete repo for user %n: %v\n", err)
+		fmt.Printf("Failed to delete repo for user %n: %v\n", err)
 		return err
 	}
 	return nil

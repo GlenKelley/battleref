@@ -53,7 +53,7 @@ func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
 		} else {
 			return host, err
 		}
-	default: return nil, errors.New(fmt.Sprintf("Unkown host type %v", hostType))
+	default: return nil, fmt.Errorf("Unkown host type %v", hostType)
 	}
 }
 
@@ -89,7 +89,7 @@ func (g *LocalDirHost) InitRepository(name, publicKey string) error {
 	} else if err != nil {
 		return err
 	} else {
-		return errors.New(fmt.Sprintf("%v exists", repoURL))
+		return fmt.Errorf("%v exists", repoURL)
 	}
 }
 
@@ -150,7 +150,7 @@ func (g *GitoliteHost) IsReservedKey(publicKey string) (bool, error) {
 		} else if key, err := ioutil.ReadFile(keyFile + ".pub"); err != nil {
 			return false, err
 		} else if match := PublicKeyRegex.FindStringSubmatch(string(key)); match == nil {
-			return false, errors.New(fmt.Sprintf("Invalid Key Format %v", string(key)))
+			return false, fmt.Errorf("Invalid Key Format %v", string(key))
 		} else if match[1] == publicKey {
 			return true, nil
 		}
@@ -226,15 +226,15 @@ func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 }
 
 func (g *GitoliteHost) Validate() error {
-	fmt.Errorf("Validating user %v\n", g.User)
+	fmt.Println("Validating user", g.User)
 	if _, err := user.Lookup(g.User); err != nil {
 		return err
 	}
-	fmt.Errorf("Validating Admin key %v\n", g.AdminKey)
+	fmt.Println("Validating Admin key", g.AdminKey)
 	if _, err := os.Stat(g.AdminKey); err != nil {
 		return err
 	}
-	fmt.Errorf("Validating SSH key %v\n", g.SSHKey)
+	fmt.Println("Validating SSH key", g.SSHKey)
 	if _, err := os.Stat(g.SSHKey); err != nil {
 		return err
 	}

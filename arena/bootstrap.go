@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"fmt"
 	"strings"
-	"errors"
 	"os"
 	"io/ioutil"
 )
@@ -22,7 +21,7 @@ func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) (
 			files, err := populateBattlecode2014Player(name, sourceDir)
 			return files, err
 		}
-		default: return []string{}, errors.New(fmt.Sprintf("Can't create bootstrap for unkown category %s", category))
+		default: return []string{}, fmt.Errorf("Can't create bootstrap for unkown category %s", category)
 	}
 }
 
