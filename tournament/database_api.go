@@ -219,7 +219,7 @@ func (c *Commands) CreateMatch(category TournamentCategory, mapName string, play
 	} else if exists {
 		return nil
 	} else {
-		_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, result) values (?, ?, ?, ?, ?, ?, ?, ?)", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, MatchResultInProgress)
+		_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, updated, result) values (?, ?, ?, ?, ?, ?, ?, ?, ?)", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, created, MatchResultInProgress)
 		return err
 	}
 }
