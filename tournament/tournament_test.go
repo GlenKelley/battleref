@@ -1,6 +1,7 @@
 package tournament
 
 import (
+	"os/user"
 	"time"
 	"testing"
 	_ "github.com/mattn/go-sqlite3"
@@ -12,6 +13,46 @@ import (
 func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
 	if host, err := git.CreateGitHost(":temp:", nil); err != nil {
+		t.ErrorNow(err)
+	} else {
+		defer host.Cleanup()
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "UkVQTEFZIEJBU0U2NAo="}, nil}
+		remote := git.TempRemote{}
+		bootstrap := &arena.MinimalBootstrap{}
+		if database, err := NewInMemoryDatabase(); err != nil {
+			t.ErrorNow(err)
+		} else if err = database.MigrateSchema(); err != nil {
+			t.ErrorNow(err)
+		} else {
+			tournament := NewTournament(database, dummyArena, bootstrap, host, remote)
+			f(t, tournament)
+		}
+	}
+}
+
+var gitoliteTestConf = git.GitoliteConf {
+	"localhost",
+	"foobar",
+	"git-test",
+	".ssh/webserver",
+	".ssh/git",
+}
+
+func GitoliteTournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
+	t := (*testutil.T)(test)
+	conf := gitoliteTestConf
+	conf.AdminKey = testutil.PathRelativeToUserHome(t, conf.AdminKey)
+	conf.SSHKey = testutil.PathRelativeToUserHome(t, conf.SSHKey)
+	if host, err := git.CreateGitoliteHost(conf); err != nil {
+		t.ErrorNow(err)
+	} else if _, err := user.Lookup(host.User); err != nil {
+		switch err.(type) {
+		case user.UnknownUserError:
+			t.Skipf("%v, skipping gitolite tests", err)
+			t.SkipNow()
+			default: t.ErrorNow(err)
+		}
+	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
@@ -229,5 +270,8 @@ func TestRunLatestMatches(t *testing.T) {
 	})
 }
 
-
+func TestDuplicatePublicKey(t *testing.T) {
+	GitoliteTournamentTest(t, func(t *testutil.T, tm *Tournament) {
+	})
+}
 

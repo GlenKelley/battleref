@@ -130,6 +130,7 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
 	} else {
+		defer host.Cleanup()
 		f(t, host)
 	}
 }
