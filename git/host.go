@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"bytes"
 	"os/exec"
+	"os/user"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -19,6 +20,7 @@ type GitHost interface {
 	DeleteRepository(name string) error
 	RepositoryURL(name string) string
 	ExternalRepositoryURL(name string) string
+	Validate() error
 	Cleanup() error
 	Reset() error
 }
@@ -110,6 +112,15 @@ func (g *LocalDirHost) RepositoryURL(name string) string {
 
 func (g *LocalDirHost) ExternalRepositoryURL(name string) string {
 	return fmt.Sprintf("%s.git", filepath.Join(g.Dir, name))
+}
+
+func (g *LocalDirHost) Validate() error {
+	if info, err := os.Stat(g.Dir); err != nil {
+		return err
+	} else if !info.IsDir() {
+		return errors.New("Local repo directory does not exist")
+	}
+	return nil
 }
 
 func (g *LocalDirHost) Cleanup() error {
@@ -212,6 +223,19 @@ func (g *GitoliteHost) RepositoryURL(name string) string {
 
 func (g *GitoliteHost) ExternalRepositoryURL(name string) string {
 	return fmt.Sprintf("%s@%s:%s.git", g.User, g.ExternalHostname, name)
+}
+
+func (g *GitoliteHost) Validate() error {
+	if _, err := user.Lookup(g.User); err != nil {
+		return err
+	}
+	if _, err := os.Stat(g.AdminKey); err != nil {
+		return err
+	}
+	if _, err := os.Stat(g.SSHKey); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (g *GitoliteHost) Cleanup() error {

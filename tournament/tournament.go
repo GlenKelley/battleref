@@ -123,7 +123,7 @@ func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
 			return err
 		} else if err := tx.CreateUser(name, publicKey); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return err
 		} else {
 			commitHash = ch

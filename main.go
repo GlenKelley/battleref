@@ -56,6 +56,8 @@ func CreateServer(properties server.Properties) (*server.ServerState, error) {
 		return nil, err
 	} else if host, err := git.CreateGitHost(properties.GitServerType, properties.GitServerConf); err != nil {
 		return nil, err
+	} else if err := host.Validate(); err != nil {
+		return nil, err
 	} else {
 		matchArena := arena.NewArena(properties.ArenaResourcePath())
 		remote := git.TempRemote{}
