@@ -170,7 +170,7 @@ func (c *Commands) ListMatches() ([]Match, error) {
 		for rows.Next() {
 			var match Match
 			var result string
-			if err2 := rows.Scan(&match.id, &match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result, &match.Time); err2 != nil {
+			if err2 := rows.Scan(&match.Id, &match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result, &match.Time); err2 != nil {
 				return nil, err2
 			} else {
 				match.Result = MatchResult(result)
