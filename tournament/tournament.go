@@ -154,6 +154,7 @@ func (t *Tournament) ListMaps() ([]string, error) {
 }
 
 type Match struct {
+	id int64
 	Player1 string
 	Player2 string
 	Commit1 string
