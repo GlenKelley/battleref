@@ -6,6 +6,7 @@ import (
 //	"path/filepath"
 	"log"
 	"strings"
+	"strconv"
 //	"encoding/json"
 	"net"
 	"net/url"
@@ -22,8 +23,6 @@ import (
 	"time"
 	"io/ioutil"
 	"encoding/json"
-	"encoding/hex"
-	"crypto/md5"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/git"
 	"github.com/GlenKelley/battleref/web"
@@ -71,9 +70,9 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s := ServerState{tournament, properties, httpServer, nil, make(map[string]Route)}
 	s.HandleFunc("GET", "/version", version, "The code version running this server.")
 	s.HandleFunc("GET", "/api", api, "API documentation.")
-	s.HandleFunc("GET", "/players", players, "A list of registered players.")
-	s.HandleFunc("GET", "/categories", categories, "A list of tournament categories.")
-	s.HandleFunc("GET", "/maps", maps, "A list of all maps.")
+	s.HandleFunc("GET", "/players", players, "List all registered players.")
+	s.HandleFunc("GET", "/categories", categories, "List all tournament categories.")
+	s.HandleFunc("GET", "/maps", maps, "List all maps.")
 	s.HandleFunc("GET", "/commits", commits, "A list of submitted commits for a player in a category.")
 	s.HandleFunc("GET", "/map/source", mapSource, "")
 	s.HandleFunc("POST", "/shutdown", shutdown, "Turn off the server.")
@@ -82,7 +81,8 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/submit", submit, "Register a commit for a player into a category.")
 	s.HandleFunc("POST", "/match/run", runMatch, "Run a single match between two submissions.")
 	s.HandleFunc("POST", "/match/run/latest", runLatestMatches, "Run matches between all recent submissions.")
-	s.HandleFunc("GET", "/matches", matches, "")
+	s.HandleFunc("GET", "/matches", matches, "List all matches")
+	s.HandleFunc("GET", "/replay", replay, "The replay log of a single match")
 
 	return &s
 
@@ -223,6 +223,7 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 	formType := reflect.TypeOf(form).Elem()
 	formValue := reflect.ValueOf(form).Elem()
 	contentTypes := r.Header["Content-Type"]
+	werr := web.NewError(http.StatusInternalServerError, "Validation errors")
 	if len(contentTypes) > 0 && contentTypes[0] == "application/json" {
 		if r.Body != nil {
 			if err := json.NewDecoder(r.Body).Decode(form); err != nil {
@@ -240,29 +241,45 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 		}
 		r.ParseForm()
 		for i, n := 0, formType.NumField(); i < n; i++ {
+			field := formType.Field(i)
 			formTag := formType.Field(i).Tag.Get("form")
 			postValue := postValues.Get(formTag)
+			var value string
 			queryValue := r.Form.Get(formTag)
 			if postValue != "" {
-				formValue.Field(i).SetString(postValue)
+				value = postValue
 			} else if queryValue != "" {
-				formValue.Field(i).SetString(queryValue)
+				value = queryValue
+			}
+			switch field.Type.Kind() {
+			case reflect.Int64: {
+				if v, err := strconv.Atoi(value); err != nil {
+					werr.AddError(web.NewErrorItem("Invalid integer", fmt.Sprintf("Unable to parse '%v' as an integer", value), field.Name, "formfield"))
+				} else {
+					formValue.Field(i).SetInt(int64(v))
+				}
+				break
+			}
+			case reflect.String: {
+				formValue.Field(i).SetString(value)
+				break
+			}
+			default: return web.SimpleError(fmt.Errorf("Unexpected type %v", formType.Kind()))
 			}
 		}
 	}
-	err := web.NewError(http.StatusInternalServerError, "Validation errors")
 	for i, n := 0, formType.NumField(); i < n; i++ {
 		field := formType.Field(i)
 		value := formValue.Field(i)
 		validateTag := field.Tag.Get("validate")
 		if validateTag == "required" && value.String() == "" {
-			err.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
+			werr.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
 		}
 	}
-	if err.Errors() == nil {
+	if werr.Errors() == nil {
 		return nil
 	} else {
-		return err
+		return werr
 	}
 }
 
@@ -393,12 +410,7 @@ func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if matches, err := s.Tournament.ListMatches(); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		codes := []string{}
-		for _, match := range matches {
-			hash := md5.Sum([]byte(fmt.Sprint(match)))
-			codes = append(codes, hex.EncodeToString(hash[:]))
-		}
-		web.WriteJson(w, JSONResponse{"matches":matches, "codes":codes})
+		web.WriteJson(w, JSONResponse{"matches":matches})
 	}
 }
 
@@ -429,10 +441,23 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, errors.New("Invalid commit hash 1"))
 	} else if !CommitHashRegex.MatchString(form.Commit2) {
 		web.WriteJsonError(w, errors.New("Invalid commit hash 2"))
-	} else if result, err := s.Tournament.RunMatch(form.Category, form.Map, tournament.Submission{form.Player1, form.Commit1}, tournament.Submission{form.Player2, form.Commit2}, tournament.SystemClock()); err != nil {
+	} else if id, result, err := s.Tournament.RunMatch(form.Category, form.Map, tournament.Submission{form.Player1, form.Commit1}, tournament.Submission{form.Player2, form.Commit2}, tournament.SystemClock()); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"result":result})
+		web.WriteJson(w, JSONResponse{"id":id, "result":result})
+	}
+}
+
+func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Id int64 `json:"id" form:"id" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		web.WriteJsonWebError(w, err)
+	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
+		web.WriteJsonError(w, err)
+	} else {
+		web.WriteJson(w, JSONResponse{"replay":replay})
 	}
 }
 

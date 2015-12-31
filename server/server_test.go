@@ -1,11 +1,13 @@
 package server
 
 import (
+	"fmt"
 	"reflect"
 	"io"
 	"net/url"
 	"bytes"
 	"time"
+	"strconv"
 	"encoding/json"
 	"strings"
 	"io/ioutil"
@@ -33,7 +35,7 @@ func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{}
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "REPLAY_FOOBAR"}, nil}
 		remote := &git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := tournament.NewInMemoryDatabase(); err != nil {
@@ -294,6 +296,16 @@ func (j JsonWrapper) At(i int) JsonWrapper {
 	}
 }
 
+func (j JsonWrapper) Int() int {
+	switch n := j.Node.(type) {
+	case int: return n
+	case float64: return int(n)
+	default:
+		j.T.ErrorNow("invalid json int", n)
+		return 0
+	}
+}
+
 func (j JsonWrapper) String() string {
 	switch n := j.Node.(type) {
 	case string: return n
@@ -421,3 +433,17 @@ func TestCommits(t *testing.T) {
 	})
 }
 
+func TestReplay(t *testing.T) {
+	ServerTest(t, func(t *testutil.T, server *ServerState) {
+		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey})
+		sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameBar","source":"SourceBar"})
+		r := sendGet(t, server, "/commits?name=NameFoo&category=" + string(tournament.CategoryGeneral))
+		fmt.Println(r)
+		commit := Json(t,r).Key("data").Key("commits").At(0).String()
+		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1":"NameFoo","player2":"NameFoo","category":string(tournament.CategoryGeneral),"commit1":commit,"commit2":commit,"map":"NameBar"})
+		id := Json(t,r).Key("data").Key("id").Int()
+		if r := sendGet(t, server, "/replay?id=" + strconv.Itoa(id)); Json(t,r).Key("data").Key("replay").String() != "REPLAY_FOOBAR" {
+			t.ErrorNow("Expected replay REPLAY_FOOBAR got:", Json(t,r).Key("data").Key("replay").String())
+		}
+	})
+}

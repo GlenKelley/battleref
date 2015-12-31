@@ -7,19 +7,19 @@ import (
 	"os/exec"
 	"os/user"
 	"io/ioutil"
-	"runtime/debug"
+//	"runtime/debug"
 )
 
 type T testing.T
 
 func (t *T) ErrorNow(args ... interface{}) {
-	debug.PrintStack()
+//	debug.PrintStack()
 	t.Error(args ...)
 	t.FailNow()
 }
 
 func (t *T) ErrorNowf(format string, args ... interface{}) {
-	debug.PrintStack()
+//	debug.PrintStack()
 	t.Errorf(format, args ...)
 	t.FailNow()
 }

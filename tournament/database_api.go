@@ -22,10 +22,10 @@ type Statements interface {
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
-	CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error
+	CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error)
 	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error
-	GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error)
-	GetMatchReplay(category TournamentCategory, mapName string, player1, palyer2 Submission) (string, error)
+	GetMatchResult(id int64) (MatchResult, error)
+	GetMatchReplay(id int64) (string, error)
 }
 
 // An implementation of statements which uses an abstracted sql connection
@@ -212,15 +212,19 @@ func (c *Commands) ListCommits(name string, category TournamentCategory) ([]stri
 	return commits, err
 }
 
-func (c *Commands) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error {
+func (c *Commands) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error) {
 	var exists bool
-	if err := c.tx.QueryRow("select count(*) > 0 from match where player1 = ? and player2 = ? and commit1 = ? and commit2 = ? and map = ? and category = ?", player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, mapName, string(category)).Scan(&exists); err != nil {
-		return err
+	var id int64
+	if err := c.tx.QueryRow("select count(*) > 0, ifnull(max(id),0) as id from match where player1 = ? and player2 = ? and commit1 = ? and commit2 = ? and map = ? and category = ?", player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, mapName, string(category)).Scan(&exists, &id); err != nil {
+		return 0, err
 	} else if exists {
-		return nil
+		return id, nil
+	} else if _, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, updated, result) values (?, ?, ?, ?, ?, ?, ?, ?, ?)", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, created, MatchResultInProgress); err != nil {
+		return 0, nil
+	} else if err := c.tx.QueryRow("select id as id from match where player1 = ? and player2 = ? and commit1 = ? and commit2 = ? and map = ? and category = ?", player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, mapName, string(category)).Scan(&id); err != nil {
+		return 0, err
 	} else {
-		_, err := c.tx.Exec("insert into match(category, map, player1, player2, commit1, commit2, created, updated, result) values (?, ?, ?, ?, ?, ?, ?, ?, ?)", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash, created, created, MatchResultInProgress)
-		return err
+		return id, nil
 	}
 }
 
@@ -229,9 +233,9 @@ func (c *Commands) UpdateMatch(category TournamentCategory, mapName string, play
 	return err
 }
 
-func (c *Commands) GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error) {
+func (c *Commands) GetMatchResult(id int64) (MatchResult, error) {
 	var result string
-	err := c.tx.QueryRow("select result from match where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash).Scan(&result)
+	err := c.tx.QueryRow("select result from match where id = ?", id).Scan(&result)
 	if err != nil {
 		return MatchResultError, err
 	} else {
@@ -239,9 +243,9 @@ func (c *Commands) GetMatchResult(category TournamentCategory, mapName string, p
 	}
 }
 
-func (c *Commands) GetMatchReplay(category TournamentCategory, mapName string, player1, player2 Submission) (string, error) {
+func (c *Commands) GetMatchReplay(id int64) (string, error) {
 	var replay string
-	err := c.tx.QueryRow("select replay from match where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash).Scan(&replay)
+	err := c.tx.QueryRow("select replay from match where id = ?", id).Scan(&replay)
 	return replay, err
 }
 

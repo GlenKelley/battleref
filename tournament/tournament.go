@@ -200,49 +200,52 @@ const (
 	MatchResultError	= "Error"
 )
 
-func (t *Tournament) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) error {
-	return t.Database.CreateMatch(category, mapName, player1, player2, created)
+func (t *Tournament) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error) {
+	id, err := t.Database.CreateMatch(category, mapName, player1, player2, created)
+	return id, err
 }
 
 func (t *Tournament) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {
 	return t.Database.UpdateMatch(category, mapName, player1, player2, finished, result, replay)
 }
 
-func (t *Tournament) GetMatchResult(category TournamentCategory, mapName string, player1, player2 Submission) (MatchResult, error) {
-	result, err := t.Database.GetMatchResult(category, mapName, player1, player2)
+func (t *Tournament) GetMatchResult(id int64) (MatchResult, error) {
+	result, err := t.Database.GetMatchResult(id)
 	return result, err
 }
 
-func (t *Tournament) GetMatchReplay(category TournamentCategory, mapName string, player1, player2 Submission) (string, error) {
-	replay, err := t.Database.GetMatchReplay(category, mapName, player1, player2)
+
+func (t *Tournament) GetMatchReplay(id int64) (string, error) {
+	replay, err := t.Database.GetMatchReplay(id)
 	return replay, err
 }
 
-func (t *Tournament) RunMatch(category TournamentCategory, mapName string, player1, player2 Submission, clock Clock) (MatchResult, error) {
-	if err := t.CreateMatch(category, mapName, player1, player2, clock.Now()); err != nil {
-		return MatchResultError, err
-	}
-	if mapSource, err := t.GetMapSource(mapName); err != nil {
-		return MatchResultError, err
-	} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
-		mapName,
-		strings.NewReader(mapSource),
-		string(category),
-		t.GitHost.RepositoryURL(player1.Name),
-		t.GitHost.RepositoryURL(player2.Name),
-		player1.CommitHash,
-		player2.CommitHash,
-		}, func()time.Time{ return clock.Now() }); err != nil {
-		if err2 := t.UpdateMatch(category, mapName, player1, player2, finished, MatchResultError, ""); err2 != nil {
-			log.Println(err2)
-		}
-		return MatchResultError, err
+func (t *Tournament) RunMatch(category TournamentCategory, mapName string, player1, player2 Submission, clock Clock) (int64, MatchResult, error) {
+	if id, err := t.CreateMatch(category, mapName, player1, player2, clock.Now()); err != nil {
+		return 0, MatchResultError, err
 	} else {
-		matchResult := GetMatchResult(result)
-		if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, result.Replay); err != nil {
-			return MatchResultError, err
+		if mapSource, err := t.GetMapSource(mapName); err != nil {
+			return id, MatchResultError, err
+		} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
+			mapName,
+			strings.NewReader(mapSource),
+			string(category),
+			t.GitHost.RepositoryURL(player1.Name),
+			t.GitHost.RepositoryURL(player2.Name),
+			player1.CommitHash,
+			player2.CommitHash,
+			}, func()time.Time{ return clock.Now() }); err != nil {
+			if err2 := t.UpdateMatch(category, mapName, player1, player2, finished, MatchResultError, ""); err2 != nil {
+				log.Println(err2)
+			}
+			return id, MatchResultError, err
+		} else {
+			matchResult := GetMatchResult(result)
+			if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, result.Replay); err != nil {
+				return id, MatchResultError, err
+			}
+			return id, matchResult, nil
 		}
-		return matchResult, err
 	}
 }
 
@@ -264,7 +267,7 @@ func (t *Tournament) RunLatestMatches(category TournamentCategory) error {
 			for _, submission2 := range latestCommits {
 				if submission1.Name != submission2.Name {
 					for _, mapName := range maps {
-						if _, err := t.RunMatch(category, mapName, submission1, submission2, SystemClock()); err != nil {
+						if _, _, err := t.RunMatch(category, mapName, submission1, submission2, SystemClock()); err != nil {
 							return err
 						}
 					}

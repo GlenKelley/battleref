@@ -187,8 +187,9 @@ func TestCreateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
-		t.CheckError(tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()))
-		if result, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		if id, err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil {
+			t.FailNow()
+		} else if result, err := tm.GetMatchResult(id); err != nil {
 			t.ErrorNow(err)
 		} else if result != MatchResultInProgress {
 			t.FailNow()
@@ -200,16 +201,19 @@ func TestUpdateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
-		t.CheckError(tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()))
-		t.CheckError(tm.UpdateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"))
-		if result, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
-			t.ErrorNow(t, err)
-		} else if result != MatchResultWinA {
-			t.ErrorNow(result, " expected ", MatchResultWinA)
-		} else if replay, err := tm.GetMatchReplay(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		if id, err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.ErrorNow(err)
-		} else if replay != "LogFoo" {
-			t.ErrorNow(replay, " expected LogFoo")
+		} else {
+			t.CheckError(tm.UpdateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"))
+			if result, err := tm.GetMatchResult(id); err != nil {
+				t.ErrorNow(t, err)
+			} else if result != MatchResultWinA {
+				t.ErrorNow(result, " expected ", MatchResultWinA)
+			} else if replay, err := tm.GetMatchReplay(id); err != nil {
+				t.ErrorNow(err)
+			} else if replay != "LogFoo" {
+				t.ErrorNow(replay, " expected LogFoo")
+			}
 		}
 	})
 }
@@ -219,11 +223,11 @@ func TestRunMatch(t *testing.T) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
 		t.CheckError(tm.CreateMap("MapFoo", "SourceFoo"))
-		if result, err := tm.RunMatch(CategoryGeneral, "MapFoo", p1, p2, SystemClock()); err != nil {
+		if id, result, err := tm.RunMatch(CategoryGeneral, "MapFoo", p1, p2, SystemClock()); err != nil {
 			t.ErrorNow(err)
 		} else if result != "WinA" {
 			t.ErrorNowf("Expected WinA not %v\n", result)
-		} else if result2, err := tm.GetMatchResult(CategoryGeneral, "MapFoo", p1, p2); err != nil {
+		} else if result2, err := tm.GetMatchResult(id); err != nil {
 			t.ErrorNow(err)
 		} else if result != result2 {
 			t.ErrorNowf("Expected %v not %v\n", result, result2)
