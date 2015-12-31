@@ -125,9 +125,12 @@ func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 			return "", err
 		} else if exists {
 			return "", errors.New("User already exists")
-		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
-			return "", err
 		} else if err := t.Database.CreateUser(name, publicKey); err != nil {
+			return "", err
+		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
+			if err2 := t.Database.DeleteUser(name); err2 != nil {
+				fmt.Println(err2)
+			}
 			return "", err
 		} else {
 			commitHash = ch

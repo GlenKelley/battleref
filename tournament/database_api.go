@@ -10,6 +10,7 @@ type Statements interface {
 	ListKeys() (map[int64]string, error)
 	PlayerKeys() (map[string]int64, error)
 	CreateUser(name, publicKey string) error
+	DeleteUser(name string) error
 	UserExists(name string) (bool, error)
 	ListUsers() ([]string, error)
 	CreateMap(name, source string) error
@@ -100,6 +101,11 @@ func (c *Commands) CreateUser(name, publicKey string) error {
 		_, err := c.tx.Exec("insert into user(name, public_key) values(?,?)", name, id)
 		return err
 	}
+}
+
+func (c *Commands) DeleteUser(name string) error {
+	_, err := c.tx.Exec("delete from user where name = ?", name)
+	return err
 }
 
 func (c *Commands) UserExists(name string) (bool, error) {
