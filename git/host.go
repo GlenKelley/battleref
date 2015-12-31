@@ -230,7 +230,7 @@ func (g *GitoliteHost) Validate() error {
 	if _, err := user.Lookup(g.User); err != nil {
 		return err
 	}
-	fmt.Errorf("Validating Admin key %v\n", g.Admin)
+	fmt.Errorf("Validating Admin key %v\n", g.AdminKey)
 	if _, err := os.Stat(g.AdminKey); err != nil {
 		return err
 	}
