@@ -274,7 +274,14 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 		field := formType.Field(i)
 		value := formValue.Field(i)
 		validateTag := field.Tag.Get("validate")
-		if validateTag == "required" && value.String() == "" {
+		tags := map[string]bool{}
+		for _, tag := range strings.Split(validateTag, ",") {
+			tags[tag] = true
+		}
+		if tags["required"] && value.String() == "" {
+			werr.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
+		}
+		if tags["required"] && tags["nonzero"] && value.Int() == 0 {
 			werr.AddError(web.NewErrorItem("Missing field", fmt.Sprintf("Missing required field %v", field.Name), field.Name, "formfield"))
 		}
 	}
@@ -452,7 +459,7 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 
 func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Id int64 `json:"id" form:"id" validate:"required"`
+		Id int64 `json:"id" form:"id" validate:"required,nonzero"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
