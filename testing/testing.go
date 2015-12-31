@@ -7,19 +7,23 @@ import (
 	"os/exec"
 	"os/user"
 	"io/ioutil"
-//	"runtime/debug"
+	"runtime"
 )
 
 type T testing.T
 
 func (t *T) ErrorNow(args ... interface{}) {
-//	debug.PrintStack()
+	trace := make([]byte, 1024)
+	count := runtime.Stack(trace, false)
+	t.Errorf("Stack of %d bytes: %s", count, trace)
 	t.Error(args ...)
 	t.FailNow()
 }
 
 func (t *T) ErrorNowf(format string, args ... interface{}) {
-//	debug.PrintStack()
+	trace := make([]byte, 1024)
+	count := runtime.Stack(trace, false)
+	t.Errorf("Stack of %d bytes: %s", count, trace)
 	t.Errorf(format, args ...)
 	t.FailNow()
 }

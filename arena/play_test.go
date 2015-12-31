@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"go/build"
+	"github.com/GlenKelley/battleref/testing"
 )
 
 var SampleMap = []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -59,32 +59,21 @@ public class RobotPlayer {
 	}
 }`)
 
-func ErrorNow(t *testing.T, arg ... interface{}) {
-	t.Error(arg ... )
-	trace := make([]byte, 1024)
-	count := runtime.Stack(trace, false)
-	t.Errorf("Stack of %d bytes: %s", count, trace)
-	t.FailNow()
-}
-
-func Check(t *testing.T, err error) {
-	if err != nil { ErrorNow(t, err) }
-}
-
-func RunCommand(t *testing.T, cmd *exec.Cmd) {
+func RunCommand(t *testutil.T, cmd *exec.Cmd) {
 	if bs, err := cmd.CombinedOutput(); err != nil {
 		t.Error(string(bs))
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	}
 }
 
-func TestRunMatch(t *testing.T) {
+func TestRunMatch(test *testing.T) {
+	t := (*testutil.T)(test)
 	gitDir, err := ioutil.TempDir(os.TempDir(), "samplePlayer")
-	if err != nil { ErrorNow(t, err) }
+	if err != nil { t.ErrorNow(err) }
 	defer os.RemoveAll(gitDir)
 
 	sourceFile := filepath.Join(gitDir, "RobotPlayer.java")
-	Check(t, ioutil.WriteFile(sourceFile, SamplePlayer, os.ModePerm))
+	t.CheckError(ioutil.WriteFile(sourceFile, SamplePlayer, os.ModePerm))
 
 	cmd := exec.Command("git","init")
 	cmd.Dir = gitDir
@@ -106,13 +95,13 @@ func TestRunMatch(t *testing.T) {
 	cmd.Dir = gitDir
 	bs, err := cmd.Output()
 	if err != nil {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	}
 	commitHash := strings.TrimSpace(string(bs))
 
 	pkg, err := build.ImportDir("github.com/GlenKelley/battleref/arena", build.FindOnly)
 	if err != nil {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	}
 	packageDir := filepath.Join(build.Default.GOPATH, "src", pkg.Dir)
 	arena := NewArena(packageDir)
@@ -126,15 +115,15 @@ func TestRunMatch(t *testing.T) {
 		commitHash,
 		commitHash,
 	}, func()time.Time{ return finishedTime }); err != nil {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	} else if finished != finishedTime {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	} else if result.Winner != WinnerA {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	} else if result.Reason != ReasonTie {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	} else if len(result.Replay) == 0 {
-		ErrorNow(t, err)
+		t.ErrorNow(err)
 	}
 }
 

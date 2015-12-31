@@ -74,17 +74,22 @@ func TestListCategories(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		if categories, err := tm.ListCategories(); err != nil {
 			t.ErrorNow(err)
-		} else if len(categories) != 1 {
-			t.ErrorNowf("expected 1 category, got %v", len(categories))
-		} else if categories[0] != CategoryGeneral {
-			t.ErrorNowf("expected %v category, got %v", CategoryGeneral, categories[0])
+		} else if len(categories) != 2 {
+			t.ErrorNowf("expected 2 category, got %v", len(categories))
+		} else {
+			as := []string{}
+			bs := []string{string(CategoryBattlecode2014), string(CategoryBattlecode2015)}
+			for _, category := range categories {
+				as = append(as, string(category))
+			}
+			t.CompareStringsUnsorted(as, bs)
 		}
 	})
 }
 
 func TestCreateUser(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if isUser, err := tm.UserExists("NameFoo"); err != nil {
+		if isUser, _, err := tm.UserExists("NameFoo"); err != nil {
 			t.ErrorNow(err)
 		} else if isUser {
 			t.FailNow()
@@ -94,25 +99,31 @@ func TestCreateUser(t *testing.T) {
 		} else if len(users) != 0 {
 			t.FailNow()
 		}
-		if _, err := tm.CreateUser("NameFoo", "PublicKey"); err != nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKey", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		isUser, err := tm.UserExists("NameFoo")
-		if err != nil { t.ErrorNow(err) }
-		if !isUser { t.FailNow() }
-		users, err := tm.ListUsers()
-		if err != nil { t.ErrorNow(err) }
-		if len(users) != 1 { t.FailNow() }
-		if users[0] != "NameFoo" { t.FailNow() }
+		if isUser, category, err := tm.UserExists("NameFoo"); err != nil {
+			t.ErrorNow(err)
+		} else if !isUser {
+			t.FailNow()
+		} else if category != CategoryTest {
+			t.FailNow()
+		} else if users, err := tm.ListUsers(); err != nil {
+			t.ErrorNow(err)
+		} else if len(users) != 1 {
+			t.FailNow()
+		} else if users[0] != "NameFoo" {
+			t.FailNow()
+		}
 	})
 }
 
 func TestCreateDuplicateUserError(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err == nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo", CategoryTest); err == nil {
 			t.ErrorNow("expected error")
 		}
 	})
@@ -120,10 +131,10 @@ func TestCreateDuplicateUserError(t *testing.T) {
 
 func TestCreateExistingUserError(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyBar"); err == nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyBar", CategoryTest); err == nil {
 			t.ErrorNow("expected error")
 		}
 	})
@@ -131,10 +142,10 @@ func TestCreateExistingUserError(t *testing.T) {
 
 func TestCreateExistingKey(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("NameBar", "PublicKeyFoo"); err != nil {
+		if _, err := tm.CreateUser("NameBar", "PublicKeyFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
 	})
@@ -142,15 +153,15 @@ func TestCreateExistingKey(t *testing.T) {
 
 func TestCreateMap(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		t.CheckError(tm.CreateMap("MapFoo", "MapString"))
-		if maps, err := tm.ListMaps(); err != nil {
+		t.CheckError(tm.CreateMap("MapFoo", "MapString", CategoryTest))
+		if maps, err := tm.ListMaps(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if len(maps) != 1 {
 			t.ErrorNow(len(maps), "but expected", 1)
 		} else if maps[0] != "MapFoo" {
 			t.ErrorNow(maps[0], "but expected", "MapFoo")
 		}
-		if mapSource, err := tm.GetMapSource("MapFoo"); err != nil {
+		if mapSource, err := tm.GetMapSource("MapFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if mapSource != "MapString" {
 			t.ErrorNow(mapSource, "but expected", "MapString")
@@ -160,8 +171,8 @@ func TestCreateMap(t *testing.T) {
 
 func TestCreateExistingMapError(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		t.CheckError(tm.CreateMap("NameFoo", "SourceFoo"))
-		if err := tm.CreateMap("NameFoo", "SourceFoo"); err == nil {
+		t.CheckError(tm.CreateMap("NameFoo", "SourceFoo", CategoryTest))
+		if err := tm.CreateMap("NameFoo", "SourceFoo", CategoryTest); err == nil {
 			t.ErrorNow("expected error")
 		}
 	})
@@ -169,11 +180,11 @@ func TestCreateExistingMapError(t *testing.T) {
 
 func TestSubmitCommit(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo"); err != nil {
+		if _, err := tm.CreateUser("NameFoo", "PublicKeyFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		t.CheckError(tm.SubmitCommit("NameFoo", CategoryGeneral, "abcdef", time.Now()))
-		if commits, err := tm.ListCommits("NameFoo", CategoryGeneral); err != nil {
+		t.CheckError(tm.SubmitCommit("NameFoo", CategoryTest, "abcdef", time.Now()))
+		if commits, err := tm.ListCommits("NameFoo", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if len(commits) != 1 {
 			t.ErrorNow(len(commits), "but expected", 1)
@@ -187,7 +198,7 @@ func TestCreateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
-		if id, err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil {
+		if id, err := tm.CreateMatch(CategoryTest, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.FailNow()
 		} else if result, err := tm.GetMatchResult(id); err != nil {
 			t.ErrorNow(err)
@@ -201,10 +212,10 @@ func TestUpdateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
-		if id, err := tm.CreateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now()); err != nil {
+		if id, err := tm.CreateMatch(CategoryTest, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.ErrorNow(err)
 		} else {
-			t.CheckError(tm.UpdateMatch(CategoryGeneral, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"))
+			t.CheckError(tm.UpdateMatch(CategoryTest, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"))
 			if result, err := tm.GetMatchResult(id); err != nil {
 				t.ErrorNow(t, err)
 			} else if result != MatchResultWinA {
@@ -222,8 +233,8 @@ func TestRunMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		p1 := Submission{"p1","c1"}
 		p2 := Submission{"p2","c2"}
-		t.CheckError(tm.CreateMap("MapFoo", "SourceFoo"))
-		if id, result, err := tm.RunMatch(CategoryGeneral, "MapFoo", p1, p2, SystemClock()); err != nil {
+		t.CheckError(tm.CreateMap("MapFoo", "SourceFoo", CategoryTest))
+		if id, result, err := tm.RunMatch(CategoryTest, "MapFoo", p1, p2, SystemClock()); err != nil {
 			t.ErrorNow(err)
 		} else if result != "WinA" {
 			t.ErrorNowf("Expected WinA not %v\n", result)
@@ -243,26 +254,26 @@ func TestRunMatch(t *testing.T) {
 
 func TestRunLatestMatches(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("Name1", "PublicKey1"); err != nil {
+		if _, err := tm.CreateUser("Name1", "PublicKey1", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("Name2", "PublicKey2"); err != nil {
+		if _, err := tm.CreateUser("Name2", "PublicKey2", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if _, err := tm.CreateUser("Name3", "PublicKey3"); err != nil {
+		if _, err := tm.CreateUser("Name3", "PublicKey3", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		t.CheckError(tm.CreateMap("Map1", "MapSource"))
-		t.CheckError(tm.CreateMap("Map2", "MapSource"))
-		t.CheckError(tm.CreateMap("Map3", "MapSource"))
+		t.CheckError(tm.CreateMap("Map1", "MapSource", CategoryTest))
+		t.CheckError(tm.CreateMap("Map2", "MapSource", CategoryTest))
+		t.CheckError(tm.CreateMap("Map3", "MapSource", CategoryTest))
 		date := time.Now()
-		t.CheckError(tm.SubmitCommit("Name1", CategoryGeneral, "a1", date))
-		t.CheckError(tm.SubmitCommit("Name1", CategoryGeneral, "a2", date.Add(time.Hour)))
-		t.CheckError(tm.SubmitCommit("Name2", CategoryGeneral, "b1", date))
-		t.CheckError(tm.SubmitCommit("Name2", CategoryGeneral, "b2", date.Add(time.Hour)))
-		t.CheckError(tm.SubmitCommit("Name3", CategoryGeneral, "c1", date))
-		t.CheckError(tm.SubmitCommit("Name3", CategoryGeneral, "c2", date.Add(time.Hour)))
-		if err := tm.RunLatestMatches(CategoryGeneral); err != nil {
+		t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a1", date))
+		t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a2", date.Add(time.Hour)))
+		t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b1", date))
+		t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b2", date.Add(time.Hour)))
+		t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c1", date))
+		t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c2", date.Add(time.Hour)))
+		if err := tm.RunLatestMatches(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
 		if matches, err := tm.ListMatches(); err != nil {

@@ -26,7 +26,9 @@ func (c *systemClock) Now() time.Time {
 
 type TournamentCategory string
 const (
-	CategoryGeneral = TournamentCategory("battlecode2014")
+	CategoryTest = TournamentCategory("battlecode2014")
+	CategoryBattlecode2014 = TournamentCategory("battlecode2014")
+	CategoryBattlecode2015 = TournamentCategory("battlecode2015")
 )
 
 type Tournament struct {
@@ -44,7 +46,7 @@ func NewTournament(database Database, arena arena.Arena, bootstrap arena.Bootstr
 func (t *Tournament) InstallDefaultMaps(resourcePath string, category TournamentCategory) error {
 	if defaultMaps, err := arena.DefaultMaps(resourcePath, string(category)); err != nil {
 		return err
-	} else if maps, err := t.ListMaps(); err != nil {
+	} else if maps, err := t.ListMaps(category); err != nil {
 		return err
 	} else {
 		lookup := make(map[string]bool)
@@ -53,7 +55,7 @@ func (t *Tournament) InstallDefaultMaps(resourcePath string, category Tournament
 		}
 		for name, source := range defaultMaps {
 			if !lookup[name] {
-				if err := t.CreateMap(name, source); err != nil {
+				if err := t.CreateMap(name, category, source); err != nil {
 					return err
 				}
 			}
@@ -62,9 +64,9 @@ func (t *Tournament) InstallDefaultMaps(resourcePath string, category Tournament
 	}
 }
 
-func (t *Tournament) UserExists(name string) (bool, error) {
-	exists, err := t.Database.UserExists(name)
-	return exists, err
+func (t *Tournament) UserExists(name string) (bool, TournamentCategory, error) {
+	exists, category, err := t.Database.UserExists(name)
+	return exists, category, err
 }
 
 func (t *Tournament) ListUsers() ([]string, error) {
@@ -73,7 +75,7 @@ func (t *Tournament) ListUsers() ([]string, error) {
 }
 
 func (t *Tournament) ListCategories() ([]TournamentCategory, error) {
-	return []TournamentCategory{CategoryGeneral}, nil
+	return []TournamentCategory{CategoryBattlecode2014, CategoryBattlecode2015}, err
 }
 
 func (t *Tournament) deleteRepository(name string) error {
@@ -117,17 +119,17 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 	}
 }
 
-func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
+func (t *Tournament) CreateUser(name, publicKey string, category TournamentCategory) (string, error) {
 	var commitHash string
 	//TODO:(gkelley) this didn't work with a transaction. There is a race condition without one.
 //	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
-		if exists, err := t.Database.UserExists(name); err != nil {
+		if exists, _, err := t.Database.UserExists(name); err != nil {
 			return "", err
 		} else if exists {
 			return "", errors.New("User already exists")
 		} else if err := t.Database.CreateUser(name, publicKey); err != nil {
 			return "", err
-		} else if ch, err := t.CreatePlayerRepository(name, publicKey, CategoryGeneral); err != nil {
+		} else if ch, err := t.CreatePlayerRepository(name, publicKey, category); err != nil {
 			if err2 := t.Database.DeleteUser(name); err2 != nil {
 				fmt.Println(err2)
 			}
@@ -139,17 +141,17 @@ func (t *Tournament) CreateUser(name, publicKey string) (string, error) {
 //	})
 }
 
-func (t *Tournament) CreateMap(name, source string) error {
-	return t.Database.CreateMap(name, source)
+func (t *Tournament) CreateMap(name string, category TournamentCategory, source string) error {
+	return t.Database.CreateMap(name, category, source)
 }
 
-func (t *Tournament) GetMapSource(name string) (string, error) {
-	source, err := t.Database.GetMapSource(name)
+func (t *Tournament) GetMapSource(name string, category TournamentCategory) (string, error) {
+	source, err := t.Database.GetMapSource(name, category)
 	return source, err
 }
 
-func (t *Tournament) ListMaps() ([]string, error) {
-	users, err := t.Database.ListMaps()
+func (t *Tournament) ListMaps(category TournamentCategory) ([]string, error) {
+	users, err := t.Database.ListMaps(category)
 	return users, err
 }
 
@@ -170,8 +172,8 @@ func (t *Tournament) ListMatches() ([]Match, error) {
 	return matches, err
 }
 
-func (t *Tournament) MapExists(name string) (bool, error) {
-	exists, err := t.Database.MapExists(name)
+func (t *Tournament) MapExists(name string, category TournamentCategory) (bool, error) {
+	exists, err := t.Database.MapExists(name, category)
 	return exists, err
 }
 
@@ -224,7 +226,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 	if id, err := t.CreateMatch(category, mapName, player1, player2, clock.Now()); err != nil {
 		return 0, MatchResultError, err
 	} else {
-		if mapSource, err := t.GetMapSource(mapName); err != nil {
+		if mapSource, err := t.GetMapSource(mapName, category); err != nil {
 			return id, MatchResultError, err
 		} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
 			mapName,
@@ -260,7 +262,7 @@ func (t *Tournament) LatestCommits(category TournamentCategory) ([]Submission, e
 func (t *Tournament) RunLatestMatches(category TournamentCategory) error {
 	if latestCommits, err := t.LatestCommits(category); err != nil {
 		return err
-	} else if maps, err := t.ListMaps(); err != nil {
+	} else if maps, err := t.ListMaps(category); err != nil {
 		return err
 	} else {
 		for _, submission1 := range latestCommits {

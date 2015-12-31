@@ -22,10 +22,11 @@ func TestInitToRun(test *testing.T) {
 		".",
 	}); err != nil {
 		t.FailNow()
-	} else if err := webserver.Tournament.InstallDefaultMaps(webserver.Properties.ArenaResourcePath(), tournament.CategoryGeneral); err != nil {
-		t.ErrorNow(err)
 	} else {
 		defer webserver.Tournament.GitHost.Cleanup()
+		if err := webserver.Tournament.InstallDefaultMaps(webserver.Properties.ArenaResourcePath(), tournament.CategoryBattlecode2014); err != nil {
+			t.ErrorNow(err)
+		}
 		go webserver.Serve()
 		//Race condition of server not starting
 		time.Sleep(time.Millisecond)
@@ -82,7 +83,7 @@ func RunMatch(name, name2, commit, commit2, mapName string) error {
 		"player2":name2,
 		"commit1":commit,
 		"commit2":commit2,
-		"category":tournament.CategoryGeneral,
+		"category":tournament.CategoryBattlecode2014,
 		"map":mapName,
 	}, &response); err != nil {
 		return err

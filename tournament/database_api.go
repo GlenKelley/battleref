@@ -11,14 +11,14 @@ type Statements interface {
 	PlayerKeys() (map[string]int64, error)
 	CreateUser(name, publicKey string) error
 	DeleteUser(name string) error
-	UserExists(name string) (bool, error)
+	UserExists(name string) (bool, TournamentCategory, error)
 	ListUsers() ([]string, error)
-	CreateMap(name, source string) error
-	GetMapSource(name string) (string, error)
-	ListMaps() ([]string, error)
+	CreateMap(name string, category TournamentCategory, source string) error
+	GetMapSource(name string, category TournemntCategory) (string, error)
+	ListMaps(category TournamentCategory) ([]string, error)
 	ListMatches() ([]Match, error)
 	LatestCommits(category TournamentCategory) ([]Submission, error)
-	MapExists(name string) (bool, error)
+	MapExists(name string, category TournamentCategory) (bool, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
 	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
@@ -108,10 +108,11 @@ func (c *Commands) DeleteUser(name string) error {
 	return err
 }
 
-func (c *Commands) UserExists(name string) (bool, error) {
+func (c *Commands) UserExists(name string) (bool, TournamentCategory, error) {
 	var exists bool
-	err := c.tx.QueryRow("select count(name) > 0 from user where name = ?", name).Scan(&exists)
-	return exists, err
+	var category string
+	err := c.tx.QueryRow("select count(name) > 0, max(category) category from user where name = ?", name).Scan(&exists, &category)
+	return exists, TournamentCategory(category), err
 }
 
 func queryStrings(db dbcon, query string, args ... interface{}) ([]string, error) {
@@ -140,25 +141,25 @@ func (c *Commands) ListUsers() ([]string, error) {
 	return users, err
 }
 
-func (c *Commands) CreateMap(name, source string) error {
-	_, err := c.tx.Exec("insert into map(name, source) values (?,?)", name, source)
+func (c *Commands) CreateMap(name string, category TournamentCategory, source string) error {
+	_, err := c.tx.Exec("insert into map(name, category, source) values (?,?,?)", name, string(category), source)
 	return err
 }
 
-func (c *Commands) MapExists(name string) (bool, error) {
+func (c *Commands) MapExists(name string, category TournamentCategory) (bool, error) {
 	var exists bool
-	err := c.tx.QueryRow("select count(name) > 0 from map where name = ?", name).Scan(&exists)
+	err := c.tx.QueryRow("select count(name) > 0 from map where name = ? and category = ?", name, string(category)).Scan(&exists)
 	return exists, err
 }
 
-func (c *Commands) GetMapSource(name string) (string, error) {
+func (c *Commands) GetMapSource(name string, category TournamentCategory) (string, error) {
 	var source string
-	err := c.tx.QueryRow("select source from map where name = ?", name).Scan(&source)
+	err := c.tx.QueryRow("select source from map where name = ? and category = ?", name, string(category)).Scan(&source)
 	return source, err
 }
 
-func (c *Commands) ListMaps() ([]string, error) {
-	maps, err := queryStrings(c.tx, "select name from map")
+func (c *Commands) ListMaps(category TournamentCategory) ([]string, error) {
+	maps, err := queryStrings(c.tx, "select name from map where category = ?", string(category))
 	return maps, err
 }
 

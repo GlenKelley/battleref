@@ -39,12 +39,16 @@ func main() {
 					log.Fatal(err)
 				}
 			}
-			if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), tournament.CategoryGeneral); err != nil {
+			if categories, err := webserver.Tournament.ListCategories(); err != nil {
 				log.Fatal(err)
 			} else {
-				//TODO: Cleanup repo/host
-				log.Fatal(webserver.Serve())
+				for _, category : range categories {
+					if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), category); err != nil {
+						log.Fatal(err)
+					}
+				}
 			}
+			log.Fatal(webserver.Serve())
 		}
 	}
 }

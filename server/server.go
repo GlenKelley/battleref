@@ -296,8 +296,8 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
 		Name string `json:"name" form:"name" validate:"required"`
 		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
-	category := tournament.CategoryGeneral //TODO: sort out categories Hmmm...
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
@@ -306,16 +306,18 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, errors.New("Invalid Public Key"))
 	} else if commitHash, err := s.Tournament.CreateUser(form.Name, match[1]); err != nil {
 		web.WriteJsonError(w, err)
-	} else if err := s.Tournament.SubmitCommit(form.Name, category, commitHash, time.Now()); err != nil {
+	} else if err := s.Tournament.SubmitCommit(form.Name, form.Category, commitHash, time.Now()); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, struct {
 			Name string `json:"name"`
+			Category tournament.Category `json:"category"`
 			PublicKey string `json:"public_key"`
 			RepoUrl string `json:"repo_url"`
 			Commit string `json:"commit_hash"`
 		}{
 			form.Name,
+			form.Category,
 			form.PublicKey,
 			s.Tournament.GitHost.ExternalRepositoryURL(form.Name),
 			commitHash,
@@ -342,13 +344,14 @@ func categories(w http.ResponseWriter, r *http.Request, s *ServerState) {
 func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
 		Name string `json:"name" form:"name" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 		Source string `json:"source" form:"source" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
 		web.WriteJsonError(w, errors.New("Invalid Name"))
-	} else if err := s.Tournament.CreateMap(form.Name, form.Source); err != nil {
+	} else if err := s.Tournament.CreateMap(form.Name, form.Category, form.Source); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, form)
@@ -356,7 +359,12 @@ func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	if maps, err := s.Tournament.ListMaps(); err != nil {
+	var form struct {
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		web.WriteJsonWebError(w, err)
+	} else if maps, err := s.Tournament.ListMaps(form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, JSONResponse{"maps":maps})
@@ -366,10 +374,11 @@ func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
 func mapSource(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
 		Name string `form:"name" validate:"required"`
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
-	} else if source, err := s.Tournament.GetMapSource(form.Name); err != nil {
+	} else if source, err := s.Tournament.GetMapSource(form.Name, form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteXml(w, []byte(source))
@@ -442,7 +451,7 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, err)
 	} else if !exists {
 		web.WriteJsonError(w, errors.New("Unknown player2"))
-	} else if exists, err := s.Tournament.MapExists(form.Map); err != nil {
+	} else if exists, err := s.Tournament.MapExists(form.Map, form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else if !exists {
 		web.WriteJsonError(w, errors.New("Unknown map"))
