@@ -1,6 +1,7 @@
 package tournament
 
 import (
+	"fmt"
 	"strings"
 	"errors"
 	"time"
@@ -75,28 +76,36 @@ func (t *Tournament) ListCategories() ([]TournamentCategory, error) {
 	return []TournamentCategory{CategoryGeneral}, nil
 }
 
+func (t *Tournament) deleteRepository(name string) error {
+	if err := t.GitHost.DeleteRepository(name); err != nil {
+		fmt.Errorf("Failed to delete repo for user %n: %v\n", err)
+		return err
+	}
+	return nil
+}
+
 func (t *Tournament) CreatePlayerRepository(name, publicKey string, category TournamentCategory) (string, error) {
 	if err := t.GitHost.InitRepository(name, publicKey); err != nil {
 		return "", err
 	} else if checkout, err := t.GitHost.CloneRepository(t.Remote, name); err != nil {
-		defer t.GitHost.DeleteRepository(name)
+		defer t.deleteRepository(name)
 		return "", err
 	} else {
 		defer checkout.Delete()
 		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return "", err
 		} else if err := checkout.AddFiles(files); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return "", err
 		} else if err := checkout.CommitFiles(files, "Bootstrap_Code"); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return "", err
 		} else if err := checkout.Push(); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return "", err
 		} else if commitHash, err := checkout.Head(); err != nil {
-			defer t.GitHost.DeleteRepository(name)
+			defer t.deleteRepository(name)
 			return "", err
 		} else {
 			return commitHash, nil

@@ -4,7 +4,6 @@ import (
 	"os"
 	"log"
 	"fmt"
-	"runtime/debug"
 	"bytes"
 	"strings"
 	"os/exec"
@@ -37,8 +36,7 @@ func DebugCmd(cmd *exec.Cmd) error {
 	cmd.Stdout = &bs1
 	cmd.Stderr = &bs2
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
-		debug.PrintStack()
+		fmt.Errorf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
 		return err
 	} else {
 		return nil
@@ -50,9 +48,10 @@ func RunCmd(cmd *exec.Cmd) error {
 	bs2 := bytes.Buffer{}
 	cmd.Stdout = &bs1
 	cmd.Stderr = &bs2
+
+	fmt.Errorf("Running %v %v\n", cmd.Path, cmd.Args)
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
-		debug.PrintStack()
+		fmt.Errorf("Error running %v %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, cmd.Env, string(bs1.Bytes()), string(bs2.Bytes()))
 		return err
 	} else {
 		return nil
@@ -62,11 +61,12 @@ func RunCmd(cmd *exec.Cmd) error {
 func CmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	bs := bytes.Buffer{}
 	cmd.Stderr = &bs
+	fmt.Errorf("Running %v %v\n", cmd.Path, cmd.Args)
 	if output, err := cmd.Output(); err != nil {
-		fmt.Printf("Error running %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, string(output), string(bs.Bytes()))
-		debug.PrintStack()
+		fmt.Errorf("Error running %v %v:\n%v\n%v\n", cmd.Path, cmd.Args, string(output), string(bs.Bytes()))
 		return nil, err
 	} else {
+		fmt.Errorf("Success %v %v\n", cmd.Path, cmd.Args)
 		return output, nil
 	}
 }

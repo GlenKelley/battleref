@@ -83,7 +83,7 @@ func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
 func (g *LocalDirHost) InitRepository(name, publicKey string) error {
 	repoURL := g.RepositoryURL(name)
 	if _, err := os.Stat(repoURL); os.IsNotExist(err) {
-		return exec.Command("git","init","--bare",repoURL).Run()
+		return RunCmd(exec.Command("git","init","--bare",repoURL))
 	} else if err != nil {
 		return err
 	} else {

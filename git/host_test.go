@@ -134,20 +134,29 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	}
 }
 
+func createRepo(host *GitoliteHost, name string) error {
+	if _, publicKey, err := testutil.CreateKeyPair(); err != nil {
+		return err
+	} else {
+		return host.InitRepository(name, publicKey)
+	}
+}
+
 func TestInitGitoliteRepo(t *testing.T) {
 	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
 		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
-			t.ErrorNow(err)
+		        t.ErrorNow(err)
 		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
-			t.ErrorNow(err)
+		        t.ErrorNow(err)
 		} else if _, err := file.WriteString(privateKey); err != nil {
-			file.Close()
-			os.Remove(file.Name())
 			t.ErrorNow(err)
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			t.CheckError(host.InitRepository("foo", publicKey))
+			if err := host.InitRepository("foo", publicKey); err != nil {
+				t.ErrorNow(err)
+			}
+			defer host.DeleteRepository("foo")
 			repoURL := host.RepositoryURL("foo")
 			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err != nil {
 				t.ErrorNow(err)
@@ -161,21 +170,54 @@ func TestInitGitoliteRepo(t *testing.T) {
 
 func TestDeleteGitoliteRepo(t *testing.T) {
 	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+		t.CheckError(createRepo(host, "foo"))
+		t.CheckError(host.DeleteRepository("foo"))
+		cmd := exec.Command("ssh", "-v", "-v", "-i", host.SSHKey, host.User+"@"+host.InternalHostname, "[[ ! -d repositories/foo.git ]]")
+		t.CheckError(cmd.Run())
+	})
+}
+
+func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
+	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
 		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
 			t.ErrorNow(err)
 		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
-			t.ErrorNow(err)
+		        t.ErrorNow(err)
 		} else if _, err := file.WriteString(privateKey); err != nil {
-			file.Close()
-			os.Remove(file.Name())
 			t.ErrorNow(err)
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			t.CheckError(host.InitRepository("foo", publicKey))
-			t.CheckError(host.DeleteRepository("foo"))
-			cmd := exec.Command("ssh", "-v", "-v", "-i", host.SSHKey, host.User+"@"+host.InternalHostname, "[[ ! -d repositories/foo.git ]]")
-			t.CheckError(cmd.Run())
+			if err := host.InitRepository("foo", publicKey); err != nil {
+				t.ErrorNow(err)
+			}
+
+			repoURL := host.RepositoryURL("foo")
+			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err != nil {
+				t.ErrorNow(err)
+			} else {
+				defer repo.Delete()
+				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
+			}
+
+			defer host.DeleteRepository("foo")
+			if err := host.InitRepository("bar", publicKey); err != nil {
+				t.ErrorNow(err)
+			}
+			defer host.DeleteRepository("bar")
+
+			repoURL2 := host.RepositoryURL("bar")
+			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL2, file.Name()); err != nil {
+				t.ErrorNow(err)
+			} else {
+				defer repo.Delete()
+				CheckDirectoryContent(t, repo.Dir(), []string{".git"})
+			}
+
+			if repo, err := (TempRemote{}).CheckoutRepositoryWithKeyFile(repoURL, file.Name()); err == nil {
+				defer repo.Delete()
+				t.ErrorNow("Expected failure")
+			}
 		}
 	})
 }
