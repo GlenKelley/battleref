@@ -251,20 +251,22 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 			} else if queryValue != "" {
 				value = queryValue
 			}
-			switch field.Type.Kind() {
-			case reflect.Int64: {
-				if v, err := strconv.Atoi(value); err != nil {
-					werr.AddError(web.NewErrorItem("Invalid integer", fmt.Sprintf("Unable to parse '%v' as an integer", value), field.Name, "formfield"))
-				} else {
-					formValue.Field(i).SetInt(int64(v))
+			if value != "" {
+				switch field.Type.Kind() {
+					case reflect.Int64: {
+						if v, err := strconv.Atoi(value); err != nil {
+							werr.AddError(web.NewErrorItem("Invalid integer", fmt.Sprintf("Unable to parse '%v' as an integer", value), field.Name, "formfield"))
+						} else {
+							formValue.Field(i).SetInt(int64(v))
+						}
+						break
+					}
+					case reflect.String: {
+						formValue.Field(i).SetString(value)
+						break
+					}
+				default: return web.SimpleError(fmt.Errorf("Unexpected type %v", formType.Kind()))
 				}
-				break
-			}
-			case reflect.String: {
-				formValue.Field(i).SetString(value)
-				break
-			}
-			default: return web.SimpleError(fmt.Errorf("Unexpected type %v", formType.Kind()))
 			}
 		}
 	}
