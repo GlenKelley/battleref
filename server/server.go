@@ -22,6 +22,8 @@ import (
 	"time"
 	"io/ioutil"
 	"encoding/json"
+	"encoding/hex"
+	"crypto/md5"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/git"
 	"github.com/GlenKelley/battleref/web"
@@ -391,7 +393,12 @@ func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if matches, err := s.Tournament.ListMatches(); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"matches":matches})
+		codes := []string{}
+		for _, match := range matches {
+			hash := md5.Sum([]byte(fmt.Sprint(match)))
+			codes = append(codes, hex.EncodeToString(hash[:]))
+		}
+		web.WriteJson(w, JSONResponse{"matches":matches, "codes":codes})
 	}
 }
 
