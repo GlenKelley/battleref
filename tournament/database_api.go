@@ -23,9 +23,9 @@ type Statements interface {
 	ListCommits(name string, category TournamentCategory) ([]string, error)
 	SchemaVersion() (string, error)
 	CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error)
-	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error
+	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay []byte) error
 	GetMatchResult(id int64) (MatchResult, error)
-	GetMatchReplay(id int64) (string, error)
+	GetMatchReplay(id int64) ([]byte, error)
 }
 
 // An implementation of statements which uses an abstracted sql connection
@@ -228,7 +228,7 @@ func (c *Commands) CreateMatch(category TournamentCategory, mapName string, play
 	}
 }
 
-func (c *Commands) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {
+func (c *Commands) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay []byte) error {
 	_, err := c.tx.Exec("update match set updated = ?, result = ?, replay = ? where category = ? and map = ? and player1 = ? and player2 = ? and commit1 = ? and commit2 = ?", finished, string(result), replay, string(category), mapName, player1.Name, player2.Name, player1.CommitHash, player2.CommitHash)
 	return err
 }
@@ -243,8 +243,8 @@ func (c *Commands) GetMatchResult(id int64) (MatchResult, error) {
 	}
 }
 
-func (c *Commands) GetMatchReplay(id int64) (string, error) {
-	var replay string
+func (c *Commands) GetMatchReplay(id int64) ([]byte, error) {
+	var replay []byte
 	err := c.tx.QueryRow("select replay from match where id = ?", id).Scan(&replay)
 	return replay, err
 }

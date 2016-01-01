@@ -38,7 +38,7 @@ type Arena interface {
 type MatchResult struct {
 	Winner string `json:"winner"`
 	Reason string `json:"reason"`
-	Replay string `json:"-"`
+	Replay []byte `json:"-"`
 }
 
 type LocalArena struct {
@@ -65,7 +65,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	if err != nil {
 		return clock(), result, err
 	}
-	defer os.RemoveAll(tempDir)
+//	defer os.RemoveAll(tempDir)
 
 	cmd := exec.Command("./runMatch.sh",
 		"-r", tarFile,
@@ -76,7 +76,6 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 		"-C", p.Commit2,
 		"-m", p.MapName,
 		"-M", mapFile.Name(),
-		"-R",
 	)
 	cmd.Dir = filepath.Join(a.ResourceDir, p.Category)
 	buffer := bytes.Buffer{}
@@ -89,11 +88,11 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	} else if err := json.NewDecoder(bytes.NewReader(out)).Decode(&result); err != nil {
 		log.Println("runMatch Error: ", string(buffer.Bytes()))
 		return clock(), result, err
-	} else if bs, err := ioutil.ReadFile(filepath.Join(tempDir, "replay.txt")); err != nil {
+	} else if bs, err := ioutil.ReadFile(filepath.Join(tempDir, "replay.xml.gz")); err != nil {
 		log.Println("runMatch Error: ", string(buffer.Bytes()))
 		return clock(), result, err
 	} else {
-		result.Replay = string(bs)
+		result.Replay = bs
 		return clock(), result, nil
 	}
 }

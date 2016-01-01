@@ -16,7 +16,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "UkVQTEFZIEJBU0U2NAo="}, nil}
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, []byte("MATCH_RESULT")}, nil}
 		remote := git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
@@ -56,7 +56,7 @@ func GitoliteTournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) 
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "UkVQTEFZIEJBU0U2NAo="}, nil}
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, []byte("MATCH_RESULT")}, nil}
 		remote := git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
@@ -211,14 +211,14 @@ func TestUpdateMatch(t *testing.T) {
 		if id, err := tm.CreateMatch(CategoryTest, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.ErrorNow(err)
 		} else {
-			t.CheckError(tm.UpdateMatch(CategoryTest, "MapFoo", p1, p2, time.Now(), MatchResultWinA, "LogFoo"))
+			t.CheckError(tm.UpdateMatch(CategoryTest, "MapFoo", p1, p2, time.Now(), MatchResultWinA, []byte("LogFoo")))
 			if result, err := tm.GetMatchResult(id); err != nil {
 				t.ErrorNow(t, err)
 			} else if result != MatchResultWinA {
 				t.ErrorNow(result, " expected ", MatchResultWinA)
 			} else if replay, err := tm.GetMatchReplay(id); err != nil {
 				t.ErrorNow(err)
-			} else if replay != "LogFoo" {
+			} else if string(replay) != "LogFoo" {
 				t.ErrorNow(replay, " expected LogFoo")
 			}
 		}

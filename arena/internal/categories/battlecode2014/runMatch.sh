@@ -18,7 +18,6 @@ function usage {
   echo "	-C commit2		The git commit hash of the second player repo"
   echo "	-m map			The name of the map"
   echo "	-M map_file		The file of the map content"
-  echo "        -R capture_replay       Returns the replay of the match"
   echo "" 
   exit 1
 }
@@ -27,7 +26,7 @@ function error {
 	echo "$@" >&2
 }
 
-while getopts "?r:d:p:P:c:C:u:m:M:R" opt; do
+while getopts "?r:d:p:P:c:C:u:m:M:" opt; do
   case $opt in
     r) BATTLECODE_TAR="$OPTARG" ;;
     d) BATTLECODE_DIR="$OPTARG" ;;
@@ -37,7 +36,6 @@ while getopts "?r:d:p:P:c:C:u:m:M:R" opt; do
     C) COMMIT2="$OPTARG" ;;
     m) MAP="$OPTARG" ;;
     M) MAP_FILE="$OPTARG" ;;
-    R) CAPTURE_REPLAY=TRUE ;;
     ? ) usage
   esac
 done
@@ -147,6 +145,10 @@ if grep "~~~~~~~ERROR~~~~~~~" output.log >/dev/null ; then
 fi
 cat output.log error.log >&2
 
+if [[ -f "match.rms" ]] ; then
+	mv "match.rms" "replay.xml.gz"
+fi
+
 WINNER=`grep "\[java\] \[server\]" output.log | perl -i -n -e 'if(/ \((\w)\) wins/){print "$1"}'`
 REASON=`grep "Reason:" output.log | perl -i -n -e '
 	if(/Reason: ([^\n]+)/){
@@ -154,9 +156,6 @@ REASON=`grep "Reason:" output.log | perl -i -n -e '
 		if ($1 eq "The winning team won on tiebreakers.") { print "TIE" }
 		if ($1 =~ /Team (A|B) won by default./) { print "TIE" }
 	}'`
-if [[ -n "$CAPTURE_REPLAY" ]] ; then
-	cat match.rms | base64 | tr -d '\n\t' > replay.txt
-fi
 echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\"}"
 
 popd > /dev/null

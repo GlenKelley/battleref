@@ -10,7 +10,8 @@ import (
 //	"encoding/json"
 	"net"
 	"net/url"
-	//"bytes"
+	"bytes"
+	"compress/gzip"
 	"net/http"
 	"errors"
 //	"bytes"
@@ -471,8 +472,12 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonWebError(w, err)
 	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
 		web.WriteJsonError(w, err)
+	} else if reader, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
+		web.WriteJsonError(w, err)
+	} else if bs, err := ioutil.ReadAll(reader); err != nil {
+		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"replay":replay})
+		web.WriteJson(w, JSONResponse{"replay":string(bs)})
 	}
 }
 

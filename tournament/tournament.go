@@ -207,7 +207,7 @@ func (t *Tournament) CreateMatch(category TournamentCategory, mapName string, pl
 	return id, err
 }
 
-func (t *Tournament) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay string) error {
+func (t *Tournament) UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay []byte) error {
 	return t.Database.UpdateMatch(category, mapName, player1, player2, finished, result, replay)
 }
 
@@ -217,7 +217,7 @@ func (t *Tournament) GetMatchResult(id int64) (MatchResult, error) {
 }
 
 
-func (t *Tournament) GetMatchReplay(id int64) (string, error) {
+func (t *Tournament) GetMatchReplay(id int64) ([]byte, error) {
 	replay, err := t.Database.GetMatchReplay(id)
 	return replay, err
 }
@@ -237,7 +237,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 			player1.CommitHash,
 			player2.CommitHash,
 			}, func()time.Time{ return clock.Now() }); err != nil {
-			if err2 := t.UpdateMatch(category, mapName, player1, player2, finished, MatchResultError, ""); err2 != nil {
+			if err2 := t.UpdateMatch(category, mapName, player1, player2, finished, MatchResultError, []byte{}); err2 != nil {
 				log.Println(err2)
 			}
 			return id, MatchResultError, err

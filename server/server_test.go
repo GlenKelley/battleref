@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"bytes"
+	"compress/gzip"
 	"time"
 	"strconv"
 	"encoding/json"
@@ -35,24 +36,31 @@ func ServerTest(test * testing.T, f func(*testutil.T, *ServerState)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, "REPLAY_FOOBAR"}, nil}
-		remote := &git.TempRemote{}
-		bootstrap := &arena.MinimalBootstrap{}
-		if database, err := tournament.NewInMemoryDatabase(); err != nil {
-			t.ErrorNow(err)
-		} else if err = database.MigrateSchema(); err != nil {
+		var bs bytes.Buffer
+		writer := gzip.NewWriter(&bs)
+		if _, err := writer.Write([]byte("MATCH_REPLAY")); err != nil {
 			t.ErrorNow(err)
 		} else {
-			tournament := tournament.NewTournament(database, dummyArena, bootstrap, host, remote)
-			properties := Properties {
-				":memory:",
-				"8081",
-				":temp:",
-				nil,
-				"../arena",
+			writer.Close()
+			dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, bs.Bytes()}, nil}
+			remote := &git.TempRemote{}
+			bootstrap := &arena.MinimalBootstrap{}
+			if database, err := tournament.NewInMemoryDatabase(); err != nil {
+				t.ErrorNow(err)
+			} else if err = database.MigrateSchema(); err != nil {
+				t.ErrorNow(err)
+			} else {
+				tournament := tournament.NewTournament(database, dummyArena, bootstrap, host, remote)
+				properties := Properties {
+					":memory:",
+					"8081",
+					":temp:",
+					nil,
+					"../arena",
+				}
+				server := NewServer(tournament, properties)
+				f(t, server)
 			}
-			server := NewServer(tournament, properties)
-			f(t, server)
 		}
 	}
 }
@@ -442,8 +450,8 @@ func TestReplay(t *testing.T) {
 		commit := Json(t,r).Key("data").Key("commits").At(0).String()
 		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1":"NameFoo","player2":"NameFoo","category":string(tournament.CategoryTest),"commit1":commit,"commit2":commit,"map":"NameBar"})
 		id := Json(t,r).Key("data").Key("id").Int()
-		if r := sendGet(t, server, "/replay?id=" + strconv.Itoa(id)); Json(t,r).Key("data").Key("replay").String() != "REPLAY_FOOBAR" {
-			t.ErrorNow("Expected replay REPLAY_FOOBAR got:", Json(t,r).Key("data").Key("replay").String())
+		if r := sendGet(t, server, "/replay?id=" + strconv.Itoa(id)); Json(t,r).Key("data").Key("replay").String() != "MATCH_REPLAY" {
+			t.ErrorNow("Expected replay MATCH_REPLAY got:", Json(t,r).Key("data").Key("replay").String())
 		}
 	})
 }
