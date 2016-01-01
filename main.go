@@ -39,13 +39,10 @@ func main() {
 					log.Fatal(err)
 				}
 			}
-			if categories, err := webserver.Tournament.ListCategories(); err != nil {
-				log.Fatal(err)
-			} else {
-				for _, category : range categories {
-					if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), category); err != nil {
-						log.Fatal(err)
-					}
+			categories := webserver.Tournament.ListCategories()
+			for _, category := range categories {
+				if err := webserver.Tournament.InstallDefaultMaps(properties.ArenaResourcePath(), category); err != nil {
+					log.Fatal(err)
 				}
 			}
 			log.Fatal(webserver.Serve())

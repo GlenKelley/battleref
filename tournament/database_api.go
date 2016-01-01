@@ -11,10 +11,10 @@ type Statements interface {
 	PlayerKeys() (map[string]int64, error)
 	CreateUser(name, publicKey string) error
 	DeleteUser(name string) error
-	UserExists(name string) (bool, TournamentCategory, error)
+	UserExists(name string) (bool, error)
 	ListUsers() ([]string, error)
-	CreateMap(name string, category TournamentCategory, source string) error
-	GetMapSource(name string, category TournemntCategory) (string, error)
+	CreateMap(name, source string, category TournamentCategory) error
+	GetMapSource(name string, category TournamentCategory) (string, error)
 	ListMaps(category TournamentCategory) ([]string, error)
 	ListMatches() ([]Match, error)
 	LatestCommits(category TournamentCategory) ([]Submission, error)
@@ -108,11 +108,10 @@ func (c *Commands) DeleteUser(name string) error {
 	return err
 }
 
-func (c *Commands) UserExists(name string) (bool, TournamentCategory, error) {
+func (c *Commands) UserExists(name string) (bool, error) {
 	var exists bool
-	var category string
-	err := c.tx.QueryRow("select count(name) > 0, max(category) category from user where name = ?", name).Scan(&exists, &category)
-	return exists, TournamentCategory(category), err
+	err := c.tx.QueryRow("select count(name) > 0 from user where name = ?", name).Scan(&exists)
+	return exists, err
 }
 
 func queryStrings(db dbcon, query string, args ... interface{}) ([]string, error) {
@@ -141,7 +140,7 @@ func (c *Commands) ListUsers() ([]string, error) {
 	return users, err
 }
 
-func (c *Commands) CreateMap(name string, category TournamentCategory, source string) error {
+func (c *Commands) CreateMap(name, source string, category TournamentCategory) error {
 	_, err := c.tx.Exec("insert into map(name, category, source) values (?,?,?)", name, string(category), source)
 	return err
 }

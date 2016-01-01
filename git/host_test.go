@@ -1,7 +1,6 @@
 package git
 
 import (
-	"fmt"
 	"strings"
 	"os/exec"
 	"testing"
@@ -119,7 +118,6 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 	conf := gitoliteTestConf
 	conf.AdminKey = testutil.PathRelativeToUserHome(t, conf.AdminKey)
 	conf.SSHKey = testutil.PathRelativeToUserHome(t, conf.SSHKey)
-	fmt.Println("Gitolite test with config", gitoliteTestConf)
 	if host, err := CreateGitoliteHost(conf); err != nil {
 		t.ErrorNow(err)
 	} else if _, err := user.Lookup(host.User); err != nil {

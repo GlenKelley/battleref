@@ -304,14 +304,14 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, errors.New("Invalid Name"))
 	} else if match := git.PublicKeyRegex.FindStringSubmatch(strings.TrimSpace(form.PublicKey)); match == nil {
 		web.WriteJsonError(w, errors.New("Invalid Public Key"))
-	} else if commitHash, err := s.Tournament.CreateUser(form.Name, match[1]); err != nil {
+	} else if commitHash, err := s.Tournament.CreateUser(form.Name, match[1], form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else if err := s.Tournament.SubmitCommit(form.Name, form.Category, commitHash, time.Now()); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, struct {
 			Name string `json:"name"`
-			Category tournament.Category `json:"category"`
+			Category tournament.TournamentCategory `json:"category"`
 			PublicKey string `json:"public_key"`
 			RepoUrl string `json:"repo_url"`
 			Commit string `json:"commit_hash"`
@@ -334,11 +334,8 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func categories(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	if categories, err := s.Tournament.ListCategories(); err != nil {
-		web.WriteJsonError(w, err)
-	} else {
-		web.WriteJson(w, JSONResponse{"categories":categories})
-	}
+	categories := s.Tournament.ListCategories()
+	web.WriteJson(w, JSONResponse{"categories":categories})
 }
 
 func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
@@ -351,7 +348,7 @@ func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonWebError(w, err)
 	} else if !NameRegex.MatchString(form.Name) {
 		web.WriteJsonError(w, errors.New("Invalid Name"))
-	} else if err := s.Tournament.CreateMap(form.Name, form.Category, form.Source); err != nil {
+	} else if err := s.Tournament.CreateMap(form.Name, form.Source, form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, form)

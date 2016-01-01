@@ -72,24 +72,22 @@ func GitoliteTournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) 
 
 func TestListCategories(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if categories, err := tm.ListCategories(); err != nil {
-			t.ErrorNow(err)
-		} else if len(categories) != 2 {
+		categories := tm.ListCategories()
+		if len(categories) != 2 {
 			t.ErrorNowf("expected 2 category, got %v", len(categories))
-		} else {
-			as := []string{}
-			bs := []string{string(CategoryBattlecode2014), string(CategoryBattlecode2015)}
-			for _, category := range categories {
-				as = append(as, string(category))
-			}
-			t.CompareStringsUnsorted(as, bs)
 		}
+		as := []string{}
+		bs := []string{string(CategoryBattlecode2014), string(CategoryBattlecode2015)}
+		for _, category := range categories {
+			as = append(as, string(category))
+		}
+		t.CompareStringsUnsorted(as, bs)
 	})
 }
 
 func TestCreateUser(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if isUser, _, err := tm.UserExists("NameFoo"); err != nil {
+		if isUser, err := tm.UserExists("NameFoo"); err != nil {
 			t.ErrorNow(err)
 		} else if isUser {
 			t.FailNow()
@@ -102,11 +100,9 @@ func TestCreateUser(t *testing.T) {
 		if _, err := tm.CreateUser("NameFoo", "PublicKey", CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if isUser, category, err := tm.UserExists("NameFoo"); err != nil {
+		if isUser, err := tm.UserExists("NameFoo"); err != nil {
 			t.ErrorNow(err)
 		} else if !isUser {
-			t.FailNow()
-		} else if category != CategoryTest {
 			t.FailNow()
 		} else if users, err := tm.ListUsers(); err != nil {
 			t.ErrorNow(err)

@@ -55,7 +55,7 @@ func (t *Tournament) InstallDefaultMaps(resourcePath string, category Tournament
 		}
 		for name, source := range defaultMaps {
 			if !lookup[name] {
-				if err := t.CreateMap(name, category, source); err != nil {
+				if err := t.CreateMap(name, source, category); err != nil {
 					return err
 				}
 			}
@@ -64,9 +64,9 @@ func (t *Tournament) InstallDefaultMaps(resourcePath string, category Tournament
 	}
 }
 
-func (t *Tournament) UserExists(name string) (bool, TournamentCategory, error) {
-	exists, category, err := t.Database.UserExists(name)
-	return exists, category, err
+func (t *Tournament) UserExists(name string) (bool, error) {
+	exists, err := t.Database.UserExists(name)
+	return exists, err
 }
 
 func (t *Tournament) ListUsers() ([]string, error) {
@@ -74,8 +74,8 @@ func (t *Tournament) ListUsers() ([]string, error) {
 	return users, err
 }
 
-func (t *Tournament) ListCategories() ([]TournamentCategory, error) {
-	return []TournamentCategory{CategoryBattlecode2014, CategoryBattlecode2015}, err
+func (t *Tournament) ListCategories() []TournamentCategory {
+	return []TournamentCategory{CategoryBattlecode2014, CategoryBattlecode2015}
 }
 
 func (t *Tournament) deleteRepository(name string) error {
@@ -123,7 +123,7 @@ func (t *Tournament) CreateUser(name, publicKey string, category TournamentCateg
 	var commitHash string
 	//TODO:(gkelley) this didn't work with a transaction. There is a race condition without one.
 //	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
-		if exists, _, err := t.Database.UserExists(name); err != nil {
+		if exists, err := t.Database.UserExists(name); err != nil {
 			return "", err
 		} else if exists {
 			return "", errors.New("User already exists")
@@ -141,8 +141,8 @@ func (t *Tournament) CreateUser(name, publicKey string, category TournamentCateg
 //	})
 }
 
-func (t *Tournament) CreateMap(name string, category TournamentCategory, source string) error {
-	return t.Database.CreateMap(name, category, source)
+func (t *Tournament) CreateMap(name, source string, category TournamentCategory) error {
+	return t.Database.CreateMap(name, source, category)
 }
 
 func (t *Tournament) GetMapSource(name string, category TournamentCategory) (string, error) {
