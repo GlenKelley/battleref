@@ -103,13 +103,13 @@ func TestRunMatch(test *testing.T) {
 	if err != nil {
 		t.ErrorNow(err)
 	}
-	packageDir := filepath.Join(build.Default.GOPATH, "src", pkg.Dir)
-	arena := NewArena(packageDir)
+	resourceDir := filepath.Join(build.Default.GOPATH, "src", pkg.Dir, "internal", "categories")
+	arena := NewArena(resourceDir)
 	finishedTime := time.Now()
 	if finished, result, err := arena.RunMatch(MatchProperties{
 		"sampleMap",
 		bytes.NewReader(SampleMap),
-		"CategoryFoo",
+		"battlecode2014",
 		filepath.Join(gitDir, "samplePlayer.git"),
 		filepath.Join(gitDir, "samplePlayer.git"),
 		commitHash,

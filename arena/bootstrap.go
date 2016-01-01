@@ -21,6 +21,10 @@ func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) (
 			files, err := populateBattlecode2014Player(name, sourceDir)
 			return files, err
 		}
+		case "battlecode2015": {
+			files, err := populateBattlecode2015Player(name, sourceDir)
+			return files, err
+		}
 		default: return []string{}, fmt.Errorf("Can't create bootstrap for unkown category %s", category)
 	}
 }
@@ -50,8 +54,33 @@ func populateBattlecode2014Player(name, sourceDir string) ([]string, error) {
 	return files, nil
 }
 
+const Battlecode2015Template = `package %s;
+import battlecode.common.RobotController;
+public class RobotPlayer {
+	public static void run(RobotController rc) {
+		while (true) {
+			rc.yield();
+		}
+	}
+}`
+
+const Battlecode2015Readme = ``
+
+func populateBattlecode2015Player(name, sourceDir string) ([]string, error) {
+	sourceFile := filepath.Join(sourceDir, "RobotPlayer.java")
+	readmeFile := filepath.Join(sourceDir, "README")
+	files := []string{sourceFile, readmeFile}
+	if err := ioutil.WriteFile(sourceFile, []byte(fmt.Sprintf(Battlecode2015Template, name)), os.ModePerm); err != nil {
+		return []string{}, err
+	}
+	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2015Readme), os.ModePerm); err != nil {
+		return []string{}, err
+	}
+	return files, nil
+}
+
 func DefaultMaps(resourcePath, category string) (map[string]string, error) {
-	mapsPath := filepath.Join(resourcePath,"maps")
+	mapsPath := filepath.Join(resourcePath,category,"maps")
 	if files, err := ioutil.ReadDir(mapsPath); err != nil {
 		return nil, err
 	} else {

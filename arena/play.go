@@ -78,7 +78,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 		"-M", mapFile.Name(),
 		"-R",
 	)
-	cmd.Dir = a.ResourceDir
+	cmd.Dir = filepath.Join(a.ResourceDir, p.Category)
 	buffer := bytes.Buffer{}
 	cmd.Stderr = &buffer
 	if out, err := cmd.Output(); err != nil {

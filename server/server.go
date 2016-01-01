@@ -132,7 +132,7 @@ type Properties struct {
 }
 
 func (p Properties) ArenaResourcePath() string {
-	return filepath.Join(p.ResourcePath, "arena")
+	return filepath.Join(p.ResourcePath, "arena", "internal", "categories")
 }
 
 func ReadProperties(env, resourcePath string) (Properties, error) {

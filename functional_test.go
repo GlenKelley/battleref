@@ -14,20 +14,18 @@ type JSONBody map[string]interface{}
 
 func TestInitToRun2014(test *testing.T) {
 	t := (*testutil.T)(test)
-	initToRun(t, tournament.CategoryBattlecode2014)
+	initToRun(t, "8081", tournament.CategoryBattlecode2014)
 }
 
-/*
 func TestInitToRun2015(test *testing.T) {
 	t := (*testutil.T)(test)
-	initToRun(t, tournament.CategoryBattlecode2015)
+	initToRun(t, "8082", tournament.CategoryBattlecode2015)
 }
-*/
 
-func initToRun(t *testutil.T, category tournament.TournamentCategory) {
+func initToRun(t *testutil.T, port string, category tournament.TournamentCategory) {
 	if webserver, err := CreateServer(server.Properties{
 		":memory:",
-		"8080",
+		port,
 		":temp:",
 		nil,
 		".",
@@ -42,20 +40,20 @@ func initToRun(t *testutil.T, category tournament.TournamentCategory) {
 		//Race condition of server not starting
 		time.Sleep(time.Millisecond)
 
-		if commit, err := CreatePlayer("playerFoo", category); err != nil {
+		if commit, err := CreatePlayer(port, "playerFoo", category); err != nil {
 			t.ErrorNow(err)
-		} else if maps, err := GetMaps(category); err != nil {
+		} else if maps, err := GetMaps(port, category); err != nil {
 			t.ErrorNow(err)
 		} else if len(maps) == 0 {
 			t.ErrorNowf("No default maps")
 		} else {
-			t.CheckError(RunMatch("playerFoo", "playerFoo", commit, commit, maps[0], category))
+			t.CheckError(RunMatch(port, "playerFoo", "playerFoo", commit, commit, maps[0], category))
 		}
 
 	}
 }
 
-func CreatePlayer(name string, category tournament.TournamentCategory) (string, error) {
+func CreatePlayer(port, name string, category tournament.TournamentCategory) (string, error) {
 	var response struct {
 		Data struct {
 			CommitHash string `json:"commit_hash"`
@@ -64,7 +62,7 @@ func CreatePlayer(name string, category tournament.TournamentCategory) (string, 
 	}
 	if _, pubKey, err := testutil.CreateKeyPair(); err != nil {
 		return "", err
-	} else if err := web.SendPostJson("http://localhost:8080/register", web.JsonBody{"name":name, "public_key":pubKey, "category": string(category)}, &response); err != nil {
+	} else if err := web.SendPostJson("http://localhost:"+port+"/register", web.JsonBody{"name":name, "public_key":pubKey, "category": string(category)}, &response); err != nil {
 		return "", err
 	} else if repo, err := (git.TempRemote{}).CheckoutRepository(response.Data.RepoURL); err != nil {
 		return "", err
@@ -74,22 +72,22 @@ func CreatePlayer(name string, category tournament.TournamentCategory) (string, 
 	}
 }
 
-func GetMaps(category tournament.TournamentCategory) ([]string, error) {
+func GetMaps(port string, category tournament.TournamentCategory) ([]string, error) {
 	var response struct {
 		Data struct {
 			Maps []string `json:"maps"`
 		} `json:"data"`
 	}
-	if err := web.SendGetJson("http://localhost:8080/maps", web.JsonBody{"category": string(category)}, &response); err != nil {
+	if err := web.SendGetJson("http://localhost:"+port+"/maps", web.JsonBody{"category": string(category)}, &response); err != nil {
 		return nil, err
 	} else {
 		return response.Data.Maps, nil
 	}
 }
 
-func RunMatch(name, name2, commit, commit2, mapName string, category tournament.TournamentCategory) error {
+func RunMatch(port, name, name2, commit, commit2, mapName string, category tournament.TournamentCategory) error {
 	response := struct{}{}
-	if err := web.SendPostJson("http://localhost:8080/match/run", web.JsonBody{
+	if err := web.SendPostJson("http://localhost:"+port+"/match/run", web.JsonBody{
 		"player1":name,
 		"player2":name2,
 		"commit1":commit,
