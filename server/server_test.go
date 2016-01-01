@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"reflect"
 	"io"
 	"net/url"
@@ -446,7 +445,6 @@ func TestReplay(t *testing.T) {
 		sendJSONPost(t, server, "/register", map[string]string{"name":"NameFoo","public_key":SamplePublicKey,"category":string(tournament.CategoryTest)})
 		sendJSONPost(t, server, "/map/create", map[string]string{"name":"NameBar","source":"SourceBar","category":string(tournament.CategoryTest)})
 		r := sendGet(t, server, "/commits?name=NameFoo&category=" + string(tournament.CategoryTest))
-		fmt.Println(r)
 		commit := Json(t,r).Key("data").Key("commits").At(0).String()
 		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1":"NameFoo","player2":"NameFoo","category":string(tournament.CategoryTest),"commit1":commit,"commit2":commit,"map":"NameBar"})
 		id := Json(t,r).Key("data").Key("id").Int()
