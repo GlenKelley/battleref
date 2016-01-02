@@ -3,30 +3,31 @@ package server
 import (
 	//"os"
 	"reflect"
-//	"path/filepath"
+	//	"path/filepath"
 	"log"
-	"strings"
 	"strconv"
-//	"encoding/json"
-	"net"
-	"net/url"
+	"strings"
+	//	"encoding/json"
 	"bytes"
 	"compress/gzip"
-	"net/http"
 	"errors"
-//	"bytes"
+	"net"
+	"net/http"
+	"net/url"
+	//	"bytes"
 	"os/exec"
 	// "flag"
 	"fmt"
 	"regexp"
-//	"sort"
+	//	"sort"
+	"encoding/json"
+	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/simulator"
+	"github.com/GlenKelley/battleref/tournament"
+	"github.com/GlenKelley/battleref/web"
+	"io/ioutil"
 	"path/filepath"
 	"time"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/GlenKelley/battleref/tournament"
-	"github.com/GlenKelley/battleref/git"
-	"github.com/GlenKelley/battleref/web"
 )
 
 type JSONResponse map[string]interface{}
@@ -42,14 +43,14 @@ const (
 */
 
 var (
-	NameRegex = regexp.MustCompile("^[\\w\\d-]+$")		//valid tournament usernames
-	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$")	//git hash
+	NameRegex       = regexp.MustCompile("^[\\w\\d-]+$")     //valid tournament usernames
+	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$") //git hash
 )
 
 type Route struct {
-	Method string `json:"method"`
+	Method  string `json:"method"`
 	Pattern string `json:"pattern"`
-	Help string `json:"help,omitempty"`
+	Help    string `json:"help,omitempty"`
 }
 
 type ServerState struct {
@@ -114,7 +115,7 @@ func (s *ServerState) Serve() error {
 
 func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState), help string) {
 	s.Routes[pattern] = Route{method, pattern, help}
-	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func (w http.ResponseWriter, r *http.Request) {
+	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == method {
 			handler(w, r, s)
 		} else {
@@ -125,11 +126,11 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 
 // Environment variables
 type Properties struct {
-	DatabaseURL	string `json:"database_url"`
-	ServerPort	string `json:"server_port"`
-	GitServerType	string `json:"git_server"`
-	GitServerConf   map[string]string `json:"git_server_conf"`
-	ResourcePath	string `json:"resource_path"`
+	DatabaseURL   string            `json:"database_url"`
+	ServerPort    string            `json:"server_port"`
+	GitServerType string            `json:"git_server"`
+	GitServerConf map[string]string `json:"git_server_conf"`
+	ResourcePath  string            `json:"resource_path"`
 }
 
 func (p Properties) ArenaResourcePath() string {
@@ -141,10 +142,13 @@ func ReadProperties(env, resourcePath string) (Properties, error) {
 	var properties Properties
 	properties.ResourcePath = resourcePath
 	bs, err := ioutil.ReadFile(propertiesFilename)
-	if err != nil { return properties, err }
+	if err != nil {
+		return properties, err
+	}
 	err = json.Unmarshal(bs, &properties)
 	return properties, err
 }
+
 /*
 func web.WriteJsonError(w http.ResponseWriter, err error) {
 	web.WriteJsonErrorWithCode(w, err, http.StatusInternalServerError)
@@ -185,7 +189,7 @@ func web.WriteJson(w http.ResponseWriter, response interface{}) {
 }
 */
 func GitVersion(path string) (string, error) {
-	cmd := exec.Command("git", "rev-parse","HEAD")
+	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = path
 	output, err := cmd.Output()
 	return strings.TrimSpace(string(output)), err
@@ -205,14 +209,14 @@ func version(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func api(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	web.WriteJson(w, JSONResponse{"routes":s.Routes})
+	web.WriteJson(w, JSONResponse{"routes": s.Routes})
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if s.Listener == nil {
 		web.WriteJsonError(w, errors.New("Server not listening"))
 	} else {
-		web.WriteJson(w, JSONResponse{"message":"Shutting Down"})
+		web.WriteJson(w, JSONResponse{"message": "Shutting Down"})
 		if err := s.Listener.Close(); err != nil {
 			log.Print(err)
 		}
@@ -254,7 +258,8 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 			}
 			if value != "" {
 				switch field.Type.Kind() {
-					case reflect.Int64: {
+				case reflect.Int64:
+					{
 						if v, err := strconv.Atoi(value); err != nil {
 							werr.AddError(web.NewErrorItem("Invalid integer", fmt.Sprintf("Unable to parse '%v' as an integer", value), field.Name, "formfield"))
 						} else {
@@ -262,11 +267,13 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 						}
 						break
 					}
-					case reflect.String: {
+				case reflect.String:
+					{
 						formValue.Field(i).SetString(value)
 						break
 					}
-				default: return web.SimpleError(fmt.Errorf("Unexpected type %v", formType.Kind()))
+				default:
+					return web.SimpleError(fmt.Errorf("Unexpected type %v", formType.Kind()))
 				}
 			}
 		}
@@ -295,9 +302,9 @@ func parseForm(r *http.Request, form interface{}) web.Error {
 
 func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Name string `json:"name" form:"name" validate:"required"`
-		PublicKey string `json:"public_key" form:"public_key" validate:"required"`
-		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+		Name      string                        `json:"name" form:"name" validate:"required"`
+		PublicKey string                        `json:"public_key" form:"public_key" validate:"required"`
+		Category  tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
@@ -311,11 +318,11 @@ func register(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, struct {
-			Name string `json:"name"`
-			Category tournament.TournamentCategory `json:"category"`
-			PublicKey string `json:"public_key"`
-			RepoUrl string `json:"repo_url"`
-			Commit string `json:"commit_hash"`
+			Name      string                        `json:"name"`
+			Category  tournament.TournamentCategory `json:"category"`
+			PublicKey string                        `json:"public_key"`
+			RepoUrl   string                        `json:"repo_url"`
+			Commit    string                        `json:"commit_hash"`
 		}{
 			form.Name,
 			form.Category,
@@ -330,20 +337,20 @@ func players(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if userNames, err := s.Tournament.ListUsers(); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"players":userNames})
+		web.WriteJson(w, JSONResponse{"players": userNames})
 	}
 }
 
 func categories(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	categories := s.Tournament.ListCategories()
-	web.WriteJson(w, JSONResponse{"categories":categories})
+	web.WriteJson(w, JSONResponse{"categories": categories})
 }
 
 func createMap(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Name string `json:"name" form:"name" validate:"required"`
+		Name     string                        `json:"name" form:"name" validate:"required"`
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
-		Source string `json:"source" form:"source" validate:"required"`
+		Source   string                        `json:"source" form:"source" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
@@ -365,13 +372,13 @@ func maps(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	} else if maps, err := s.Tournament.ListMaps(form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"maps":maps})
+		web.WriteJson(w, JSONResponse{"maps": maps})
 	}
 }
 
 func mapSource(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Name string `form:"name" validate:"required"`
+		Name     string                        `form:"name" validate:"required"`
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
@@ -385,9 +392,9 @@ func mapSource(w http.ResponseWriter, r *http.Request, s *ServerState) {
 
 func submit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Name string `json:"name" form:"name" validate:"required"`
-		CommitHash string `json:"commit_hash" form:"commit_hash" validate:"required"`
-		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+		Name       string                        `json:"name" form:"name" validate:"required"`
+		CommitHash string                        `json:"commit_hash" form:"commit_hash" validate:"required"`
+		Category   tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
@@ -406,7 +413,7 @@ func submit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 
 func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Name string `json:"name" form:"name" validate:"required"`
+		Name     string                        `json:"name" form:"name" validate:"required"`
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
@@ -418,7 +425,7 @@ func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	} else if commits, err := s.Tournament.ListCommits(form.Name, form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"commits":commits})
+		web.WriteJson(w, JSONResponse{"commits": commits})
 	}
 }
 
@@ -426,18 +433,18 @@ func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if matches, err := s.Tournament.ListMatches(); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"matches":matches})
+		web.WriteJson(w, JSONResponse{"matches": matches})
 	}
 }
 
 func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	var form struct {
-		Player1 string `json:"player1" form:"player1" validate:"required"`
-		Player2 string `json:"player2" form:"player2" validate:"required"`
-		Commit1 string `json:"commit1" form:"commit1" validate:"required"`
-		Commit2 string `json:"commit2" form:"commit2" validate:"required"`
+		Player1  string                        `json:"player1" form:"player1" validate:"required"`
+		Player2  string                        `json:"player2" form:"player2" validate:"required"`
+		Commit1  string                        `json:"commit1" form:"commit1" validate:"required"`
+		Commit2  string                        `json:"commit2" form:"commit2" validate:"required"`
 		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
-		Map string `json:"map" form:"map" validate:"required"`
+		Map      string                        `json:"map" form:"map" validate:"required"`
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
@@ -460,7 +467,7 @@ func runMatch(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	} else if id, result, err := s.Tournament.RunMatch(form.Category, form.Map, tournament.Submission{form.Player1, form.Commit1}, tournament.Submission{form.Player2, form.Commit2}, tournament.SystemClock()); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"id":id, "result":result})
+		web.WriteJson(w, JSONResponse{"id": id, "result": result})
 	}
 }
 
@@ -474,10 +481,12 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, err)
 	} else if reader, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
 		web.WriteJsonError(w, err)
-	} else if bs, err := ioutil.ReadAll(reader); err != nil {
+	} else if unzipped, err := gzip.NewReader(reader); err != nil {
+		web.WriteJsonError(w, err)
+	} else if replay, err := simulator.NewReplay(unzipped); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"replay":string(bs)})
+		web.WriteJson(w, replay)
 	}
 }
 
@@ -490,10 +499,9 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	} else if err := s.Tournament.RunLatestMatches(form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, JSONResponse{"success":true})
+		web.WriteJson(w, JSONResponse{"success": true})
 	}
 }
-
 
 //type EventType int
 //
@@ -533,7 +541,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	for _, u := range c.PredefinedRepos {
 //		if user == u {
 //			return true
-//		} 
+//		}
 //	}
 //	return false
 //}
@@ -555,17 +563,17 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //
 //func (m *Match) PlayerAScore() int {
 //	switch m.Result {
-//		case arena.ResultWinA: return 2 
+//		case arena.ResultWinA: return 2
 //		case arena.ResultTieA: return 1
-//		default: return 0  
+//		default: return 0
 //	}
 //}
 //
 //func (m *Match) PlayerBScore() int {
 //	switch m.Result {
-//		case arena.ResultWinB: return 2 
+//		case arena.ResultWinB: return 2
 //		case arena.ResultTieB: return 1
-//		default: return 0  
+//		default: return 0
 //	}
 //}
 //
@@ -589,10 +597,10 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	if reserved {
 //		return fmt.Errorf("the name %s is taken", f.Name)
 //	}
-//	if !NameRegex.MatchString(f.Name) { 
+//	if !NameRegex.MatchString(f.Name) {
 //		return fmt.Errorf("the name %s is invalid", f.Name)
 //	}
-//	if !PublicKeyRegex.MatchString(f.PublicKey) { 
+//	if !PublicKeyRegex.MatchString(f.PublicKey) {
 //		return fmt.Errorf("the public key %s is invalid", f.PublicKey)
 //	}
 //	return nil
@@ -601,8 +609,8 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //func validateUniqueness(name string, db *Database) error {
 //	count, err := db.CountUsersWithName(name)
 //	if err != nil { return err }
-//	if count > 0 { 
-//		return fmt.Errorf("the name %s is taken", name) 
+//	if count > 0 {
+//		return fmt.Errorf("the name %s is taken", name)
 //	}
 //	return nil
 //}
@@ -697,7 +705,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	// 	if err != nil { return err }
 //	// 	_, err = writeKey(name, string(b))
 //	// 	if err != nil { return err }
-//	// } 
+//	// }
 //
 //	rows, err := tx.ListUsers()
 //	if err != nil { return err }
@@ -776,7 +784,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //			}
 //			sort.Sort(ByPoints(ladder.ByMap[m]))
 //		}
-//		b, err = json.Marshal(ladder)			
+//		b, err = json.Marshal(ladder)
 //	}
 //    if err != nil {
 //		w.WriteHeader(http.StatusBadRequest)
@@ -822,10 +830,10 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //func (f *RevisionSubmitForm) Validate() error {
 //	if f.Repo == "" { return errors.New("missing repo") }
 //	if f.GitHash == "" { return errors.New("missing commit") }
-//	if !NameRegex.MatchString(f.Repo) { 
+//	if !NameRegex.MatchString(f.Repo) {
 //		return fmt.Errorf("the repo %s is invalid", f.Repo)
 //	}
-//	if !CommitRegex.MatchString(f.GitHash) { 
+//	if !CommitRegex.MatchString(f.GitHash) {
 //		return fmt.Errorf("the commit %s is invalid", f.GitHash)
 //	}
 //	return nil
@@ -841,7 +849,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	if err == nil {
 //		var count int
 //		count, err = s.Database.CountUsersWithName(submitForm.Repo)
-//		if err == nil && count == 0 { 
+//		if err == nil && count == 0 {
 //			err = fmt.Errorf("invalid repository %s", submitForm.Repo)
 //		}
 //	}
@@ -899,7 +907,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	if err == nil {
 //		var count int
 //		count, err = s.Database.CountUsersWithName(form.Name)
-//		if err == nil && count == 0 { 
+//		if err == nil && count == 0 {
 //			err = fmt.Errorf("invalid repository %s", form.Name)
 //		}
 //	}
@@ -1022,7 +1030,7 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	}
 //	// 	switch e.Type {
 //	// 	case EventNewCommit:
-//	// 		mapName := e.Name			
+//	// 		mapName := e.Name
 //	// 		s.Database.ListRevisions()
 //	// 	case EventNewMap:
 //	// 		commit := e.Name
@@ -1047,5 +1055,3 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 //	w.WriteHeader(http.StatusOK)
 //	os.Exit(1)
 //}
-
-
