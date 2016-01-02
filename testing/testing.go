@@ -51,6 +51,49 @@ func (t *T) CompareStringsUnsorted(as, bs []string) {
 	}
 }
 
+func prefix(s string, i int) string {
+	if i < len(s) {
+		return s[0:i]
+	} else {
+		return s
+	}
+}
+
+func suffix(s string, i int) string {
+	if i < len(s) {
+		return s[len(s)-i-1:]
+	} else {
+		return s
+	}
+
+}
+
+func (t *T) StringCompare(a, b string) {
+	if a != b {
+		n := len(a)
+		if bn := len(b); bn < n {
+			n = bn
+		}
+		for i := 0; i < n; i++ {
+			if a[i] != b[i] {
+				p := suffix(a[:i], 100)
+				pa := prefix(a[i:], 512)
+				pb := prefix(b[i:], 512)
+				t.ErrorNowf("Strings don't match, differ at index %v: \n...%v[%v...]\n...%v[%v...]\n", i, p, pa, p, pb)
+			}
+		}
+		if len(a) < len(b) {
+			p := suffix(b[:n], 100)
+			t.ErrorNowf("Strings don't match, differ at index %v, unexpected suffix: \n...%v[%v...]\n", n, p, prefix(b[n:], 100))
+		} else {
+			p := suffix(b[:n], 100)
+			t.ErrorNowf("Strings don't match, differ at index %v, missing suffix: \n...%v[%v...]\n", n, p, prefix(a[n:], 100))
+		}
+
+	}
+}
+
+
 func CreateKeyPair() (string, string, error) {
 	if dir, err := ioutil.TempDir(os.TempDir(), "battleref_keypair"); err != nil {
 		return "", "", err
