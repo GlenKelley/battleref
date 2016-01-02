@@ -35,8 +35,13 @@ if [[ -n "$VERBOSE" ]] ; then
 fi
 
 GIT_ROOT="$(git rev-parse --show-toplevel)"
-DEST=~/Sites
+DEST=~/Sites/battlecode
+if [[ -n "$WEB_BUILD_DEST" ]]; then
+  DEST="$WEB_BUILD_DEST"
+fi
 
+echo "Copying web files to $DEST"
+mkdir -p ${DEST}
 rm -rf ${DEST}/*
 cp -r "${GIT_ROOT}/internal/web/." "$DEST/." 
 
