@@ -1,13 +1,13 @@
 package tournament
 
 import (
-	"fmt"
-	"strings"
 	"errors"
-	"time"
-	"log"
+	"fmt"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
+	"log"
+	"strings"
+	"time"
 )
 
 type Clock interface {
@@ -18,22 +18,25 @@ type Clock interface {
 func SystemClock() Clock {
 	return &systemClock{}
 }
+
 type systemClock struct {
 }
+
 func (c *systemClock) Now() time.Time {
 	return time.Now()
 }
 
 type TournamentCategory string
+
 const (
-	CategoryTest = TournamentCategory("battlecode2014")
+	CategoryTest           = TournamentCategory("battlecode2014")
 	CategoryBattlecode2014 = TournamentCategory("battlecode2014")
 	CategoryBattlecode2015 = TournamentCategory("battlecode2015")
 )
 
 type Tournament struct {
 	Database  Database
-	Arena	  arena.Arena
+	Arena     arena.Arena
 	Bootstrap arena.Bootstrap
 	GitHost   git.GitHost
 	Remote    git.Remote
@@ -122,23 +125,23 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 func (t *Tournament) CreateUser(name, publicKey string, category TournamentCategory) (string, error) {
 	var commitHash string
 	//TODO:(gkelley) this didn't work with a transaction. There is a race condition without one.
-//	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
-		if exists, err := t.Database.UserExists(name); err != nil {
-			return "", err
-		} else if exists {
-			return "", errors.New("User already exists")
-		} else if err := t.Database.CreateUser(name, publicKey); err != nil {
-			return "", err
-		} else if ch, err := t.CreatePlayerRepository(name, publicKey, category); err != nil {
-			if err2 := t.Database.DeleteUser(name); err2 != nil {
-				fmt.Println(err2)
-			}
-			return "", err
-		} else {
-			commitHash = ch
-			return commitHash, nil
+	//	return commitHash, t.Database.TransactionBlock(func(tx Statements) error {
+	if exists, err := t.Database.UserExists(name); err != nil {
+		return "", err
+	} else if exists {
+		return "", errors.New("User already exists")
+	} else if err := t.Database.CreateUser(name, publicKey); err != nil {
+		return "", err
+	} else if ch, err := t.CreatePlayerRepository(name, publicKey, category); err != nil {
+		if err2 := t.Database.DeleteUser(name); err2 != nil {
+			fmt.Println(err2)
 		}
-//	})
+		return "", err
+	} else {
+		commitHash = ch
+		return commitHash, nil
+	}
+	//	})
 }
 
 func (t *Tournament) CreateMap(name, source string, category TournamentCategory) error {
@@ -156,15 +159,15 @@ func (t *Tournament) ListMaps(category TournamentCategory) ([]string, error) {
 }
 
 type Match struct {
-	Id int64
-	Player1 string
-	Player2 string
-	Commit1 string
-	Commit2 string
-	Map string
+	Id       int64
+	Player1  string
+	Player2  string
+	Commit1  string
+	Commit2  string
+	Map      string
 	Category string
-	Result MatchResult
-	Time time.Time
+	Result   MatchResult
+	Time     time.Time
 }
 
 func (t *Tournament) ListMatches() ([]Match, error) {
@@ -187,19 +190,19 @@ func (t *Tournament) ListCommits(name string, category TournamentCategory) ([]st
 }
 
 type Submission struct {
-	Name string
+	Name       string
 	CommitHash string
 }
 
 type MatchResult string
 
 const (
-	MatchResultInProgress	= "InProgress"
-	MatchResultWinA		= "WinA"
-	MatchResultWinB		= "WinB"
-	MatchResultTieA		= "TieA"
-	MatchResultTieB		= "TieB"
-	MatchResultError	= "Error"
+	MatchResultInProgress = "InProgress"
+	MatchResultWinA       = "WinA"
+	MatchResultWinB       = "WinB"
+	MatchResultTieA       = "TieA"
+	MatchResultTieB       = "TieB"
+	MatchResultError      = "Error"
 )
 
 func (t *Tournament) CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error) {
@@ -216,7 +219,6 @@ func (t *Tournament) GetMatchResult(id int64) (MatchResult, error) {
 	return result, err
 }
 
-
 func (t *Tournament) GetMatchReplay(id int64) ([]byte, error) {
 	replay, err := t.Database.GetMatchReplay(id)
 	return replay, err
@@ -228,7 +230,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 	} else {
 		if mapSource, err := t.GetMapSource(mapName, category); err != nil {
 			return id, MatchResultError, err
-		} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties {
+		} else if finished, result, err := t.Arena.RunMatch(arena.MatchProperties{
 			mapName,
 			strings.NewReader(mapSource),
 			string(category),
@@ -236,7 +238,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 			t.GitHost.RepositoryURL(player2.Name),
 			player1.CommitHash,
 			player2.CommitHash,
-			}, func()time.Time{ return clock.Now() }); err != nil {
+		}, func() time.Time { return clock.Now() }); err != nil {
 			if err2 := t.UpdateMatch(category, mapName, player1, player2, finished, MatchResultError, []byte{}); err2 != nil {
 				log.Println(err2)
 			}
@@ -375,7 +377,7 @@ func (t *Tournament) createMap(name, mapContent String) error {
 }
 
 func (t *Tournament) submitCommit(playerName, commit String) error {
-	if 
+	if
 }
 
 
@@ -391,7 +393,7 @@ func revisionSubmit(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if err == nil {
 		var count int
 		count, err = s.Database.CountUsersWithName(submitForm.Repo)
-		if err == nil && count == 0 { 
+		if err == nil && count == 0 {
 			err = fmt.Errorf("invalid repository %s", submitForm.Repo)
 		}
 	}
@@ -449,7 +451,7 @@ func accountRemove(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if err == nil {
 		var count int
 		count, err = s.Database.CountUsersWithName(form.Name)
-		if err == nil && count == 0 { 
+		if err == nil && count == 0 {
 			err = fmt.Errorf("invalid repository %s", form.Name)
 		}
 	}
@@ -572,7 +574,7 @@ func (s *ServerState) Referee() {
 	}
 	// 	switch e.Type {
 	// 	case EventNewCommit:
-	// 		mapName := e.Name			
+	// 		mapName := e.Name
 	// 		s.Database.ListRevisions()
 	// 	case EventNewMap:
 	// 		commit := e.Name
@@ -599,4 +601,3 @@ func restart(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 */
-

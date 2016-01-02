@@ -1,13 +1,13 @@
 package main
 
 import (
-	"time"
-	"testing"
+	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/server"
 	"github.com/GlenKelley/battleref/testing"
 	"github.com/GlenKelley/battleref/tournament"
-	"github.com/GlenKelley/battleref/server"
 	"github.com/GlenKelley/battleref/web"
-	"github.com/GlenKelley/battleref/git"
+	"testing"
+	"time"
 )
 
 type JSONBody map[string]interface{}
@@ -57,12 +57,12 @@ func CreatePlayer(port, name string, category tournament.TournamentCategory) (st
 	var response struct {
 		Data struct {
 			CommitHash string `json:"commit_hash"`
-			RepoURL string `json:"repo_url"`
+			RepoURL    string `json:"repo_url"`
 		} `json:"data"`
 	}
 	if _, pubKey, err := testutil.CreateKeyPair(); err != nil {
 		return "", err
-	} else if err := web.SendPostJson("http://localhost:"+port+"/register", web.JsonBody{"name":name, "public_key":pubKey, "category": string(category)}, &response); err != nil {
+	} else if err := web.SendPostJson("http://localhost:"+port+"/register", web.JsonBody{"name": name, "public_key": pubKey, "category": string(category)}, &response); err != nil {
 		return "", err
 	} else if repo, err := (git.TempRemote{}).CheckoutRepository(response.Data.RepoURL); err != nil {
 		return "", err
@@ -88,17 +88,15 @@ func GetMaps(port string, category tournament.TournamentCategory) ([]string, err
 func RunMatch(port, name, name2, commit, commit2, mapName string, category tournament.TournamentCategory) error {
 	response := struct{}{}
 	if err := web.SendPostJson("http://localhost:"+port+"/match/run", web.JsonBody{
-		"player1":name,
-		"player2":name2,
-		"commit1":commit,
-		"commit2":commit2,
-		"category":string(category),
-		"map":mapName,
+		"player1":  name,
+		"player2":  name2,
+		"commit1":  commit,
+		"commit2":  commit2,
+		"category": string(category),
+		"map":      mapName,
 	}, &response); err != nil {
 		return err
 	} else {
 		return nil
 	}
 }
-
-

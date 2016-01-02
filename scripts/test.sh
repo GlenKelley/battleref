@@ -10,7 +10,7 @@ function testPackage {
 
 set -e
 pushd $GIT_ROOT >/dev/null
-PACKAGES="git arena tournament server ."
+PACKAGES="simulator web git arena tournament server ."
 for PACKAGE_DIR in $PACKAGES
 do 
 	testPackage $PACKAGE_DIR

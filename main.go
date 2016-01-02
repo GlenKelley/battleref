@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
 	"flag"
-	"github.com/GlenKelley/battleref/server"
-	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/server"
+	"github.com/GlenKelley/battleref/tournament"
+	"log"
 )
 
 func main() {

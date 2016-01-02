@@ -1,11 +1,11 @@
 package arena
 
 import (
-	"path/filepath"
 	"fmt"
-	"strings"
-	"os"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type Bootstrap interface {
@@ -16,16 +16,19 @@ type MinimalBootstrap struct {
 }
 
 func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) ([]string, error) {
-	switch(category) {
-		case "battlecode2014": {
+	switch category {
+	case "battlecode2014":
+		{
 			files, err := populateBattlecode2014Player(name, sourceDir)
 			return files, err
 		}
-		case "battlecode2015": {
+	case "battlecode2015":
+		{
 			files, err := populateBattlecode2015Player(name, sourceDir)
 			return files, err
 		}
-		default: return []string{}, fmt.Errorf("Can't create bootstrap for unkown category %s", category)
+	default:
+		return []string{}, fmt.Errorf("Can't create bootstrap for unkown category %s", category)
 	}
 }
 
@@ -80,7 +83,7 @@ func populateBattlecode2015Player(name, sourceDir string) ([]string, error) {
 }
 
 func DefaultMaps(resourcePath, category string) (map[string]string, error) {
-	mapsPath := filepath.Join(resourcePath,category,"maps")
+	mapsPath := filepath.Join(resourcePath, category, "maps")
 	if files, err := ioutil.ReadDir(mapsPath); err != nil {
 		return nil, err
 	} else {
@@ -100,7 +103,3 @@ func DefaultMaps(resourcePath, category string) (map[string]string, error) {
 		return maps, nil
 	}
 }
-
-
-
-

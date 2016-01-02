@@ -1,20 +1,20 @@
 package arena
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"time"
-	"io"
-	"bytes"
 	"path/filepath"
-	"io/ioutil"
 	"runtime/debug"
-	"encoding/json"
+	"time"
 )
 
 const (
-	ReasonTie = "TIE"
+	ReasonTie     = "TIE"
 	ReasonVictory = "VICTORY"
 
 	WinnerA = "A"
@@ -22,17 +22,17 @@ const (
 )
 
 type MatchProperties struct {
-	MapName string
-	MapSource io.Reader
-	Category string
+	MapName     string
+	MapSource   io.Reader
+	Category    string
 	PlayerRepo1 string
 	PlayerRepo2 string
-	Commit1 string
-	Commit2 string
+	Commit1     string
+	Commit2     string
 }
 
 type Arena interface {
-	RunMatch(properties MatchProperties, clock func()time.Time) (time.Time, MatchResult, error)
+	RunMatch(properties MatchProperties, clock func() time.Time) (time.Time, MatchResult, error)
 }
 
 type MatchResult struct {
@@ -45,7 +45,7 @@ type LocalArena struct {
 	ResourceDir string
 }
 
-func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
+func (a LocalArena) RunMatch(p MatchProperties, clock func() time.Time) (time.Time, MatchResult, error) {
 	var result MatchResult
 	tarFile := "battlecode.tar"
 	mapFile, err := ioutil.TempFile(os.TempDir(), p.MapName)
@@ -65,7 +65,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Tim
 	if err != nil {
 		return clock(), result, err
 	}
-//	defer os.RemoveAll(tempDir)
+	//	defer os.RemoveAll(tempDir)
 
 	cmd := exec.Command("./runMatch.sh",
 		"-r", tarFile,
@@ -107,7 +107,7 @@ type DummyArena struct {
 	Err    error
 }
 
-func (a DummyArena) RunMatch(p MatchProperties, clock func()time.Time) (time.Time, MatchResult, error) {
+func (a DummyArena) RunMatch(p MatchProperties, clock func() time.Time) (time.Time, MatchResult, error) {
 	return a.Finish, a.Result, a.Err
 }
 

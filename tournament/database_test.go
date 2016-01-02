@@ -3,6 +3,7 @@ package tournament
 import (
 	"testing"
 )
+
 // import "code.google.com/p/gomock/gomock"
 
 func checkParseSchema(t *testing.T, v string, majorE, minorE, patchE int) {
@@ -19,21 +20,21 @@ func checkParseSchemaError(t *testing.T, v string) {
 	}
 }
 func TestParseSchemaVersion(t *testing.T) {
-	checkParseSchema(t, "1.2.3", 1,2,3)
-	checkParseSchema(t, "11.2.3", 11,2,3)
-	checkParseSchema(t, "1.2.3_SNAPSHOT_2014-01-01", 1,2,3)
+	checkParseSchema(t, "1.2.3", 1, 2, 3)
+	checkParseSchema(t, "11.2.3", 11, 2, 3)
+	checkParseSchema(t, "1.2.3_SNAPSHOT_2014-01-01", 1, 2, 3)
 	checkParseSchemaError(t, "1.2")
 
 }
 
 func checkLessThan(t *testing.T, a, b string) {
-	if ! SchemaVersionLess(a,b) {
+	if !SchemaVersionLess(a, b) {
 		t.Errorf("expected %s < %s", a, b)
 	}
 }
 
 func checkNotLessThan(t *testing.T, a, b string) {
-	if SchemaVersionLess(a,b) {
+	if SchemaVersionLess(a, b) {
 		t.Errorf("expected %s >= %s", a, b)
 	}
 }

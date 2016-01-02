@@ -1,16 +1,16 @@
 package arena
 
 import (
-	"time"
-	"strings"
 	"bytes"
-	"io/ioutil"
-	"os/exec"
-	"os"
-	"path/filepath"
-	"testing"
-	"go/build"
 	"github.com/GlenKelley/battleref/testing"
+	"go/build"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
 )
 
 var SampleMap = []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -69,29 +69,31 @@ func RunCommand(t *testutil.T, cmd *exec.Cmd) {
 func TestRunMatch(test *testing.T) {
 	t := (*testutil.T)(test)
 	gitDir, err := ioutil.TempDir(os.TempDir(), "samplePlayer")
-	if err != nil { t.ErrorNow(err) }
+	if err != nil {
+		t.ErrorNow(err)
+	}
 	defer os.RemoveAll(gitDir)
 
 	sourceFile := filepath.Join(gitDir, "RobotPlayer.java")
 	t.CheckError(ioutil.WriteFile(sourceFile, SamplePlayer, os.ModePerm))
 
-	cmd := exec.Command("git","init")
+	cmd := exec.Command("git", "init")
 	cmd.Dir = gitDir
 	RunCommand(t, cmd)
 
-	cmd = exec.Command("git","add",sourceFile)
+	cmd = exec.Command("git", "add", sourceFile)
 	cmd.Dir = gitDir
 	RunCommand(t, cmd)
 
-	cmd = exec.Command("git","commit","-m","init commit")
+	cmd = exec.Command("git", "commit", "-m", "init commit")
 	cmd.Dir = gitDir
 	RunCommand(t, cmd)
 
-	cmd = exec.Command("git","clone","--bare","./","samplePlayer.git")
+	cmd = exec.Command("git", "clone", "--bare", "./", "samplePlayer.git")
 	cmd.Dir = gitDir
 	RunCommand(t, cmd)
 
-	cmd = exec.Command("git","log","-n1","--pretty=%H")
+	cmd = exec.Command("git", "log", "-n1", "--pretty=%H")
 	cmd.Dir = gitDir
 	bs, err := cmd.Output()
 	if err != nil {
@@ -114,7 +116,7 @@ func TestRunMatch(test *testing.T) {
 		filepath.Join(gitDir, "samplePlayer.git"),
 		commitHash,
 		commitHash,
-	}, func()time.Time{ return finishedTime }); err != nil {
+	}, func() time.Time { return finishedTime }); err != nil {
 		t.ErrorNow(err)
 	} else if finished != finishedTime {
 		t.ErrorNow(err)
@@ -126,4 +128,3 @@ func TestRunMatch(test *testing.T) {
 		t.ErrorNow(err)
 	}
 }
-

@@ -1,11 +1,11 @@
 package git
 
 import (
-	"os"
-	"io/ioutil"
-	"testing"
-	"path/filepath"
 	"github.com/GlenKelley/battleref/testing"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
 )
 
 func TestCheckoutRepository(t *testing.T) {
@@ -30,7 +30,7 @@ func TestCommitFiles(t *testing.T) {
 			t.ErrorNow(err)
 		} else {
 			defer repo.Delete()
-			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(),"foo.txt"),[]byte("hello"),os.ModePerm))
+			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "foo.txt"), []byte("hello"), os.ModePerm))
 			t.CheckError(repo.AddFiles([]string{"foo.txt"}))
 			t.CheckError(repo.CommitFiles([]string{"foo.txt"}, "commit message"))
 			if log, err := repo.Log(); err != nil {
@@ -52,7 +52,7 @@ func TestPush(t *testing.T) {
 			t.ErrorNow(err)
 		} else {
 			defer repo.Delete()
-			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(),"foo.txt"),[]byte("hello"),os.ModePerm))
+			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "foo.txt"), []byte("hello"), os.ModePerm))
 			t.CheckError(repo.AddFiles([]string{"foo.txt"}))
 			t.CheckError(repo.CommitFiles([]string{"foo.txt"}, "commit message"))
 			t.CheckError(repo.Push())
@@ -84,9 +84,9 @@ func TestDeleteFiles(t *testing.T) {
 			t.ErrorNow(err)
 		} else {
 			defer repo.Delete()
-			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "foo.txt"), []byte("hello"),os.ModePerm))
-			t.CheckError(os.Mkdir(filepath.Join(repo.Dir(),"bar"), os.ModeDir | 0755))
-			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "bar", "moo.txt"), []byte("world"),os.ModePerm))
+			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "foo.txt"), []byte("hello"), os.ModePerm))
+			t.CheckError(os.Mkdir(filepath.Join(repo.Dir(), "bar"), os.ModeDir|0755))
+			t.CheckError(ioutil.WriteFile(filepath.Join(repo.Dir(), "bar", "moo.txt"), []byte("world"), os.ModePerm))
 			t.CheckError(repo.AddFiles([]string{"foo.txt", "bar"}))
 			t.CheckError(repo.CommitFiles(nil, "commit message"))
 			if log, err := repo.Log(); err != nil {
@@ -114,5 +114,3 @@ func TestDeleteFiles(t *testing.T) {
 
 	})
 }
-
-

@@ -1,13 +1,13 @@
 package tournament
 
 import (
-	"os"
+	"database/sql"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	"os"
+	"regexp"
 	"sort"
 	"strconv"
-	"regexp"
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 var ZeroVersion = "0.0.0"
@@ -92,14 +92,20 @@ var SchemaVersionRegex = regexp.MustCompile("(\\d+).(\\d+).(\\d+)")
 func ParseSchemaVersion(s string) (int, int, int, error) {
 	ss := SchemaVersionRegex.FindStringSubmatch(s)
 	if ss == nil {
-		return 0,0,0, fmt.Errorf("Unable to parse %s", s)
+		return 0, 0, 0, fmt.Errorf("Unable to parse %s", s)
 	}
 	major, err := strconv.Atoi(ss[1])
-	if err != nil { return 0,0,0,err }
+	if err != nil {
+		return 0, 0, 0, err
+	}
 	minor, err := strconv.Atoi(ss[2])
-	if err != nil { return 0,0,0,err }
+	if err != nil {
+		return 0, 0, 0, err
+	}
 	patch, err := strconv.Atoi(ss[3])
-	if err != nil { return 0,0,0,err }
+	if err != nil {
+		return 0, 0, 0, err
+	}
 	return major, minor, patch, nil
 }
 
@@ -113,15 +119,19 @@ func (a BySchemaVersion) Less(i, j int) bool { return SchemaVersionLess(a[i], a[
 func SchemaVersionLess(a, b string) bool {
 	major1, minor1, patch1, err1 := ParseSchemaVersion(a)
 	major2, minor2, patch2, err2 := ParseSchemaVersion(b)
-	if err1 != nil { panic(err1) }
-	if err2 != nil { panic(err2) }
-	return			      major1 < major2 ||
+	if err1 != nil {
+		panic(err1)
+	}
+	if err2 != nil {
+		panic(err2)
+	}
+	return major1 < major2 ||
 		(major1 == major2 && (minor1 < minor2 ||
-		(minor1 == minor2 &&  patch1 < patch2)))
+			(minor1 == minor2 && patch1 < patch2)))
 }
 
 func SchemaVersionKeys(schemaMigrations map[string][]string) []string {
-	versions := make([]string,0,len(schemaMigrations))
+	versions := make([]string, 0, len(schemaMigrations))
 	for k := range schemaMigrations {
 		versions = append(versions, k)
 	}
@@ -133,10 +143,12 @@ func SchemaVersionKeys(schemaMigrations map[string][]string) []string {
 // The lack of a version table is taken to imply a clean (pre version 0) database
 func (db *SQLiteDatabase) MigrateSchema() error {
 	currentVersion, err := db.SchemaVersion()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	versions := SchemaVersionKeys(SchemaMigrations)
 	for _, version := range versions {
-		if ! SchemaVersionLess(currentVersion, version) {
+		if !SchemaVersionLess(currentVersion, version) {
 			continue
 		}
 		migration := SchemaMigrations[version]
@@ -155,9 +167,10 @@ func (db *SQLiteDatabase) MigrateSchema() error {
 				return err2
 			}
 
-			if err2 := tx.Commit(); err2 != nil { return err2 }
+			if err2 := tx.Commit(); err2 != nil {
+				return err2
+			}
 		}
 	}
 	return nil
 }
-

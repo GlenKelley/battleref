@@ -1,49 +1,53 @@
 package testutil
 
 import (
+	"io/ioutil"
 	"os"
-	"testing"
-	"path/filepath"
 	"os/exec"
 	"os/user"
-	"io/ioutil"
+	"path/filepath"
 	"runtime"
+	"testing"
 )
 
 type T testing.T
 
-func (t *T) ErrorNow(args ... interface{}) {
+func (t *T) ErrorNow(args ...interface{}) {
 	trace := make([]byte, 1024)
 	count := runtime.Stack(trace, false)
 	t.Errorf("Stack of %d bytes: %s", count, trace)
-	t.Error(args ...)
+	t.Error(args...)
 	t.FailNow()
 }
 
-func (t *T) ErrorNowf(format string, args ... interface{}) {
+func (t *T) ErrorNowf(format string, args ...interface{}) {
 	trace := make([]byte, 1024)
 	count := runtime.Stack(trace, false)
 	t.Errorf("Stack of %d bytes: %s", count, trace)
-	t.Errorf(format, args ...)
+	t.Errorf(format, args...)
 	t.FailNow()
 }
 
-func (t *T) CheckError(err error, args ... interface{}) {
+func (t *T) CheckError(err error, args ...interface{}) {
 	if err != nil {
-		t.ErrorNow(append([]interface{}{err},args...) ...)
+		t.ErrorNow(append([]interface{}{err}, args...)...)
 	}
 }
 
 func (t *T) ExpectEqual(a, b interface{}) {
-	if (a != b) {
+	if a != b {
 		t.ErrorNowf("Expected <%v> = <%v>", a, b)
 	}
 }
 
 func (t *T) CompareStringsUnsorted(as, bs []string) {
 	counts := map[string]int{}
-	for _, a := range as { counts[a]++ }
-	for _, b := range bs { counts[b]-- }
+	for _, a := range as {
+		counts[a]++
+	}
+	for _, b := range bs {
+		counts[b]--
+	}
 	for k, c := range counts {
 		if c != 0 {
 			t.ErrorNowf("Different element <%v>: <%v> != <%v>", k, as, bs)
@@ -93,7 +97,6 @@ func (t *T) StringCompare(a, b string) {
 	}
 }
 
-
 func CreateKeyPair() (string, string, error) {
 	if dir, err := ioutil.TempDir(os.TempDir(), "battleref_keypair"); err != nil {
 		return "", "", err
@@ -115,11 +118,10 @@ func CreateKeyPair() (string, string, error) {
 }
 
 func PathRelativeToUserHome(t *T, path string) string {
-        if u, err := user.Current(); err != nil {
+	if u, err := user.Current(); err != nil {
 		t.ErrorNow(err)
 		return ""
 	} else {
 		return filepath.Join(u.HomeDir, path)
 	}
 }
-

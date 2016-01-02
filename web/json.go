@@ -1,25 +1,25 @@
 package web
 
 import (
-	"log"
-	"fmt"
 	"bytes"
-	"io/ioutil"
-	"net/url"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
 )
 
 type JsonBody map[string]interface{}
 
 const (
-	HeaderContentType = "Content-Type"
+	HeaderContentType              = "Content-Type"
 	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
 )
 
 const (
 	ContentTypeJson = "application/json"
-	ContentTypeXml = "application/xml"
+	ContentTypeXml  = "application/xml"
 )
 
 func SendPostJson(url string, jsonBody interface{}, jsonResponse interface{}) error {
@@ -36,7 +36,7 @@ func SendPostJson(url string, jsonBody interface{}, jsonResponse interface{}) er
 func SendGetJson(url string, query map[string]interface{}, jsonResponse interface{}) error {
 	if queryValues, err := MarshalValues(query); err != nil {
 		return err
-	} else if req, err := http.NewRequest("GET", fmt.Sprintf("%v?%v",url, queryValues.Encode()), nil); err != nil {
+	} else if req, err := http.NewRequest("GET", fmt.Sprintf("%v?%v", url, queryValues.Encode()), nil); err != nil {
 		return err
 	} else {
 		return RoundTripJson(req, &jsonResponse)
@@ -45,8 +45,8 @@ func SendGetJson(url string, query map[string]interface{}, jsonResponse interfac
 
 type HttpResponseError struct {
 	StatusCode int
-	Status string
-	Body string
+	Status     string
+	Body       string
 }
 
 func (r *HttpResponseError) Error() string {
@@ -61,7 +61,7 @@ func NewHttpResponseError(resp *http.Response) *HttpResponseError {
 	}
 }
 
-func RoundTripJson (req *http.Request, jsonResponse interface{}) error {
+func RoundTripJson(req *http.Request, jsonResponse interface{}) error {
 	if response, err := http.DefaultTransport.RoundTrip(req); err != nil {
 		return err
 	} else if response.StatusCode != http.StatusOK {
@@ -73,7 +73,7 @@ func RoundTripJson (req *http.Request, jsonResponse interface{}) error {
 	}
 }
 
-func SendRequest (req *http.Request) (JsonBody, error) {
+func SendRequest(req *http.Request) (JsonBody, error) {
 	var jsonBody JsonBody
 	if err := RoundTripJson(req, &jsonBody); err != nil {
 		return nil, err
@@ -86,16 +86,18 @@ func MarshalValues(query map[string]interface{}) (url.Values, error) {
 	values := url.Values{}
 	for k, v := range query {
 		switch v := v.(type) {
-		case string: values.Add(k, v)
-		default: return nil, fmt.Errorf("unhandled type of %v", v)
+		case string:
+			values.Add(k, v)
+		default:
+			return nil, fmt.Errorf("unhandled type of %v", v)
 		}
 	}
 	return values, nil
 }
 
 type Json struct {
-	Data interface{} `json:"data,omitempty"`
-	Error Error `json:"error,omitempty"`
+	Data  interface{} `json:"data,omitempty"`
+	Error Error       `json:"error,omitempty"`
 }
 
 type Error interface {
@@ -106,9 +108,9 @@ type Error interface {
 }
 
 type Err struct {
-	Code_ int `json:"code"`
-	Message_ string `json:"message"`
-	Errors_ []ErrorItem `json:"errors,omitempty"`
+	Code_    int         `json:"code"`
+	Message_ string      `json:"message"`
+	Errors_  []ErrorItem `json:"errors,omitempty"`
 }
 
 func (e *Err) AddError(i ErrorItem) {
@@ -136,9 +138,9 @@ func SimpleError(err error) Error {
 }
 
 type ErrorItem struct {
-	Reason string
-	Message string
-	Location string
+	Reason       string
+	Message      string
+	Location     string
 	LocationType string
 }
 
@@ -187,5 +189,3 @@ func WriteXml(w http.ResponseWriter, bs []byte) {
 		log.Println("failed to send response: ", err)
 	}
 }
-
-

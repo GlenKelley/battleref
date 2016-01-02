@@ -1,8 +1,8 @@
 package simulator
 
 import (
-	"io"
 	"encoding/xml"
+	"io"
 )
 
 func NewReplay(input io.Reader) (*Replay, error) {
@@ -11,6 +11,7 @@ func NewReplay(input io.Reader) (*Replay, error) {
 	err := decoder.Decode(&replay)
 	return &replay, err
 }
+
 /*
 func NewReplay(input io.Reader) (*Replay, error) {
 	decoder := xml.NewDecoder(input)

@@ -1,16 +1,16 @@
 package tournament
 
 import (
-	"os/user"
-	"time"
-	"testing"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
 	"github.com/GlenKelley/battleref/testing"
+	_ "github.com/mattn/go-sqlite3"
+	"os/user"
+	"testing"
+	"time"
 )
 
-func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
+func TournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
 	if host, err := git.CreateGitHost(":temp:", nil); err != nil {
 		t.ErrorNow(err)
@@ -30,7 +30,7 @@ func TournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
 	}
 }
 
-var gitoliteTestConf = git.GitoliteConf {
+var gitoliteTestConf = git.GitoliteConf{
 	"localhost",
 	"foobar",
 	"git-test",
@@ -38,7 +38,7 @@ var gitoliteTestConf = git.GitoliteConf {
 	".ssh/git",
 }
 
-func GitoliteTournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) {
+func GitoliteTournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 	t := (*testutil.T)(test)
 	conf := gitoliteTestConf
 	conf.AdminKey = testutil.PathRelativeToUserHome(t, conf.AdminKey)
@@ -50,7 +50,8 @@ func GitoliteTournamentTest(test * testing.T, f func(*testutil.T, *Tournament)) 
 		case user.UnknownUserError:
 			t.Skipf("%v, skipping gitolite tests", err)
 			t.SkipNow()
-			default: t.ErrorNow(err)
+		default:
+			t.ErrorNow(err)
 		}
 	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
@@ -192,8 +193,8 @@ func TestSubmitCommit(t *testing.T) {
 
 func TestCreateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		p1 := Submission{"p1","c1"}
-		p2 := Submission{"p2","c2"}
+		p1 := Submission{"p1", "c1"}
+		p2 := Submission{"p2", "c2"}
 		if id, err := tm.CreateMatch(CategoryTest, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.FailNow()
 		} else if result, err := tm.GetMatchResult(id); err != nil {
@@ -206,8 +207,8 @@ func TestCreateMatch(t *testing.T) {
 
 func TestUpdateMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		p1 := Submission{"p1","c1"}
-		p2 := Submission{"p2","c2"}
+		p1 := Submission{"p1", "c1"}
+		p2 := Submission{"p2", "c2"}
 		if id, err := tm.CreateMatch(CategoryTest, "MapFoo", p1, p2, time.Now()); err != nil {
 			t.ErrorNow(err)
 		} else {
@@ -227,8 +228,8 @@ func TestUpdateMatch(t *testing.T) {
 
 func TestRunMatch(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		p1 := Submission{"p1","c1"}
-		p2 := Submission{"p2","c2"}
+		p1 := Submission{"p1", "c1"}
+		p2 := Submission{"p2", "c2"}
 		t.CheckError(tm.CreateMap("MapFoo", "SourceFoo", CategoryTest))
 		if id, result, err := tm.RunMatch(CategoryTest, "MapFoo", p1, p2, SystemClock()); err != nil {
 			t.ErrorNow(err)
@@ -285,4 +286,3 @@ func TestDuplicatePublicKey(t *testing.T) {
 	GitoliteTournamentTest(t, func(t *testutil.T, tm *Tournament) {
 	})
 }
-

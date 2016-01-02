@@ -1,33 +1,33 @@
 package git
 
 import (
-	"strings"
-	"os/exec"
-	"testing"
+	"github.com/GlenKelley/battleref/testing"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/user"
-	"github.com/GlenKelley/battleref/testing"
+	"strings"
+	"testing"
 )
 
 func TestPublicKeyParsing(t *testing.T) {
-	padding := strings.Repeat("1",256)
+	padding := strings.Repeat("1", 256)
 	for _, key := range []string{
-			"ssh-rsa AAAA1234"+padding,
-			"ssh-rsa AAAA1234"+padding+" email@address.com",
-			"ssh-rsa AAAA1234"+padding+" other text",
-			"ssh-rsa AAAA1234"+padding+"\n",
-			"ssh-rsa AAAA1234"+padding+" other text\n",
-		} {
+		"ssh-rsa AAAA1234" + padding,
+		"ssh-rsa AAAA1234" + padding + " email@address.com",
+		"ssh-rsa AAAA1234" + padding + " other text",
+		"ssh-rsa AAAA1234" + padding + "\n",
+		"ssh-rsa AAAA1234" + padding + " other text\n",
+	} {
 		if !PublicKeyRegex.MatchString(key) {
 			t.Errorf("'%v' is not a public key", key)
 		}
 	}
 	for _, key := range []string{
-			"ssh-rsa AAAA1234",
-			"ssh-rsa AAAA1234"+" email@address.com",
-			"ssh-rsa AAAA12!34"+" email@address.com",
-		} {
+		"ssh-rsa AAAA1234",
+		"ssh-rsa AAAA1234" + " email@address.com",
+		"ssh-rsa AAAA12!34" + " email@address.com",
+	} {
 		if PublicKeyRegex.MatchString(key) {
 			t.Errorf("Expected failure for invalid key '%v'", key)
 		}
@@ -39,7 +39,9 @@ func CheckDirectoryContent(t *testutil.T, dir string, expected []string) {
 		t.ErrorNow(err)
 	} else {
 		names := make([]string, 0, len(ls))
-		for _, d := range ls { names = append(names, d.Name()) }
+		for _, d := range ls {
+			names = append(names, d.Name())
+		}
 		t.CompareStringsUnsorted(names, expected)
 	}
 }
@@ -55,12 +57,12 @@ func LocalDirHostTest(test *testing.T, f func(*testutil.T, *LocalDirHost)) {
 }
 
 func TestInitLocalRepo(t *testing.T) {
-	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
+	LocalDirHostTest(t, func(t *testutil.T, local *LocalDirHost) {
 		t.CheckError(local.InitRepository("foo", nil, nil))
 		repoURL := local.RepositoryURL("foo")
 		if stat, err := os.Stat(repoURL); err != nil {
 			t.ErrorNow(err)
-		} else if ! stat.IsDir() {
+		} else if !stat.IsDir() {
 			t.ErrorNowf("%s is not a directory", repoURL)
 		} else {
 			CheckDirectoryContent(t, repoURL, []string{"HEAD", "branches", "config", "description", "hooks", "info", "objects", "refs"})
@@ -69,7 +71,7 @@ func TestInitLocalRepo(t *testing.T) {
 }
 
 func TestInitExitingLocalRepoFails(t *testing.T) {
-	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
+	LocalDirHostTest(t, func(t *testutil.T, local *LocalDirHost) {
 		t.CheckError(local.InitRepository("foo", nil, nil))
 		if err := local.InitRepository("foo", nil, nil); err == nil {
 			t.FailNow()
@@ -78,13 +80,13 @@ func TestInitExitingLocalRepoFails(t *testing.T) {
 }
 
 func TestForkLocalRepo(t *testing.T) {
-	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
+	LocalDirHostTest(t, func(t *testutil.T, local *LocalDirHost) {
 		t.CheckError(local.InitRepository("foo", nil, nil))
 		t.CheckError(local.ForkRepository("foo", "bar", nil, nil))
 		repoURL := local.RepositoryURL("bar")
 		if stat, err := os.Stat(repoURL); err != nil {
 			t.ErrorNow(err)
-		} else if ! stat.IsDir() {
+		} else if !stat.IsDir() {
 			t.ErrorNowf("%s is not a directory", repoURL)
 		} else {
 			CheckDirectoryContent(t, repoURL, []string{"HEAD", "branches", "config", "description", "hooks", "info", "objects", "refs"})
@@ -93,19 +95,19 @@ func TestForkLocalRepo(t *testing.T) {
 }
 
 func TestDeleteLocalRepo(t *testing.T) {
-	LocalDirHostTest(t, func (t *testutil.T, local *LocalDirHost) {
+	LocalDirHostTest(t, func(t *testutil.T, local *LocalDirHost) {
 		t.CheckError(local.InitRepository("foo", nil, nil))
 		t.CheckError(local.DeleteRepository("foo"))
 		repoURL := local.RepositoryURL("foo")
 		if _, err := os.Stat(repoURL); err == nil {
 			t.FailNow()
-		} else if ! os.IsNotExist(err) {
+		} else if !os.IsNotExist(err) {
 			t.ErrorNow(err)
 		}
 	})
 }
 
-var gitoliteTestConf = GitoliteConf {
+var gitoliteTestConf = GitoliteConf{
 	"localhost",
 	"foobar",
 	"git-test",
@@ -125,7 +127,8 @@ func GitoliteHostTest(test *testing.T, f func(*testutil.T, *GitoliteHost)) {
 		case user.UnknownUserError:
 			t.Skipf("%v, skipping gitolite tests", err)
 			t.SkipNow()
-			default: t.ErrorNow(err)
+		default:
+			t.ErrorNow(err)
 		}
 	} else if err := host.Reset(); err != nil {
 		t.ErrorNow(err)
@@ -139,22 +142,22 @@ func createRepo(host *GitoliteHost, name string) error {
 	if _, publicKey, err := testutil.CreateKeyPair(); err != nil {
 		return err
 	} else {
-		return host.InitRepository(name, map[string]int64{name:1}, map[int64]string{1:publicKey})
+		return host.InitRepository(name, map[string]int64{name: 1}, map[int64]string{1: publicKey})
 	}
 }
 
 func TestInitGitoliteRepo(t *testing.T) {
-	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+	GitoliteHostTest(t, func(t *testutil.T, host *GitoliteHost) {
 		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
-		        t.ErrorNow(err)
+			t.ErrorNow(err)
 		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
-		        t.ErrorNow(err)
+			t.ErrorNow(err)
 		} else if _, err := file.WriteString(privateKey); err != nil {
 			t.ErrorNow(err)
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			if err := host.InitRepository("foo", map[string]int64{"foo":1}, map[int64]string{1:publicKey}); err != nil {
+			if err := host.InitRepository("foo", map[string]int64{"foo": 1}, map[int64]string{1: publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 			defer host.DeleteRepository("foo")
@@ -170,7 +173,7 @@ func TestInitGitoliteRepo(t *testing.T) {
 }
 
 func TestDeleteGitoliteRepo(t *testing.T) {
-	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+	GitoliteHostTest(t, func(t *testutil.T, host *GitoliteHost) {
 		t.CheckError(createRepo(host, "foo"))
 		t.CheckError(host.DeleteRepository("foo"))
 		cmd := exec.Command("ssh", "-v", "-v", "-i", host.SSHKey, host.User+"@"+host.InternalHostname, "[[ ! -d repositories/foo.git ]]")
@@ -179,17 +182,17 @@ func TestDeleteGitoliteRepo(t *testing.T) {
 }
 
 func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
-	GitoliteHostTest(t, func (t *testutil.T, host *GitoliteHost) {
+	GitoliteHostTest(t, func(t *testutil.T, host *GitoliteHost) {
 		if privateKey, publicKey, err := testutil.CreateKeyPair(); err != nil {
 			t.ErrorNow(err)
 		} else if file, err := ioutil.TempFile(os.TempDir(), "battlecode_private_key"); err != nil {
-		        t.ErrorNow(err)
+			t.ErrorNow(err)
 		} else if _, err := file.WriteString(privateKey); err != nil {
 			t.ErrorNow(err)
 		} else {
 			file.Close()
 			defer os.Remove(file.Name())
-			if err := host.InitRepository("foo", map[string]int64{"foo":1}, map[int64]string{1:publicKey}); err != nil {
+			if err := host.InitRepository("foo", map[string]int64{"foo": 1}, map[int64]string{1: publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 
@@ -202,7 +205,7 @@ func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
 			}
 			defer host.DeleteRepository("foo")
 
-			if err := host.InitRepository("bar", map[string]int64{"foo":1, "bar":1}, map[int64]string{1:publicKey}); err != nil {
+			if err := host.InitRepository("bar", map[string]int64{"foo": 1, "bar": 1}, map[int64]string{1: publicKey}); err != nil {
 				t.ErrorNow(err)
 			}
 			defer host.DeleteRepository("bar")
@@ -224,5 +227,3 @@ func TestDeleteGitoliteDuplicateRepo(t *testing.T) {
 		}
 	})
 }
-
-

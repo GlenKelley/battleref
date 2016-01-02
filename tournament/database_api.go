@@ -35,11 +35,17 @@ type Commands struct {
 
 func (c *Commands) SchemaVersion() (string, error) {
 	var hasVersionTable bool
-	if err := c.tx.QueryRow("select count(*) > 0 from sqlite_master where type='table' and name='schema_log'").Scan(&hasVersionTable); err != nil { return "", err }
-	if !hasVersionTable { return ZeroVersion, nil }
+	if err := c.tx.QueryRow("select count(*) > 0 from sqlite_master where type='table' and name='schema_log'").Scan(&hasVersionTable); err != nil {
+		return "", err
+	}
+	if !hasVersionTable {
+		return ZeroVersion, nil
+	}
 	maxSchemaVersion := ZeroVersion
 	versions, err := queryStrings(c.tx, "select version from schema_log")
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	for _, version := range versions {
 		if SchemaVersionLess(maxSchemaVersion, version) {
 			maxSchemaVersion = version
@@ -114,8 +120,8 @@ func (c *Commands) UserExists(name string) (bool, error) {
 	return exists, err
 }
 
-func queryStrings(db dbcon, query string, args ... interface{}) ([]string, error) {
-	if rows, err := db.Query(query, args ...); err != nil {
+func queryStrings(db dbcon, query string, args ...interface{}) ([]string, error) {
+	if rows, err := db.Query(query, args...); err != nil {
 		return nil, err
 	} else {
 		var values []string
@@ -391,7 +397,7 @@ func (d *Database) RankedMatches() ([]Match, error) {
 	for rows.Next() {
 		var match Match
 		var result arena.MatchResult
-	    if err := rows.Scan(&match.PlayerA, &match.PlayerB, &match.Map, &result); err != nil { 
+	    if err := rows.Scan(&match.PlayerA, &match.PlayerB, &match.Map, &result); err != nil {
 	    	return nil, err
 	    }
 	    match.Result = arena.MatchResult(result)

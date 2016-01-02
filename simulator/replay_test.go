@@ -2,12 +2,12 @@ package simulator
 
 import (
 	"bytes"
-	"testing"
-	"io/ioutil"
 	"compress/gzip"
 	"encoding/xml"
-	"regexp"
 	"github.com/GlenKelley/battleref/testing"
+	"io/ioutil"
+	"regexp"
+	"testing"
 )
 
 func TestReplay(test *testing.T) {
@@ -30,4 +30,3 @@ func TestReplay(test *testing.T) {
 		t.StringCompare(string(original), string(regen))
 	}
 }
-

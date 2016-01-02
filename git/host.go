@@ -1,16 +1,16 @@
 package git
 
 import (
-	"os"
-	"fmt"
 	"bytes"
-	"os/exec"
-	"os/user"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
-	"io/ioutil"
 )
 
 type GitHost interface {
@@ -26,15 +26,14 @@ type GitHost interface {
 }
 
 type LocalDirHost struct {
-	Dir string
+	Dir             string
 	RemoveOnCleanup bool
 }
 
 var (
-	RemoteRegexp = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
-	PublicKeyRegex = regexp.MustCompile("^(ssh-(r|d)sa AAAA[0-9A-Za-z+/]{256,}[=]{0,3})\\s*.*\\n?$")    //SSH public key
+	RemoteRegexp   = regexp.MustCompile("\\w+@\\w+(.\\w+)+")
+	PublicKeyRegex = regexp.MustCompile("^(ssh-(r|d)sa AAAA[0-9A-Za-z+/]{256,}[=]{0,3})\\s*.*\\n?$") //SSH public key
 )
-
 
 func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
 	switch hostType {
@@ -53,7 +52,8 @@ func CreateGitHost(hostType string, conf map[string]string) (GitHost, error) {
 		} else {
 			return host, err
 		}
-	default: return nil, fmt.Errorf("Unkown host type %v", hostType)
+	default:
+		return nil, fmt.Errorf("Unkown host type %v", hostType)
 	}
 }
 
@@ -68,24 +68,34 @@ func MarshalMap(conf map[string]string, v interface{}) error {
 type GitoliteConf struct {
 	InternalHostname string `json:"internal_hostname"`
 	ExternalHostname string `json:"external_hostname"`
-	User		 string `json:"user"`
-	AdminKey	 string `json:"admin_key"`
-	SSHKey		 string `json:"ssh_key"`
+	User             string `json:"user"`
+	AdminKey         string `json:"admin_key"`
+	SSHKey           string `json:"ssh_key"`
 }
 
 func CreateGitoliteHost(conf GitoliteConf) (*GitoliteHost, error) {
-	if conf.InternalHostname == "" { return nil, errors.New("Gitolite host missing internal hostname property.") }
-	if conf.ExternalHostname == "" { return nil, errors.New("Gitolite host missing external hostname property.") }
-	if conf.User == "" { return nil, errors.New("Gitolite host missing user property.") }
-	if conf.AdminKey == "" { return nil, errors.New("Gitolite host missing admin key property.") }
-	if conf.SSHKey == "" { return nil, errors.New("Gitolite host missing ssh key property.") }
+	if conf.InternalHostname == "" {
+		return nil, errors.New("Gitolite host missing internal hostname property.")
+	}
+	if conf.ExternalHostname == "" {
+		return nil, errors.New("Gitolite host missing external hostname property.")
+	}
+	if conf.User == "" {
+		return nil, errors.New("Gitolite host missing user property.")
+	}
+	if conf.AdminKey == "" {
+		return nil, errors.New("Gitolite host missing admin key property.")
+	}
+	if conf.SSHKey == "" {
+		return nil, errors.New("Gitolite host missing ssh key property.")
+	}
 	return &GitoliteHost{conf}, nil
 }
 
 func (g *LocalDirHost) InitRepository(name string, repos map[string]int64, publicKeys map[int64]string) error {
 	repoURL := g.RepositoryURL(name)
 	if _, err := os.Stat(repoURL); os.IsNotExist(err) {
-		return RunCmd(exec.Command("git","init","--bare",repoURL))
+		return RunCmd(exec.Command("git", "init", "--bare", repoURL))
 	} else if err != nil {
 		return err
 	} else {
@@ -99,7 +109,7 @@ func (g *LocalDirHost) CloneRepository(remote Remote, name string) (Repository, 
 }
 
 func (g *LocalDirHost) ForkRepository(source, fork string, repos map[string]int64, publicKeys map[int64]string) error {
-	return exec.Command("git","clone","--bare",g.RepositoryURL(source),g.RepositoryURL(fork)).Run()
+	return exec.Command("git", "clone", "--bare", g.RepositoryURL(source), g.RepositoryURL(fork)).Run()
 }
 
 func (g *LocalDirHost) DeleteRepository(name string) error {
@@ -170,6 +180,7 @@ const confHeader = `repo gitolite-admin
         RW+     =   @all
 
 `
+
 func (g *GitoliteHost) InitRepository(name string, repos map[string]int64, publicKeys map[int64]string) error {
 	// Validate keys
 	for _, publicKey := range publicKeys {
@@ -197,7 +208,7 @@ func (g *GitoliteHost) InitRepository(name string, repos map[string]int64, publi
 		confDir := filepath.Join(dir, "conf")
 		confFile := filepath.Join(confDir, "gitolite.conf")
 
-		// Delete files to be modified 
+		// Delete files to be modified
 		files := []string{confFile, userKeyDir}
 		toDelete := []string{}
 		for _, file := range files {
@@ -217,10 +228,10 @@ func (g *GitoliteHost) InitRepository(name string, repos map[string]int64, publi
 		}
 
 		// Update conf file
-		if err := os.MkdirAll(confDir, os.ModeDir | 0755); err != nil {
+		if err := os.MkdirAll(confDir, os.ModeDir|0755); err != nil {
 			return err
 		}
-		if conf, err := os.OpenFile(confFile, os.O_WRONLY | os.O_CREATE, 0644); err != nil {
+		if conf, err := os.OpenFile(confFile, os.O_WRONLY|os.O_CREATE, 0644); err != nil {
 			return err
 		} else {
 			if _, err := conf.WriteString(confHeader); err != nil {
@@ -237,7 +248,7 @@ func (g *GitoliteHost) InitRepository(name string, repos map[string]int64, publi
 		}
 
 		// Create user keys
-		if err := os.Mkdir(userKeyDir, os.ModeDir | 0755); err != nil {
+		if err := os.Mkdir(userKeyDir, os.ModeDir|0755); err != nil {
 			return err
 		}
 		for id, publicKey := range publicKeys {
@@ -314,7 +325,7 @@ func (g *GitoliteHost) Reset() error {
 		return err
 	} else {
 		defer repo.Delete()
-		cmd := exec.Command("git","rev-list","--max-parents=0","HEAD")
+		cmd := exec.Command("git", "rev-list", "--max-parents=0", "HEAD")
 		cmd.Dir = repo.Dir()
 		if initalCommit, err := CmdOutput(cmd); err != nil {
 			return err
@@ -330,5 +341,3 @@ func (g *GitoliteHost) Reset() error {
 	return nil
 
 }
-
-

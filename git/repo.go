@@ -1,13 +1,13 @@
 package git
 
 import (
-	"os"
-	"log"
-	"fmt"
 	"bytes"
-	"strings"
-	"os/exec"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
 )
 
 type Repository interface {
@@ -20,7 +20,7 @@ type Repository interface {
 	Dir() string
 	Log() ([]string, error)
 	Head() (string, error)
-	HardReset(commit string) (error)
+	HardReset(commit string) error
 }
 
 type Remote interface {
@@ -59,9 +59,11 @@ func (r TempRemote) CheckoutRepository(repoURL string) (Repository, error) {
 	if tempDir, err := ioutil.TempDir(os.TempDir(), "battleref"); err != nil {
 		return nil, err
 	} else {
-		cmd := exec.Command("git","clone",repoURL,tempDir)
+		cmd := exec.Command("git", "clone", repoURL, tempDir)
 		if err := RunCmd(cmd); err != nil {
-			if err2 := os.RemoveAll(tempDir); err2 != nil { log.Println(err2) }
+			if err2 := os.RemoveAll(tempDir); err2 != nil {
+				log.Println(err2)
+			}
 			return nil, err
 		} else {
 			return &SimpleRepository{tempDir, ""}, nil
@@ -91,7 +93,7 @@ func (r TempRemote) CheckoutRepositoryWithKeyFile(repoURL string, privateKeyFile
 		os.RemoveAll(tempDir)
 		return nil, err
 	} else {
-		cmd := exec.Command("git","clone",repoURL,tempDir)
+		cmd := exec.Command("git", "clone", repoURL, tempDir)
 		repo := SimpleRepository{tempDir, sshWrapper}
 		repo.setWrapper(cmd)
 		if err := RunCmd(cmd); err != nil {
@@ -105,13 +107,13 @@ func (r TempRemote) CheckoutRepositoryWithKeyFile(repoURL string, privateKeyFile
 }
 
 type SimpleRepository struct {
-	dir string
+	dir        string
 	sshWrapper string
 }
 
 func (r *SimpleRepository) setWrapper(cmd *exec.Cmd) {
 	if r.sshWrapper != "" {
-		cmd.Env = append(os.Environ(), "GIT_SSH=" + r.sshWrapper)
+		cmd.Env = append(os.Environ(), "GIT_SSH="+r.sshWrapper)
 	}
 }
 
@@ -120,46 +122,46 @@ func (r *SimpleRepository) Dir() string {
 }
 
 func (r *SimpleRepository) AddFiles(files []string) error {
-	cmd := exec.Command("git", append([]string{"add"}, files ...) ...)
+	cmd := exec.Command("git", append([]string{"add"}, files...)...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)
 }
 
 func (r *SimpleRepository) DeleteFiles(files []string) error {
-	cmd := exec.Command("git", append([]string{"rm", "-r"}, files ...) ...)
+	cmd := exec.Command("git", append([]string{"rm", "-r"}, files...)...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)
 }
 
 func (r *SimpleRepository) CommitFiles(files []string, message string) error {
-	cmd := exec.Command("git", append([]string{"commit","-m",message}, files ...) ...)
+	cmd := exec.Command("git", append([]string{"commit", "-m", message}, files...)...)
 	cmd.Dir = r.dir
 	return RunCmd(cmd)
 }
 
 func (r *SimpleRepository) Push() error {
-	cmd := exec.Command("git","push","origin","master")
+	cmd := exec.Command("git", "push", "origin", "master")
 	cmd.Dir = r.dir
 	r.setWrapper(cmd)
 	return RunCmd(cmd)
 }
 
 func (r *SimpleRepository) ForcePush() error {
-	cmd := exec.Command("git","push","--force","origin","master")
+	cmd := exec.Command("git", "push", "--force", "origin", "master")
 	cmd.Dir = r.dir
 	r.setWrapper(cmd)
 	return RunCmd(cmd)
 }
 
 func (r SimpleRepository) Delete() error {
-	if (r.sshWrapper != "") {
+	if r.sshWrapper != "" {
 		os.Remove(r.sshWrapper)
 	}
 	return os.RemoveAll(r.dir)
 }
 
 func (r SimpleRepository) Log() ([]string, error) {
-	cmd := exec.Command("git","log","--pretty=%H")
+	cmd := exec.Command("git", "log", "--pretty=%H")
 	cmd.Dir = r.dir
 	if output, err := CmdOutput(cmd); err != nil {
 		return []string{}, err
@@ -169,7 +171,7 @@ func (r SimpleRepository) Log() ([]string, error) {
 }
 
 func (r SimpleRepository) Head() (string, error) {
-	cmd := exec.Command("git","rev-parse","HEAD")
+	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = r.dir
 	if output, err := CmdOutput(cmd); err != nil {
 		return "", err
@@ -179,8 +181,7 @@ func (r SimpleRepository) Head() (string, error) {
 }
 
 func (r SimpleRepository) HardReset(commit string) error {
-	cmd := exec.Command("git","reset",commit,"--hard")
+	cmd := exec.Command("git", "reset", commit, "--hard")
 	cmd.Dir = r.dir
 	return RunCmd(cmd)
 }
-
