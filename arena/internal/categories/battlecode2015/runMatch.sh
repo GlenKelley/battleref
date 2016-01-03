@@ -158,7 +158,7 @@ REASON=`grep "Reason:" output.log | perl -i -n -e '
 		if ($1 eq "The winning team won on tiebreakers (more TOWER health).") { print "TIE" }
 		if ($1 eq "The winning team won due to superior sanitation.") { print "TIE" }
 		if ($1 eq "The winning team won on tiebreakers (more total ore value).") { print "TIE" }
-		if ($1 eq "Team (A|B) won arbitrarily.") { print "TIE" }
+		if ($1 =~ /Team (A|B) won arbitrarily./) { print "TIE" }
 	}'`
 echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\"}"
 

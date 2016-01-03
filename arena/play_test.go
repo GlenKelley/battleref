@@ -59,6 +59,62 @@ public class RobotPlayer {
 	}
 }`)
 
+var SampleMap2015 = []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<map height="30" width="30">
+	<game seed="0" rounds="1"/>
+	<symbols>
+		<symbol terrain="NORMAL" type="TERRAIN" character="_"/>
+		<symbol terrain="VOID" type="TERRAIN" character="v"/>
+		<symbol team="A" type="TOWER" character="A"/>
+		<symbol team="B" type="TOWER" character="B"/>
+		<symbol team="A" type="HQ" character="a"/>
+		<symbol team="B" type="HQ" character="b"/>
+	</symbols>
+	<data>
+<![CDATA[
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 a0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 b0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+_0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0 _0
+]]></data>
+</map>`)
+
+var SamplePlayer2015 = []byte(`package samplePlayer;
+import battlecode.common.RobotController;
+public class RobotPlayer {
+	public static void run(RobotController rc) {
+		while (true) {
+			rc.yield();
+		}
+	}
+}`)
+
 func RunCommand(t *testutil.T, cmd *exec.Cmd) {
 	if bs, err := cmd.CombinedOutput(); err != nil {
 		t.Error(string(bs))
@@ -66,8 +122,17 @@ func RunCommand(t *testutil.T, cmd *exec.Cmd) {
 	}
 }
 
-func TestRunMatch(test *testing.T) {
+func TestRunMatch2014(test *testing.T) {
 	t := (*testutil.T)(test)
+	runTestMatch(t, "battlecode2014", SamplePlayer, SampleMap)
+}
+
+func TestRunMatch2015(test *testing.T) {
+	t := (*testutil.T)(test)
+	runTestMatch(t, "battlecode2015", SamplePlayer2015, SampleMap2015)
+}
+
+func runTestMatch(t *testutil.T, category string, samplePlayer, sampleMap []byte) {
 	gitDir, err := ioutil.TempDir(os.TempDir(), "samplePlayer")
 	if err != nil {
 		t.ErrorNow(err)
@@ -75,7 +140,7 @@ func TestRunMatch(test *testing.T) {
 	defer os.RemoveAll(gitDir)
 
 	sourceFile := filepath.Join(gitDir, "RobotPlayer.java")
-	t.CheckError(ioutil.WriteFile(sourceFile, SamplePlayer, os.ModePerm))
+	t.CheckError(ioutil.WriteFile(sourceFile, samplePlayer, os.ModePerm))
 
 	cmd := exec.Command("git", "init")
 	cmd.Dir = gitDir
@@ -110,8 +175,8 @@ func TestRunMatch(test *testing.T) {
 	finishedTime := time.Now()
 	if finished, result, err := arena.RunMatch(MatchProperties{
 		"sampleMap",
-		bytes.NewReader(SampleMap),
-		"battlecode2014",
+		bytes.NewReader(sampleMap),
+		category,
 		filepath.Join(gitDir, "samplePlayer.git"),
 		filepath.Join(gitDir, "samplePlayer.git"),
 		commitHash,
@@ -119,12 +184,12 @@ func TestRunMatch(test *testing.T) {
 	}, func() time.Time { return finishedTime }); err != nil {
 		t.ErrorNow(err)
 	} else if finished != finishedTime {
-		t.ErrorNow(err)
+		t.ErrorNow(result)
 	} else if result.Winner != WinnerA {
-		t.ErrorNow(err)
+		t.ErrorNow(result)
 	} else if result.Reason != ReasonTie {
-		t.ErrorNow(err)
+		t.ErrorNow(result)
 	} else if len(result.Replay) == 0 {
-		t.ErrorNow(err)
+		t.ErrorNow(result)
 	}
 }
