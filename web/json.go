@@ -156,6 +156,11 @@ func WriteJsonErrorWithCode(w http.ResponseWriter, err error, statusCode int) {
 	WriteJsonWebError(w, &Err{statusCode, err.Error(), nil})
 }
 
+func WriteCorsOptionResponse(w http.ResponseWriter) {
+	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+	w.WriteHeader(200)
+}
+
 func WriteJsonWebError(w http.ResponseWriter, err Error) {
 	if bs, e2 := json.Marshal(Json{nil, err}); e2 != nil {
 		w.WriteHeader(http.StatusInternalServerError)

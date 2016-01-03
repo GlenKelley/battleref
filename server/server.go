@@ -118,6 +118,8 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == method {
 			handler(w, r, s)
+		} else if r.Method == "OPTION" {
+			web.WriteCorsOptionResponse(w)
 		} else {
 			web.WriteJsonErrorWithCode(w, fmt.Errorf("Expected method %v not %v", method, r.Method), http.StatusMethodNotAllowed)
 		}

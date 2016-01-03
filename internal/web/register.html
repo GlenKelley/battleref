@@ -1,59 +1,97 @@
 <!DOCTYPE html>
-<html lang="en" class=" is-copy-enabled is-u2f-enabled">
+<html lang='en' class=' is-copy-enabled is-u2f-enabled'>
  <head>
   <meta charset='utf-8'>
-  <meta name="viewport" content="width=1020">
+  <meta name='viewport' content='width=1020'>
   <title>Register for Battlecode</title>
-  <link href="css/github-16bf5399d85a6f926eb6af8f983ed5cf907e97b4da4a650dc11920d425826218.css" media="all" rel="stylesheet" />
-  <link href="css/github2-451ab63ad67fa9af580e5d9a3b2b7de911ce2e4b2437638f26fe8cb3879e67d8.css" media="all" rel="stylesheet" />
+  <link rel=icon href='images/favicon.png' sizes='96x96' type='image/png'>
+  <link href='css/github-16bf5399d85a6f926eb6af8f983ed5cf907e97b4da4a650dc11920d425826218.css' media='all' rel='stylesheet' />
+  <link href='css/github2-451ab63ad67fa9af580e5d9a3b2b7de911ce2e4b2437638f26fe8cb3879e67d8.css' media='all' rel='stylesheet' />
  </head>
- <body class="page-new-repo">
-  <div role="main" class="main-content">
-   <div class="new-repo-container">
-    <form action="http://api.akusete.com:8080/register" method="post">
-     <div class="subhead">
-      <h2 class="subhead-heading">Register for Battlecode</h2>
-      <p class="subhead-description">Create a repository for your battlecode submission.</p>
+ <body class='page-new-repo'>
+  <div role='main' class='main-content'>
+   <div class='new-repo-container'>
+    <form id='registerForm' action='http://api.akusete.com:8080/register' method='post'>
+     <div class='subhead'>
+      <h2 class='subhead-heading'>Register for Battlecode</h2>
+      <p class='subhead-description'>Create a repository for your battlecode submission.</p>
      </div>
-    <div class="owner-reponame clearfix">
-    <dl class="form">
-     <dt class="input-label">
-      <label class="short">Repository name</label>
+    <div class='owner-reponame clearfix'>
+    <dl class='form'>
+     <dt class='input-label'>
+      <label class='short'>Repository name</label>
      </dt>
      <dd>
-      <input class="short" name="name" size="100" type="text" />
+      <input id='name' class='short' name='name' size='100' type='text'/>
      </dd>
     </dl>
     <p>This will be your display name on the leaderboard.</p>
    </div>
-   <div class="input-label owner-reponame clearfix">
-    <dl class="form">
-     <dt class="input-label">
-      <label class="short">Tournament Category</label>
+   <div class='input-label owner-reponame clearfix'>
+    <dl class='form'>
+     <dt class='input-label'>
+      <label class='short'>Tournament Category</label>
      </dt>
      <dd>
-      <select class="long select select-state" name="category">
-       <option>battlecode2014</option>
-       <option selected="selected">battlecode2015</option>
+      <select id='category' class='long select select-state' name='category'>
+       <option value='battlecode2015' selected='selected'>Battlecode 2015</option>
+       <option value='battlecode2014'>Battlecode 2014</option>
       </select>
      </dd>
     </dl>
     <p>Your repository will be populated with a template for this competition.</p>
    </div>
    <div>
-    <dl class="form">
-     <dt class="input-label">
-     <label>Public Key <span class="note"><a href="https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key">(ssh-rsa format)</a></span></label>
+    <dl class='form'>
+     <dt class='input-label'>
+     <label>Public Key <span class='note'><a href='https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key'>(ssh-rsa format)</a></span></label>
      </dt>
      <dd>
-     <textarea name="public_key"></textarea>
+     <textarea id='public_key' name='public_key'></textarea>
      </dd>
      </dl>
      <p>A new repository will be created with your public key. To submit an entry into the competition, push the master branch.</p>
      <hr>
-     <button type="submit" class="btn btn-primary">Register</button>
+     <button id='register' class='btn btn-primary'>Register</button>
     </div>
    </form>
   </div>
  </body>
+ <script type='text/javascript'>
+	console.log('loaded');
+	document.getElementById('registerForm').onsubmit = function(e) {
+		e.preventDefault();
+
+		var f = e.target;
+		var name = document.getElementById('name').value
+		var category = document.getElementById('category').value
+		var public_key = document.getElementById('public_key').value
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', 'http:api.akusete.com:8080/register');
+		xhr.setRequestHeader('Content-Type', 'application/json');
+		xhr.send(JSON.stringify({
+					'name':name,
+					'category':category,
+					'public_key':public_key}));
+		return false;
+	}
+	/*document.getElementById('register').addEventListener('click', function(){
+		console.log('register clicked');				
+		xhr = new XMLHttpRequest();
+		var name = document.getElementById('name').textContent
+		var category = document.getElementById('category').textContent
+		var public_key = document.getElementById('public_key').textContent
+		xhr.open('POST', 'http://api.akusete.com:8080/register?name=' + encodeURI(name) + '&category=' + encodeURI(category) + '&public_key=' + encodeURI(public_key));
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onload = function() {
+			if (xhr.status === 200) {
+				console.log(xhr.responseText);
+			} else if (xhr.status !== 200) {
+				console.log('Request failed.  Returned status of ', xhr.status);
+			}
+		};
+		xhr.send(encodeURI());
+	})*/
+ </script>
 </html>
