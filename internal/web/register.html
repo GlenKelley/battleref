@@ -47,12 +47,26 @@
      <label>Public Key <span class='note'><a href='https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key'>(ssh-rsa format)</a></span></label>
      </dt>
      <dd>
-     <textarea id='public_key' name='public_key'></textarea>
+     <textarea style="font-family: monospace; height: auto; min-height:100px" rows="6" id='public_key' name='public_key'></textarea>
      </dd>
      </dl>
      <p>A new repository will be created with your public key. To submit an entry into the competition, push the master branch.</p>
+    </div>
+    <div>
      <hr>
      <button id='register' class='btn btn-primary'>Register</button>
+     <div id="errors" class="error" style="color: #fff;
+         background-color: #bf1515;
+	 list-style-position: inside;
+	 border-color: #911;
+	 font-size: 13px;
+	 position: absolute;
+	 margin: 10px 0 0;
+	 padding: 5px 8px;
+	 border-radius: 3px;" hidden>
+	 <ul id="errorlist">
+	 </ul>
+     </div>
     </div>
    </form>
   </div>
@@ -74,24 +88,22 @@
 					'name':name,
 					'category':category,
 					'public_key':public_key}));
+
+		var errors = document.getElementById('errors');
+		errors.setAttribute('hidden', null);
+		xhr.onload = function() {
+			if (xhr.status == 200) {
+			} else if (xhr.status !== 200) {
+				var errorlist = document.getElementById('errorlist');
+				errorlist.innerHTML = "";
+				errors.removeAttribute('hidden');
+				var newDiv = document.createElement("li");
+				var newContent = document.createTextNode("Hi there and greetings!");
+				newDiv.appendChild(newContent);
+				errorlist.appendChild(newDiv);
+			}
+		}
 		return false;
 	}
-	/*document.getElementById('register').addEventListener('click', function(){
-		console.log('register clicked');				
-		xhr = new XMLHttpRequest();
-		var name = document.getElementById('name').textContent
-		var category = document.getElementById('category').textContent
-		var public_key = document.getElementById('public_key').textContent
-		xhr.open('POST', 'http://api.akusete.com:8080/register?name=' + encodeURI(name) + '&category=' + encodeURI(category) + '&public_key=' + encodeURI(public_key));
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		xhr.onload = function() {
-			if (xhr.status === 200) {
-				console.log(xhr.responseText);
-			} else if (xhr.status !== 200) {
-				console.log('Request failed.  Returned status of ', xhr.status);
-			}
-		};
-		xhr.send(encodeURI());
-	})*/
  </script>
 </html>
