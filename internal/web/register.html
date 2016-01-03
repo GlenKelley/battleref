@@ -8,47 +8,51 @@
   <link href='css/github-16bf5399d85a6f926eb6af8f983ed5cf907e97b4da4a650dc11920d425826218.css' media='all' rel='stylesheet' />
   <link href='css/github2-451ab63ad67fa9af580e5d9a3b2b7de911ce2e4b2437638f26fe8cb3879e67d8.css' media='all' rel='stylesheet' />
  </head>
+
  <body class='page-new-repo'>
   <div role='main' class='main-content'>
-   <div class='new-repo-container'>
+   <div id="register_page" class='new-repo-container'>
     <form id='registerForm' action='http://api.akusete.com:8080/register' method='post'>
      <div class='subhead'>
       <h2 class='subhead-heading'>Register for Battlecode</h2>
       <p class='subhead-description'>Create a repository for your battlecode submission.</p>
      </div>
-    <div class='owner-reponame clearfix'>
-    <dl class='form'>
-     <dt class='input-label'>
-      <label class='short'>Repository name</label>
-     </dt>
-     <dd>
-      <input id='name' class='short' name='name' size='100' type='text'/>
-     </dd>
-    </dl>
-    <p>This will be your display name on the leaderboard.</p>
-   </div>
-   <div class='input-label owner-reponame clearfix'>
-    <dl class='form'>
-     <dt class='input-label'>
-      <label class='short'>Tournament Category</label>
-     </dt>
-     <dd>
-      <select id='category' class='long select select-state' name='category'>
-       <option value='battlecode2015' selected='selected'>Battlecode 2015</option>
-       <option value='battlecode2014'>Battlecode 2014</option>
-      </select>
-     </dd>
-    </dl>
-    <p>Your repository will be populated with a template for this competition.</p>
-   </div>
-   <div>
-    <dl class='form'>
-     <dt class='input-label'>
-     <label>Public Key <span class='note'><a href='https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key'>(ssh-rsa format)</a></span></label>
-     </dt>
-     <dd>
-     <textarea style="font-family: monospace; height: auto; min-height:100px" rows="6" id='public_key' name='public_key'></textarea>
-     </dd>
+
+     <div class='owner-reponame clearfix'>
+     <dl class='form'>
+      <dt class='input-label'>
+       <label class='short'>Repository name</label>
+      </dt>
+      <dd>
+       <input id='name' class='short' name='name' size='100' type='text'/>
+      </dd>
+     </dl>
+     <p>This will be your display name on the leaderboard.</p>
+    </div>
+
+    <div class='input-label owner-reponame clearfix'>
+     <dl class='form'>
+      <dt class='input-label'>
+       <label class='short'>Tournament Category</label>
+      </dt>
+      <dd>
+       <select id='category' class='long select select-state' name='category'>
+        <option value='battlecode2015' selected='selected'>Battlecode 2015</option>
+        <option value='battlecode2014'>Battlecode 2014</option>
+       </select>
+      </dd>
+     </dl>
+     <p>Your repository will be populated with a template for this competition.</p>
+    </div>
+
+    <div>
+     <dl class='form'>
+      <dt class='input-label'>
+       <label>Public Key <span class='note'><a href='https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key'>(ssh-rsa format)</a></span></label>
+      </dt>
+      <dd>
+       <textarea style="font-family: monospace; height: auto; min-height:100px" rows="6" id='public_key' name='public_key'></textarea>
+      </dd>
      </dl>
      <p>A new repository will be created with your public key. To submit an entry into the competition, push the master branch.</p>
     </div>
@@ -70,17 +74,39 @@
     </div>
    </form>
   </div>
+
+  <div id="success_page" hidden role='main' class='main-content'>
+   <div class='new-repo-container'>
+     <div class='subhead'>
+      <h2 class='subhead-heading'>Your account has been created</h2>
+      <p class='subhead-description'>Clone your individual repository and write your own strategy.</p>
+     </div>
+    <div class='owner-reponame clearfix'>
+    <dl class='form'>
+     <dt class='input-label'>
+      <label class='short'>Clone your respository</label>
+     </dt>
+     <dd>
+	  <input id="repourl" type="text" class="input-monospace input-minit" readonly="">
+     </dd>
+    </dl>
+    <hr/>
+    <p>Your private key will give you access to pull and push from this repository. The repository has been initialised with a minimal valid player.</p>
+    <p>Read about the documentation here <a href="http://battlecode.org">Battlecode Documentation</a>.</p>
+    <p>Once you are ready to submit an updated strategy, push your master branch back up to the remote repository, and your submission will be run against other competitors.</p>
+    <p>You can view the the competition results on the <a href="http://akusete.com/battlecode/leaderboard">Battlecode Leaderboard</a>.</p>
+   </div>
+  </div>
  </body>
+
  <script type='text/javascript'>
 	console.log('loaded');
 	document.getElementById('registerForm').onsubmit = function(e) {
 		e.preventDefault();
-
 		var f = e.target;
 		var name = document.getElementById('name').value
 		var category = document.getElementById('category').value
 		var public_key = document.getElementById('public_key').value
-
 		var xhr = new XMLHttpRequest();
 		xhr.open('POST', 'http:api.akusete.com:8080/register');
 		xhr.setRequestHeader('Content-Type', 'application/json');
@@ -88,19 +114,34 @@
 					'name':name,
 					'category':category,
 					'public_key':public_key}));
-
 		var errors = document.getElementById('errors');
 		errors.setAttribute('hidden', null);
+
 		xhr.onload = function() {
+			var response = JSON.parse(xhr.response);
+			console.log("response", response);
 			if (xhr.status == 200) {
+				document.getElementById('repourl').value = response.data.repo_url;
+				document.getElementById('register_page').setAttribute('hidden', null);
+				document.getElementById('success_page').removeAttribute('hidden');
 			} else if (xhr.status !== 200) {
 				var errorlist = document.getElementById('errorlist');
 				errorlist.innerHTML = "";
 				errors.removeAttribute('hidden');
-				var newDiv = document.createElement("li");
-				var newContent = document.createTextNode("Hi there and greetings!");
-				newDiv.appendChild(newContent);
-				errorlist.appendChild(newDiv);
+				if (response.error.errors) {
+					var jsonErrors = response.error.errors;
+					for (var i = 0; i < jsonErrors.length; i++) {
+						var newDiv = document.createElement("li");
+						var newContent = document.createTextNode(jsonErrors[i].Message);
+						newDiv.appendChild(newContent);
+						errorlist.appendChild(newDiv);
+					}
+				} else {
+					var newDiv = document.createElement("li");
+					var newContent = document.createTextNode(response.error.message);
+					newDiv.appendChild(newContent);
+					errorlist.appendChild(newDiv);
+				}
 			}
 		}
 		return false;
