@@ -13,8 +13,10 @@ import (
 type JsonBody map[string]interface{}
 
 const (
-	HeaderContentType              = "Content-Type"
-	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
+	HeaderContentType               = "Content-Type"
+	HeaderAccessControlAllowOrigin  = "Access-Control-Allow-Origin"
+	HeaderAccessControlAllowMethods = "Access-Control-Allow-Methods"
+	HeaderAccessControlAllowHeaders = "Access-Control-Allow-Headers"
 )
 
 const (
@@ -156,8 +158,10 @@ func WriteJsonErrorWithCode(w http.ResponseWriter, err error, statusCode int) {
 	WriteJsonWebError(w, &Err{statusCode, err.Error(), nil})
 }
 
-func WriteCorsOptionResponse(w http.ResponseWriter) {
+func WriteCorsOptionResponse(w http.ResponseWriter, method string) {
 	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+	w.Header().Add(HeaderAccessControlAllowMethods, fmt.Sprintf("%v,OPTIONS", method))
+	w.Header().Add(HeaderAccessControlAllowHeaders, HeaderContentType)
 	w.WriteHeader(200)
 }
 

@@ -119,7 +119,7 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 		if r.Method == method {
 			handler(w, r, s)
 		} else if r.Method == "OPTIONS" {
-			web.WriteCorsOptionResponse(w)
+			web.WriteCorsOptionResponse(w, method)
 		} else {
 			web.WriteJsonErrorWithCode(w, fmt.Errorf("Expected method %v not %v", method, r.Method), http.StatusMethodNotAllowed)
 		}
