@@ -32,16 +32,6 @@ import (
 
 type JSONResponse map[string]interface{}
 
-/*
-const (
-	HeaderContentType = "Content-Type"
-	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
-
-	ContentTypeJSON = "application/json"
-	ContentTypeXML = "application/xml"
-)
-*/
-
 var (
 	NameRegex       = regexp.MustCompile("^[\\w\\d-]+$")     //valid tournament usernames
 	CommitHashRegex = regexp.MustCompile("^[0-9a-f]{5,40}$") //git hash
@@ -87,21 +77,6 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("GET", "/replay", replay, "The replay log of a single match")
 
 	return &s
-
-	//go s.Referee()
-	//s.HandleFunc("/register", register)
-	//s.HandleFunc("/register/check", registerCheck)
-	//s.HandleFunc("/commits", commits)
-	//s.HandleFunc("/leaderboard", leaderboard)
-	//s.HandleFunc("/revision/submit", revisionSubmit)
-	//s.HandleFunc("/account/remove", accountRemove)
-	//s.HandleFunc("/map/submit", mapSubmit)
-	//s.HandleFunc("/map/remove", mapRemove)
-	//s.HandleFunc("/maps", maps)
-	//s.HandleFunc("/events", events)
-	//s.HandleFunc("/clean", clean)
-	//s.HandleFunc("/restart", restart)
-	//s.HandleFunc("/tournament/start", tournamentStart)
 }
 
 func (s *ServerState) Serve() error {
