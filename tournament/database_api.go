@@ -27,6 +27,7 @@ type Statements interface {
 	GetMatchResult(id int64) (MatchResult, error)
 	GetMatchReplay(id int64) ([]byte, error)
 	UpdateLeaderboard(category TournamentCategory, stats map[string]LeaderboardStats, commits map[string]string) error
+	GetLeaderboard(category TournamentCategory) (map[string]LeaderboardStats, []Match, error)
 }
 
 // An implementation of statements which uses an abstracted sql connection
@@ -266,6 +267,43 @@ func (c *Commands) UpdateLeaderboard(category TournamentCategory, stats map[stri
 			}
 		}
 		return nil
+	}
+}
+
+func (c *Commands) GetLeaderboard(category TournamentCategory) (map[string]LeaderboardStats, []Match, error) {
+	if rows, err := c.tx.Query("select name, commithash, score, wins, ties, losses from leaderboard where category = ?", string(category)); err != nil {
+		return nil, nil, err
+	} else {
+		nameCommit := map[string]string{}
+		stats := map[string]LeaderboardStats{}
+		for rows.Next() {
+			var name string
+			var stat LeaderboardStats
+			var commit string
+			if err := rows.Scan(&name, &commit, &stat.Score, &stat.Wins, &stat.Ties, &stat.Losses); err != nil {
+				return nil, nil, err
+			}
+			stats[name] = stat
+			nameCommit[name] = commit
+		}
+		if matchRows, err := c.tx.Query("select id, player1, player2, commit1, commit2, map, category, result, updated from matches where category = ?", string(category)); err != nil {
+			return nil, nil, err
+		} else {
+			matches := []Match{}
+			for matchRows.Next() {
+				var match Match
+				var result string
+				if err2 := rows.Scan(&match.Id, &match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result, &match.Time); err2 != nil {
+					return nil, nil, err2
+				} else {
+					match.Result = MatchResult(result)
+					if nameCommit[match.Player1] == match.Commit1 && nameCommit[match.Player2] == match.Commit2 {
+						matches = append(matches, match)
+					}
+				}
+			}
+			return stats, matches, nil
+		}
 	}
 }
 

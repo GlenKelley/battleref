@@ -387,6 +387,11 @@ func (t *Tournament) CalculateLeaderboard(category TournamentCategory) error {
 	}
 }
 
+func (t *Tournament) GetLeaderboard(category TournamentCategory) (map[string]LeaderboardStats, []Match, error) {
+	ranks, matches, err := t.Database.GetLeaderboard(category)
+	return ranks, matches, err
+}
+
 func GetMatchResult(a arena.MatchResult) MatchResult {
 	if a.Reason == arena.ReasonVictory {
 		if a.Winner == arena.WinnerA {

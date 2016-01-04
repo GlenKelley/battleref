@@ -75,6 +75,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/match/run/latest", runLatestMatches, "Run matches between all recent submissions.")
 	s.HandleFunc("GET", "/matches", matches, "List all matches")
 	s.HandleFunc("GET", "/replay", replay, "The replay log of a single match")
+	s.HandleFunc("GET", "/leaderboard", leaderboard, "Lists the player rankings for a tournament category.")
 
 	return &s
 }
@@ -469,6 +470,19 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, replay)
+	}
+}
+
+func leaderboard(w http.ResponseWriter, r *http.Request, s *ServerState) {
+	var form struct {
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		web.WriteJsonWebError(w, err)
+	} else if ranks, matches, err := s.Tournament.GetLeaderboard(form.Category); err != nil {
+		web.WriteJsonError(w, err)
+	} else {
+		web.WriteJson(w, JSONResponse{"ranks": ranks, "matches": matches})
 	}
 }
 
