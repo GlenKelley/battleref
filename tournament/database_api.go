@@ -16,7 +16,7 @@ type Statements interface {
 	CreateMap(name, source string, category TournamentCategory) error
 	GetMapSource(name string, category TournamentCategory) (string, error)
 	ListMaps(category TournamentCategory) ([]string, error)
-	ListMatches() ([]Match, error)
+	ListMatches(category TournamentCategory) ([]Match, error)
 	LatestCommits(category TournamentCategory) ([]Submission, error)
 	MapExists(name string, category TournamentCategory) (bool, error)
 	CreateCommit(userName string, category TournamentCategory, commit string, time time.Time) error
@@ -26,6 +26,7 @@ type Statements interface {
 	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay []byte) error
 	GetMatchResult(id int64) (MatchResult, error)
 	GetMatchReplay(id int64) ([]byte, error)
+	UpdateLeaderboard(category TournamentCategory, stats map[string]LeaderboardStats, commits map[string]string) error
 }
 
 // An implementation of statements which uses an abstracted sql connection
@@ -168,8 +169,8 @@ func (c *Commands) ListMaps(category TournamentCategory) ([]string, error) {
 	return maps, err
 }
 
-func (c *Commands) ListMatches() ([]Match, error) {
-	if rows, err := c.tx.Query("select id, player1, player2, commit1, commit2, map, category, result, updated from match"); err != nil {
+func (c *Commands) ListMatches(category TournamentCategory) ([]Match, error) {
+	if rows, err := c.tx.Query("select id, player1, player2, commit1, commit2, map, category, result, updated from match where category = ?", string(category)); err != nil {
 		return nil, err
 	} else {
 		var values []Match
@@ -253,6 +254,19 @@ func (c *Commands) GetMatchReplay(id int64) ([]byte, error) {
 	var replay []byte
 	err := c.tx.QueryRow("select replay from match where id = ?", id).Scan(&replay)
 	return replay, err
+}
+
+func (c *Commands) UpdateLeaderboard(category TournamentCategory, stats map[string]LeaderboardStats, commits map[string]string) error {
+	if _, err := c.tx.Exec("delete from leaderboard where category = ?", string(category)); err != nil {
+		return err
+	} else {
+		for name, stat := range stats {
+			if _, err := c.tx.Exec("insert into leaderboard (name, category, commithash, score, wins, ties, losses) values (?,?,?,?,?,?,?)", name, category, commits[name], stat.Score, stat.Wins, stat.Ties, stat.Losses); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 /*

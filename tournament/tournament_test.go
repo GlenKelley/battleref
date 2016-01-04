@@ -239,7 +239,7 @@ func TestRunMatch(t *testing.T) {
 			t.ErrorNow(err)
 		} else if result != result2 {
 			t.ErrorNowf("Expected %v not %v\n", result, result2)
-		} else if matches, err := tm.ListMatches(); err != nil {
+		} else if matches, err := tm.ListMatches(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if len(matches) != 1 {
 			t.ErrorNowf("Expected 1 match not %v\n", len(matches))
@@ -273,7 +273,7 @@ func TestRunLatestMatches(t *testing.T) {
 		if err := tm.RunLatestMatches(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		}
-		if matches, err := tm.ListMatches(); err != nil {
+		if matches, err := tm.ListMatches(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if len(matches) != 18 {
 			t.ErrorNow("Expected 1 got", len(matches))

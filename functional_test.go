@@ -49,7 +49,6 @@ func initToRun(t *testutil.T, port string, category tournament.TournamentCategor
 		} else {
 			t.CheckError(RunMatch(port, "playerFoo", "playerFoo", commit, commit, maps[0], category))
 		}
-
 	}
 }
 

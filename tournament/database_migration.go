@@ -9,5 +9,6 @@ var SchemaMigrations = map[string][]string{
 		"create table if not exists submission (commithash text not null, name text not null, category text not null, date_created timestamp not null default current_timestamp, unique (commithash, name))",
 		"create table if not exists map (name text, source text not null, category text not null, unique(name, category))",
 		"create table if not exists match (id integer primary key, category text not null, player1 text not null, player2 text not null, commit1 text not null, commit2 text not null, map text not null, result text not null, created timestamp not null default current_timestamp, updated timestamp default null, replay blob default null, unique (category, map, player1, player2, commit1, commit2))",
+		"create table if not exists leaderboard (name text not null, category text not null, commithash text not null, score int not null, wins int not null, ties int not null, losses int not null, unique (name, category, commithash))",
 	},
 }

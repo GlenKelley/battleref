@@ -432,7 +432,12 @@ func commits(w http.ResponseWriter, r *http.Request, s *ServerState) {
 }
 
 func matches(w http.ResponseWriter, r *http.Request, s *ServerState) {
-	if matches, err := s.Tournament.ListMatches(); err != nil {
+	var form struct {
+		Category tournament.TournamentCategory `json:"category" form:"category" validate:"required"`
+	}
+	if err := parseForm(r, &form); err != nil {
+		web.WriteJsonWebError(w, err)
+	} else if matches, err := s.Tournament.ListMatches(form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, JSONResponse{"matches": matches})
@@ -499,6 +504,8 @@ func runLatestMatches(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
 	} else if err := s.Tournament.RunLatestMatches(form.Category); err != nil {
+		web.WriteJsonError(w, err)
+	} else if err := s.Tournament.CalculateLeaderboard(form.Category); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteJson(w, JSONResponse{"success": true})

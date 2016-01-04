@@ -170,8 +170,8 @@ type Match struct {
 	Time     time.Time
 }
 
-func (t *Tournament) ListMatches() ([]Match, error) {
-	matches, err := t.Database.ListMatches()
+func (t *Tournament) ListMatches(category TournamentCategory) ([]Match, error) {
+	matches, err := t.Database.ListMatches(category)
 	return matches, err
 }
 
@@ -280,6 +280,111 @@ func (t *Tournament) RunLatestMatches(category TournamentCategory) error {
 		}
 	}
 	return nil
+}
+
+func lookupMatch(matchLookup map[string]map[string]map[string]Match, commit1, commit2, mapName string) (Match, bool) {
+	if v, ok := matchLookup[commit1]; !ok {
+		return Match{}, false
+	} else if v2, ok := v[commit2]; !ok {
+		return Match{}, false
+	} else {
+		v3, ok := v2[mapName]
+		return v3, ok
+	}
+}
+
+func lookupInsert(matchLookup map[string]map[string]map[string]Match, match Match) {
+	var m1 map[string]map[string]Match
+	if v, ok := matchLookup[match.Commit1]; ok {
+		m1 = v
+	} else {
+		m1 = map[string]map[string]Match{}
+		matchLookup[match.Commit1] = m1
+	}
+	var m2 map[string]Match
+	if v, ok := m1[match.Commit2]; ok {
+		m2 = v
+	} else {
+		m2 = map[string]Match{}
+		m1[match.Commit2] = m2
+	}
+	m2[match.Map] = match
+}
+
+type LeaderboardStats struct {
+	Score  float64
+	Wins   int
+	Ties   int
+	Losses int
+}
+
+func (l LeaderboardStats) AddWin() {
+	l.Wins++
+}
+
+func (l LeaderboardStats) AddLoss() {
+	l.Losses++
+}
+
+func (l LeaderboardStats) AddTie() {
+	l.Ties++
+}
+
+func (t *Tournament) CalculateLeaderboard(category TournamentCategory) error {
+	if latestCommits, err := t.LatestCommits(category); err != nil {
+		return err
+	} else if matches, err := t.ListMatches(category); err != nil {
+		return err
+	} else if maps, err := t.ListMaps(category); err != nil {
+		return err
+	} else {
+		matchLookup := map[string]map[string]map[string]Match{}
+		stats := map[string]LeaderboardStats{}
+		commits := map[string]string{}
+		for _, match := range matches {
+			lookupInsert(matchLookup, match)
+			stats[match.Player1] = LeaderboardStats{}
+			stats[match.Player2] = LeaderboardStats{}
+			commits[match.Player1] = match.Commit1
+			commits[match.Player2] = match.Commit2
+		}
+
+		for _, submission1 := range latestCommits {
+			for _, submission2 := range latestCommits {
+				if submission1.Name != submission2.Name {
+					for _, mapName := range maps {
+						if match, ok := lookupMatch(matchLookup, submission1.CommitHash, submission2.CommitHash, mapName); ok {
+							if result, err := t.GetMatchResult(match.Id); err != nil {
+								return err
+							} else {
+								switch result {
+								case MatchResultWinA:
+									stats[submission1.Name].AddWin()
+									stats[submission2.Name].AddLoss()
+									break
+								case MatchResultWinB:
+									stats[submission1.Name].AddLoss()
+									stats[submission2.Name].AddWin()
+									break
+								case MatchResultTieA:
+								case MatchResultTieB:
+									stats[submission1.Name].AddTie()
+									stats[submission2.Name].AddTie()
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		for _, stat := range stats {
+			stat.Score = float64(stat.Wins*3 + stat.Losses*-1)
+		}
+
+		return t.Database.UpdateLeaderboard(category, stats, commits)
+	}
 }
 
 func GetMatchResult(a arena.MatchResult) MatchResult {
