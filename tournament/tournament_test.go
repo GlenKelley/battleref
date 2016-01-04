@@ -249,40 +249,61 @@ func TestRunMatch(t *testing.T) {
 	})
 }
 
+func runLatestMatches(t *testutil.T, tm *Tournament) {
+	if _, err := tm.CreateUser("Name1", "PublicKey1", CategoryTest); err != nil {
+		t.ErrorNow(err)
+	}
+	if _, err := tm.CreateUser("Name2", "PublicKey2", CategoryTest); err != nil {
+		t.ErrorNow(err)
+	}
+	if _, err := tm.CreateUser("Name3", "PublicKey3", CategoryTest); err != nil {
+		t.ErrorNow(err)
+	}
+	t.CheckError(tm.CreateMap("Map1", "MapSource", CategoryTest))
+	t.CheckError(tm.CreateMap("Map2", "MapSource", CategoryTest))
+	t.CheckError(tm.CreateMap("Map3", "MapSource", CategoryTest))
+	date := time.Now()
+	t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a1", date))
+	t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a2", date.Add(time.Hour)))
+	t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b1", date))
+	t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b2", date.Add(time.Hour)))
+	t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c1", date))
+	t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c2", date.Add(time.Hour)))
+	if err := tm.RunLatestMatches(CategoryTest); err != nil {
+		t.ErrorNow(err)
+	}
+}
+
 func TestRunLatestMatches(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
-		if _, err := tm.CreateUser("Name1", "PublicKey1", CategoryTest); err != nil {
-			t.ErrorNow(err)
-		}
-		if _, err := tm.CreateUser("Name2", "PublicKey2", CategoryTest); err != nil {
-			t.ErrorNow(err)
-		}
-		if _, err := tm.CreateUser("Name3", "PublicKey3", CategoryTest); err != nil {
-			t.ErrorNow(err)
-		}
-		t.CheckError(tm.CreateMap("Map1", "MapSource", CategoryTest))
-		t.CheckError(tm.CreateMap("Map2", "MapSource", CategoryTest))
-		t.CheckError(tm.CreateMap("Map3", "MapSource", CategoryTest))
-		date := time.Now()
-		t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a1", date))
-		t.CheckError(tm.SubmitCommit("Name1", CategoryTest, "a2", date.Add(time.Hour)))
-		t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b1", date))
-		t.CheckError(tm.SubmitCommit("Name2", CategoryTest, "b2", date.Add(time.Hour)))
-		t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c1", date))
-		t.CheckError(tm.SubmitCommit("Name3", CategoryTest, "c2", date.Add(time.Hour)))
-		if err := tm.RunLatestMatches(CategoryTest); err != nil {
-			t.ErrorNow(err)
-		}
+		runLatestMatches(t, tm)
 		if matches, err := tm.ListMatches(CategoryTest); err != nil {
 			t.ErrorNow(err)
 		} else if len(matches) != 18 {
 			t.ErrorNow("Expected 1 got", len(matches))
 		}
-
 	})
 }
 
-func TestDuplicatePublicKey(t *testing.T) {
-	GitoliteTournamentTest(t, func(t *testutil.T, tm *Tournament) {
+func TestCalculateLeaderboard(t *testing.T) {
+	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
+		runLatestMatches(t, tm)
+		rank := LeaderboardStats{12, 6, 0, 6}
+		if err := tm.CalculateLeaderboard(CategoryTest); err != nil {
+			t.ErrorNow(err)
+		} else if ranks, matches, err := tm.GetLeaderboard(CategoryTest); err != nil {
+			t.ErrorNow(err)
+		} else if len(ranks) != 3 {
+			t.ErrorNow("Expected 3 ranks", len(ranks))
+		} else if v, _ := ranks["Name1"]; v != rank {
+			t.ErrorNow("Unexpected rank", ranks["Name1"])
+		} else if ranks["Name2"] != rank {
+			t.ErrorNow("Unexpected rank", ranks["Name2"])
+		} else if ranks["Name3"] != rank {
+			t.ErrorNow("Unexpected rank", ranks["Name3"])
+		} else if len(matches) != 18 {
+			t.ErrorNow("Expected 18 matches", len(matches))
+		}
+
 	})
 }

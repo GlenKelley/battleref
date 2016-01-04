@@ -262,7 +262,7 @@ func (c *Commands) UpdateLeaderboard(category TournamentCategory, stats map[stri
 		return err
 	} else {
 		for name, stat := range stats {
-			if _, err := c.tx.Exec("insert into leaderboard (name, category, commithash, score, wins, ties, losses) values (?,?,?,?,?,?,?)", name, category, commits[name], stat.Score, stat.Wins, stat.Ties, stat.Losses); err != nil {
+			if _, err := c.tx.Exec("insert into leaderboard (name, category, commithash, score, wins, ties, losses) values (?,?,?,?,?,?,?)", name, string(category), commits[name], stat.Score, stat.Wins, stat.Ties, stat.Losses); err != nil {
 				return err
 			}
 		}
@@ -286,16 +286,18 @@ func (c *Commands) GetLeaderboard(category TournamentCategory) (map[string]Leade
 			stats[name] = stat
 			nameCommit[name] = commit
 		}
-		if matchRows, err := c.tx.Query("select id, player1, player2, commit1, commit2, map, category, result, updated from matches where category = ?", string(category)); err != nil {
+		if matchRows, err := c.tx.Query("select id, player1, player2, commit1, commit2, map, category, result, updated from match where category = ?", string(category)); err != nil {
 			return nil, nil, err
 		} else {
 			matches := []Match{}
 			for matchRows.Next() {
 				var match Match
 				var result string
-				if err2 := rows.Scan(&match.Id, &match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &match.Category, &result, &match.Time); err2 != nil {
+				var categoryString string
+				if err2 := matchRows.Scan(&match.Id, &match.Player1, &match.Player2, &match.Commit1, &match.Commit2, &match.Map, &categoryString, &result, &match.Time); err2 != nil {
 					return nil, nil, err2
 				} else {
+					match.Category = categoryString
 					match.Result = MatchResult(result)
 					if nameCommit[match.Player1] == match.Commit1 && nameCommit[match.Player2] == match.Commit2 {
 						matches = append(matches, match)

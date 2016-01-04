@@ -318,15 +318,15 @@ type LeaderboardStats struct {
 	Losses int
 }
 
-func (l LeaderboardStats) AddWin() {
+func (l *LeaderboardStats) AddWin() {
 	l.Wins++
 }
 
-func (l LeaderboardStats) AddLoss() {
+func (l *LeaderboardStats) AddLoss() {
 	l.Losses++
 }
 
-func (l LeaderboardStats) AddTie() {
+func (l *LeaderboardStats) AddTie() {
 	l.Ties++
 }
 
@@ -338,13 +338,14 @@ func (t *Tournament) CalculateLeaderboard(category TournamentCategory) error {
 	} else if maps, err := t.ListMaps(category); err != nil {
 		return err
 	} else {
+
 		matchLookup := map[string]map[string]map[string]Match{}
-		stats := map[string]LeaderboardStats{}
+		stats := map[string]*LeaderboardStats{}
 		commits := map[string]string{}
 		for _, match := range matches {
 			lookupInsert(matchLookup, match)
-			stats[match.Player1] = LeaderboardStats{}
-			stats[match.Player2] = LeaderboardStats{}
+			stats[match.Player1] = &LeaderboardStats{}
+			stats[match.Player2] = &LeaderboardStats{}
 			commits[match.Player1] = match.Commit1
 			commits[match.Player2] = match.Commit2
 		}
@@ -379,11 +380,13 @@ func (t *Tournament) CalculateLeaderboard(category TournamentCategory) error {
 			}
 		}
 
-		for _, stat := range stats {
+		stats2 := map[string]LeaderboardStats{}
+		for name, stat := range stats {
 			stat.Score = float64(stat.Wins*3 + stat.Losses*-1)
+			stats2[name] = *stat
 		}
 
-		return t.Database.UpdateLeaderboard(category, stats, commits)
+		return t.Database.UpdateLeaderboard(category, stats2, commits)
 	}
 }
 
