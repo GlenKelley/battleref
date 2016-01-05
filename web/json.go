@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,6 +15,7 @@ type JsonBody map[string]interface{}
 
 const (
 	HeaderContentType               = "Content-Type"
+	HeaderContentEncoding           = "Content-Encoding"
 	HeaderAccessControlAllowOrigin  = "Access-Control-Allow-Origin"
 	HeaderAccessControlAllowMethods = "Access-Control-Allow-Methods"
 	HeaderAccessControlAllowHeaders = "Access-Control-Allow-Headers"
@@ -188,6 +190,17 @@ func WriteJson(w http.ResponseWriter, data interface{}) {
 		if _, err := w.Write(bs); err != nil {
 			log.Println("Failed to send response: ", err)
 		}
+	}
+}
+
+func WriteGzipJson(w http.ResponseWriter, data interface{}) {
+	w.Header().Add(HeaderContentType, ContentTypeJson)
+	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+	w.Header().Add(HeaderContentEncoding, "gzip")
+	gz := gzip.NewWriter(w)
+	defer gz.Close()
+	if err := json.NewEncoder(gz).Encode(Json{data, nil}); err != nil {
+		log.Println("Failed to send response: ", err)
 	}
 }
 

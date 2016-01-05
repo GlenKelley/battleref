@@ -462,14 +462,12 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonWebError(w, err)
 	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
 		web.WriteJsonError(w, err)
-	} else if reader, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
-		web.WriteJsonError(w, err)
-	} else if unzipped, err := gzip.NewReader(reader); err != nil {
+	} else if unzipped, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
 		web.WriteJsonError(w, err)
 	} else if replay, err := simulator.NewReplay(unzipped); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
-		web.WriteJson(w, replay)
+		web.WriteGzipJson(w, replay)
 	}
 }
 
