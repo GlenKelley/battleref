@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang='en' class=' is-copy-enabled is-u2f-enabled'>
+ <head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=1020'>
+  <title>Register for Battlecode</title>
+  <link rel=icon href='images/favicon.png' sizes='96x96' type='image/png'>
+  <link href='css/github-16bf5399d85a6f926eb6af8f983ed5cf907e97b4da4a650dc11920d425826218.css' media='all' rel='stylesheet' />
+  <link href='css/github2-451ab63ad67fa9af580e5d9a3b2b7de911ce2e4b2437638f26fe8cb3879e67d8.css' media='all' rel='stylesheet' />
+ </head>
+ <body class='page-new-repo'>
+  <div role='main' class='main-content'>
+
+   <div class='new-repo-container'>
+     <div class='subhead'>
+      <h2 class='subhead-heading'>Battlecode leaderboard</h2>
+      <p id="description" class='subhead-description'></p>
+     </div>
+     <div style="float:left;">
+	     <h3>Top players</h3>
+	     <ul id="ranks">
+	     </ul>
+     </div>
+     <div style="float:right">
+	     <h3>Matches</h3>
+	     <ul id="matches">
+	     </ul>
+     </div>
+   </div>
+ </body>
+ 
+ <script type='text/javascript'>
+	console.log('loaded');
+	var xhr = new XMLHttpRequest();
+	var host = "api.akusete.com"
+	var category = "battlecode2015"
+	xhr.open('GET', 'http://' + host + ':8080/leaderboard?category=' + category);
+	xhr.send();
+
+	xhr.onload = function() {
+		var response = JSON.parse(xhr.response);
+		if (xhr.status == 200) {
+			var response = JSON.parse(xhr.response).data;
+			var ranks = response.ranks;
+			var rankList = document.getElementById('ranks')
+			rankList.innerHTML = "";
+			var rankArray = [];
+			for (name in ranks) {
+				if (ranks.hasOwnProperty(name)) {
+					var rank = ranks[name];
+					rank["Name"] = name;
+					rank["Score"] = parseInt(rank["Score"]);
+					rankArray.push(rank);
+				}
+			}
+			rankArray = rankArray.sort(function(a,b){return b["Score"]-a["Score"];});
+			for (var i = 0; i < rankArray.length; i++) {
+				var rank = rankArray[i];
+				console.log(rank);
+				var newItem = document.createElement("li");
+				var newContent = document.createTextNode("" + (i+1) + ". " + rank.Name + " (" +
+						rank.Score + ") (" + 
+						rank.Wins + ", " +
+						rank.Ties + ", " +
+						rank.Losses + ")");
+				newItem.appendChild(newContent);
+				rankList.appendChild(newItem);	
+			}
+
+			var matches = response.matches;
+			var matchList = document.getElementById('matches');
+			matchList.innerHTML = "";
+			for (var i = 0; i < matches.length; i++) {
+				var match = matches[i];
+				var newItem = document.createElement("li");
+				var url = "replay?id=" + match.Id;
+				if (match.Result == "WinA" || match.Result == "TieA") {
+					newItem.innerHTML = '<a href="'+ url +'"><strong>' + match.Player1 + "</strong> vs " + match.Player2 + " on " + match.Map + '.</a>';
+				} else if (match.Result == "WinB" || match.Result == "TieB") {
+					newItem.innerHTML = '<a href="'+url+'">' + match.Player1 + " vs <strong>" + match.Player2 + "</strong> on " + match.Map + '.</a>';
+				} else {
+					newItem.innerHTML = '<a href="'+url+'">' + match.Player1 + " vs " + match.Player2 + " on " + match.Map + '.</a>';
+				}
+				matchList.appendChild(newItem);	
+			}
+		} else if (xhr.status !== 200) {
+			console.log(JSON.parse(xhr.response));
+		}
+	}
+ </script>
+</html>
