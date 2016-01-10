@@ -22,8 +22,9 @@ const (
 )
 
 const (
-	ContentTypeJson = "application/json"
-	ContentTypeXml  = "application/xml"
+	ContentTypePlain = "text/plain"
+	ContentTypeJson  = "application/json"
+	ContentTypeXml   = "application/xml"
 )
 
 func SendPostJson(url string, jsonBody interface{}, jsonResponse interface{}) error {
@@ -164,10 +165,11 @@ func WriteCorsOptionResponse(w http.ResponseWriter, method string) {
 	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 	w.Header().Add(HeaderAccessControlAllowMethods, fmt.Sprintf("%v,OPTIONS", method))
 	w.Header().Add(HeaderAccessControlAllowHeaders, HeaderContentType)
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 func WriteJsonWebError(w http.ResponseWriter, err Error) {
+	log.Println(err)
 	if bs, e2 := json.Marshal(Json{nil, err}); e2 != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -193,14 +195,25 @@ func WriteJson(w http.ResponseWriter, data interface{}) {
 	}
 }
 
+func WriteRawGzipJson(w http.ResponseWriter, bs []byte) {
+	w.Header().Add(HeaderContentType, ContentTypeJson)
+	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
+	w.Header().Add(HeaderContentEncoding, "gzip")
+	if _, err := w.Write(bs); err != nil {
+		log.Println("Failed to send response: ", err)
+	}
+}
+
 func WriteGzipJson(w http.ResponseWriter, data interface{}) {
 	w.Header().Add(HeaderContentType, ContentTypeJson)
 	w.Header().Add(HeaderAccessControlAllowOrigin, "*")
 	w.Header().Add(HeaderContentEncoding, "gzip")
 	gz := gzip.NewWriter(w)
-	defer gz.Close()
 	if err := json.NewEncoder(gz).Encode(Json{data, nil}); err != nil {
 		log.Println("Failed to send response: ", err)
+	}
+	if err := gz.Close(); err != nil {
+		log.Println("Failed to close gzip writer", err)
 	}
 }
 

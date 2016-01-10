@@ -1,10 +1,14 @@
 package tournament
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/simulator"
 	"log"
 	"strings"
 	"time"
@@ -243,9 +247,22 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 				log.Println(err2)
 			}
 			return id, MatchResultError, err
+		} else if unzipped, err := gzip.NewReader(bytes.NewReader(result.Replay)); err != nil {
+			return id, MatchResultError, err
+		} else if replay, err := simulator.NewReplay(unzipped); err != nil {
+			return id, MatchResultError, err
 		} else {
 			matchResult := GetMatchResult(result)
-			if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, result.Replay); err != nil {
+			gzReplay := bytes.Buffer{}
+			gz := gzip.NewWriter(&gzReplay)
+			if jsonReplay, err := json.MarshalIndent(replay, "", "\t"); err != nil {
+				return id, MatchResultError, err
+			} else if _, err := gz.Write(jsonReplay); err != nil {
+				return id, MatchResultError, err
+			} else if err := gz.Close(); err != nil {
+				return id, MatchResultError, err
+			}
+			if err := t.UpdateMatch(category, mapName, player1, player2, finished, matchResult, gzReplay.Bytes()); err != nil {
 				return id, MatchResultError, err
 			}
 			return id, matchResult, nil

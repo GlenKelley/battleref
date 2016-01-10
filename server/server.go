@@ -4,25 +4,20 @@ import (
 	//"os"
 	"reflect"
 	//	"path/filepath"
-	"log"
-	"strconv"
-	"strings"
-	//	"encoding/json"
-	"bytes"
-	"compress/gzip"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
-	//	"bytes"
 	"os/exec"
+	"strconv"
+	"strings"
 	// "flag"
 	"fmt"
 	"regexp"
 	//	"sort"
 	"encoding/json"
 	"github.com/GlenKelley/battleref/git"
-	"github.com/GlenKelley/battleref/simulator"
 	"github.com/GlenKelley/battleref/tournament"
 	"github.com/GlenKelley/battleref/web"
 	"io/ioutil"
@@ -56,7 +51,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 		Addr:           fmt.Sprintf(":%v", properties.ServerPort),
 		Handler:        http.NewServeMux(),
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		WriteTimeout:   10 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
 	s := ServerState{tournament, properties, httpServer, nil, make(map[string]Route)}
@@ -92,6 +87,7 @@ func (s *ServerState) Serve() error {
 func (s *ServerState) HandleFunc(method string, pattern string, handler func(http.ResponseWriter, *http.Request, *ServerState), help string) {
 	s.Routes[pattern] = Route{method, pattern, help}
 	s.HttpServer.Handler.(*http.ServeMux).HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.Method, pattern)
 		if r.Method == method {
 			handler(w, r, s)
 		} else if r.Method == "OPTIONS" {
@@ -462,12 +458,8 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 		web.WriteJsonWebError(w, err)
 	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
 		web.WriteJsonError(w, err)
-	} else if unzipped, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
-		web.WriteJsonError(w, err)
-	} else if replay, err := simulator.NewReplay(unzipped); err != nil {
-		web.WriteJsonError(w, err)
 	} else {
-		web.WriteGzipJson(w, replay)
+		web.WriteRawGzipJson(w, replay)
 	}
 }
 

@@ -1,10 +1,13 @@
 package tournament
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/xml"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
+	"github.com/GlenKelley/battleref/simulator"
 	"github.com/GlenKelley/battleref/testing"
-	_ "github.com/mattn/go-sqlite3"
 	"os/user"
 	"testing"
 	"time"
@@ -16,7 +19,17 @@ func TournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, []byte("MATCH_RESULT")}, nil}
+
+		gzReplay := bytes.Buffer{}
+		gz := gzip.NewWriter(&gzReplay)
+		if xmlReplay, err := xml.MarshalIndent(simulator.Replay{}, "", "\t"); err != nil {
+			t.ErrorNow(err)
+		} else if _, err := gz.Write(xmlReplay); err != nil {
+			t.ErrorNow(err)
+		} else if err := gz.Close(); err != nil {
+			t.ErrorNow(err)
+		}
+		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, gzReplay.Bytes()}, nil}
 		remote := git.TempRemote{}
 		bootstrap := &arena.MinimalBootstrap{}
 		if database, err := NewInMemoryDatabase(); err != nil {
