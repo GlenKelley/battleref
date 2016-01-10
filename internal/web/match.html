@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang='en' class=' is-copy-enabled is-u2f-enabled'>
+   <head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=1020'>
+  <title>Match Replay</title>
+  <link rel=icon href='images/favicon.png' sizes='96x96' type='image/png'>
+  
+  <script src="js/pixi.min.js"></script>
+<style>
+	body {
+		margin: 0;
+		padding: 0;
+		background-color: #000000;
+	}
+</style>
+</head>
+<body>
+</body>
+<script type='text/javascript'>
+	var query = (function(a) {
+		if (a == "") return {};
+		var b = {};
+		for (var i = 0; i < a.length; ++i) {
+			var p=a[i].split('=', 2);
+			if (p.length == 1)
+				b[p[0]] = "";
+			else
+				b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+		}
+		return b;
+	})(window.location.search.substr(1).split('&'));
+
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'http://localhost:8080/replay?id=' + query.id);
+
+
+stageWidth = window.innerWidth; 
+stageHeight = window.innerHeight;
+console.log(stageWidth, stageHeight);
+
+// You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
+// which will try to choose the best renderer for the environment you are in.
+var renderer = new PIXI.WebGLRenderer(stageWidth, stageHeight);
+
+// The renderer will create a canvas element for you that you can then insert into the DOM.
+document.body.appendChild(renderer.view);
+
+// You need to create a root container that will hold the scene you want to draw.
+var stage = new PIXI.Container();
+
+var bunny
+// load the texture we need
+PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/master/test/textures/bunny.png').load(function (loader, resources) {
+	// This creates a texture from a 'bunny.png' image.
+	bunny = new PIXI.Sprite(resources.bunny.texture);
+
+	// Setup the position and scale of the bunny
+	bunny.position.x = renderer.width-100;
+	bunny.position.y = 300;
+
+	bunny.anchor.x = 0.5;
+	bunny.anchor.y = 0.5;
+	//bunny.scale.x = 2;
+	//bunny.scale.y = 2;
+
+	// Add the bunny to the scene we are building.
+	stage.addChild(bunny);
+
+	// kick off the animation loop (defined below)
+	renderer.render(stage);
+});
+
+function getMap(replay) {
+	var lines = replay.Header.Map.MapTiles.split('\n');
+	lines.shift();
+	var map = new Array(lines.length);
+	for (var i = 0; i < lines.length; i++) {
+		map[i] = new Array(lines[i].length)
+		for (var j = 0; j < lines[i].length; j++) {
+			map[i][j] = lines[i][j] == '.';
+		}
+	}
+	console.log(map)
+	return map
+}
+
+var map;
+var replay;
+var units;
+var board;
+var scale;
+function drawGame(r) {
+	replay = r;
+	map = getMap(replay);
+	
+	var graphics = new PIXI.Graphics();
+	
+	// set a fill and line style
+	graphics.clear();
+	//graphics.beginFill(0xFF3300);
+	graphics.lineStyle(1, 0x555500, 1);
+
+	var margin = 50;
+	var width = replay.Header.Map.Width;
+	var height = replay.Header.Map.Height;	
+	console.log(renderer.width)
+	
+	var sx = (renderer.width - margin*2) / width;
+	var sy = (renderer.height - margin*2) / height;
+	scale = Math.min(sx, sy);
+	var mx = (renderer.width - width * scale) / 2
+	var my = (renderer.height - height * scale) / 2
+
+	for (var i = 0; i < width; i++) {
+		for (var j = 0; j < height; j++) {
+			var x = i * scale;
+			var y = j * scale;
+			var tile = map[j][i];
+			var color = tile ? 0x005000 : 0x500000;
+			graphics.beginFill(color, 0.5);
+			graphics.moveTo(x, y);
+			graphics.lineTo(x+scale, y);
+			graphics.lineTo(x+scale, y+scale);
+			graphics.lineTo(x, y+scale);
+			graphics.lineTo(x, y);
+			graphics.endFill();
+		}
+	}
+	graphics.endFill();
+	
+	board = new PIXI.Container();
+	units = new PIXI.Graphics();
+	board.addChild(graphics);
+	board.addChild(units);
+	board.x = mx;
+	board.y = my;
+	stage.addChild(board);
+	
+	animate()
+}
+
+function drawUnit(graphic, x, y, team) {
+	x = x * scale;
+	y = y * scale;
+	var color = team == "A" ? 0x00FF00 : 0x0000FF;
+	graphic.beginFill(color, 1);
+	graphic.moveTo(x, y);
+	graphic.lineTo(x+scale, y);
+	graphic.lineTo(x+scale, y+scale);
+	graphic.lineTo(x, y+scale);
+	graphic.lineTo(x, y);
+	graphic.endFill();
+}
+
+var round = 0;
+function animate() {
+	var originX = replay.Header.Map.OriginX;
+	var originY = replay.Header.Map.OriginY;
+	if (round < replay.Round.length && round < 100) {
+		var signals = replay.Round[round].Signals;
+		if (signals !== null) {
+			for (var i = 0; i < signals.length; i++) {
+				var sig = signals[i];
+				var type = sig.XMLName.Local;
+				console.log("sig", type)
+				if (type === "sig.SpawnSignal") {
+					var loc = sig.Loc.split(",")
+					var x = loc[0] - originX;
+					var y = loc[1] - originY;
+					drawUnit(units, x, y, sig.Team)
+				}
+			}
+		}
+
+		if (bunny !== undefined) {
+			bunny.rotation += 0.1;
+		}
+		console.log(round);
+		round++;
+		renderer.render(stage);
+		requestAnimationFrame(animate);
+	}
+}
+
+xhr.onload = function() {
+	console.log("load")
+	if (xhr.status !== 200) {
+		console.log("Failed to load replay.")
+	} else {
+		var response = JSON.parse(xhr.response);
+		console.log("response", response);
+		drawGame(response);
+	}
+}
+xhr.send();
+
+ </script>
+</html>
