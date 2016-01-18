@@ -92,6 +92,9 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func() time.Time) (time.Ti
 		log.Println("runMatch Error: ", string(buffer.Bytes()))
 		return clock(), result, err
 	} else {
+		log.Println("runMatch Error: ", string(buffer.Bytes()))
+		log.Println("runMatch Output: ", string(out))
+		log.Println("bs length", len(bs))
 		result.Replay = bs
 		return clock(), result, nil
 	}

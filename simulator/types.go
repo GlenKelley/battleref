@@ -68,12 +68,13 @@ const (
 )
 
 type Replay struct {
-	XMLName  xml.Name  `xml:"object-stream"`
-	Header   Header    `xml:"ser.MatchHeader"`
-	Metadata Info      `xml:"ser.ExtensibleMetadata"`
-	Round    []Round   `xml:",any"`
-	Stats    GameStats `xml:"ser.GameStats"`
-	Footer   Footer    `xml:"ser.MatchFooter"`
+	XMLName   xml.Name    `xml:"object-stream"`
+	Header    Header      `xml:"ser.MatchHeader"`
+	Metadata  Info        `xml:"ser.ExtensibleMetadata"`
+	Round     []Round     `xml:"ser.RoundDelta"`
+	RoundStat []RoundStat `xml:"ser.RoundStats"`
+	GameStats GameStats   `xml:"ser.GameStats"`
+	Footer    Footer      `xml:"ser.MatchFooter"`
 }
 
 type Header struct {
@@ -126,52 +127,54 @@ type MapTiles struct {
 }
 
 type Round struct {
-	XMLName xml.Name
-	Signals []Signal   `xml:",any,omitempty"`
-	Points  FloatArray `xml:"points,attr,omitempty"`
+	Signals []Signal `xml:",any,omitempty" json:",omitempty"`
+}
+
+type RoundStats struct {
+	Points FloatArray `xml:"points,attr,omitempty" json:",omitempty"`
 }
 
 type Signal struct {
 	XMLName   xml.Name
-	MineLoc   *MapLoc    `xml:"mineLoc,attr"`
-	RobotId   *RobotId   `xml:"robotID,attr"`
-	TargetLoc *MapLoc    `xml:"targetLoc,attr"`
-	RobotTeam *Team      `xml:"robotTeam,attr"`
-	ParentId  *RobotId   `xml:"parentID,attr"`
-	Loc       *MapLoc    `xml:"loc,attr"`
-	Type      *RobotType `xml:"type,attr"`
-	Team      *Team      `xml:"team,attr"`
+	MineLoc   *MapLoc    `xml:"mineLoc,attr" json:",omitempty"`
+	RobotId   *RobotId   `xml:"robotID,attr" json:",omitempty"`
+	TargetLoc *MapLoc    `xml:"targetLoc,attr" json:",omitempty"`
+	RobotTeam *Team      `xml:"robotTeam,attr" json:",omitempty"`
+	ParentId  *RobotId   `xml:"parentID,attr" json:",omitempty"`
+	Loc       *MapLoc    `xml:"loc,attr" json:",omitempty"`
+	Type      *RobotType `xml:"type,attr" json:",omitempty"`
+	Team      *Team      `xml:"team,attr" json:",omitempty"`
 
-	NewLoc          *MapLoc       `xml:"newLoc,attr"`
-	IsMovingForward *bool         `xml:"isMovingForward,attr"`
-	Delay           *int          `xml:"delay,attr"`
-	RobotIds        *RobotIdArray `xml:"robotIDs,attr"`
-	NumByteCodes    *IntArray     `xml:"numBytecodes,attr"`
-	ControlBits     *int64        `xml:"controlBits,attr"`
-	ObjectId        *RobotId      `xml:"objectID,attr"`
-	Health          *string       `xml:"health,attr"`
-	Location        *MapLoc       `xml:"location,attr"`
-	Red             *int          `xml:"red,attr"`
-	Green           *int          `xml:"green,attr"`
-	Blue            *int          `xml:"blue,attr"`
-	Loc1            *MapLoc       `xml:"loc1,attr"`
-	Loc2            *MapLoc       `xml:"loc2,attr"`
-	StringIndex     *int          `xml:"stringIndex,attr"`
-	NewString       *string       `xml:"newString,attr"`
-	Ore             *FloatArray   `xml:"ore,attr"`
-	Observation     *string       `xml:"observation,attr"`
-	MineTeam        *Team         `xml:"mineTeam,attr"`
-	MinerType       *RobotType    `xml:"minerType,attr"`
-	MissileCount    *int          `xml:"missileCount,attr"`
+	NewLoc          *MapLoc       `xml:"newLoc,attr" json:",omitempty"`
+	IsMovingForward *bool         `xml:"isMovingForward,attr" json:",omitempty"`
+	Delay           *int          `xml:"delay,attr" json:",omitempty"`
+	RobotIds        *RobotIdArray `xml:"robotIDs,attr" json:",omitempty"`
+	NumByteCodes    *IntArray     `xml:"numBytecodes,attr" json:",omitempty"`
+	ControlBits     *int64        `xml:"controlBits,attr" json:",omitempty"`
+	ObjectId        *RobotId      `xml:"objectID,attr" json:",omitempty"`
+	Health          *string       `xml:"health,attr" json:",omitempty"`
+	Location        *MapLoc       `xml:"location,attr" json:",omitempty"`
+	Red             *int          `xml:"red,attr" json:",omitempty"`
+	Green           *int          `xml:"green,attr" json:",omitempty"`
+	Blue            *int          `xml:"blue,attr" json:",omitempty"`
+	Loc1            *MapLoc       `xml:"loc1,attr" json:",omitempty"`
+	Loc2            *MapLoc       `xml:"loc2,attr" json:",omitempty"`
+	StringIndex     *int          `xml:"stringIndex,attr" json:",omitempty"`
+	NewString       *string       `xml:"newString,attr" json:",omitempty"`
+	Ore             *FloatArray   `xml:"ore,attr" json:",omitempty"`
+	Observation     *string       `xml:"observation,attr" json:",omitempty"`
+	MineTeam        *Team         `xml:"mineTeam,attr" json:",omitempty"`
+	MinerType       *RobotType    `xml:"minerType,attr" json:",omitempty"`
+	MissileCount    *int          `xml:"missileCount,attr" json:",omitempty"`
 
-	CoreDelays   *FloatArray `xml:"coreDelays,attr"`
-	WeaponDelays *FloatArray `xml:"weaponDelays,attr"`
-	SupplyLevels *FloatArray `xml:"supplyLevels,attr"`
-	FromId       *RobotId    `xml:"fromID,attr"`
-	ToId         *RobotId    `xml:"toID,attr"`
-	Amount       *float64    `xml:"amount,attr"`
-	Xp           *int        `xml:"XP,attr"`
-	DamageFactor *float64    `xml:"damageFactor,attr"`
+	CoreDelays   *FloatArray `xml:"coreDelays,attr" json:",omitempty"`
+	WeaponDelays *FloatArray `xml:"weaponDelays,attr" json:",omitempty"`
+	SupplyLevels *FloatArray `xml:"supplyLevels,attr" json:",omitempty"`
+	FromId       *RobotId    `xml:"fromID,attr" json:",omitempty"`
+	ToId         *RobotId    `xml:"toID,attr" json:",omitempty"`
+	Amount       *float64    `xml:"amount,attr" json:",omitempty"`
+	Xp           *int        `xml:"XP,attr" json:",omitempty"`
+	DamageFactor *float64    `xml:"damageFactor,attr" json:",omitempty"`
 }
 
 type FloatArray string

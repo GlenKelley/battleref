@@ -56,7 +56,7 @@ PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/maste
 	bunny = new PIXI.Sprite(resources.bunny.texture);
 
 	// Setup the position and scale of the bunny
-	bunny.position.x = renderer.width-100;
+	bunny.position.x = renderer.width-25;
 	bunny.position.y = 300;
 
 	bunny.anchor.x = 0.5;
@@ -153,22 +153,85 @@ function drawUnit(graphic, x, y, team) {
 	graphic.endFill();
 }
 
+function drawAttack(graphic, x, y, x2, y2) {
+	x = x * scale;
+	y = y * scale;
+	x2 = x2 * scale;
+	y2 = y2 * scale;
+	var color = 0xFFFFFF; 
+	graphic.lineStyle(2, color, 1);
+	graphic.beginFill(color, 1);
+	graphic.moveTo(x, y);
+	graphic.lineTo(x2, y2);
+	graphic.endFill();
+}
+
 var round = 0;
+var robots = {};
+var effects = {};
+var effectCount = 0;
+
 function animate() {
+	//console.log(round)
 	var originX = replay.Header.Map.OriginX;
 	var originY = replay.Header.Map.OriginY;
-	if (round < replay.Round.length && round < 100) {
+	if (round < replay.Round.length) {
 		var signals = replay.Round[round].Signals;
-		if (signals !== null) {
+		if (signals !== null && signals !== undefined) {
 			for (var i = 0; i < signals.length; i++) {
 				var sig = signals[i];
 				var type = sig.XMLName.Local;
-				console.log("sig", type)
+				//console.log("sig", type, sig);
+
 				if (type === "sig.SpawnSignal") {
 					var loc = sig.Loc.split(",")
 					var x = loc[0] - originX;
 					var y = loc[1] - originY;
-					drawUnit(units, x, y, sig.Team)
+					var id = sig.RobotId;
+					var team = sig.Team;
+					//drawUnit(units, x, y, team);
+					robots[id] = {team:sig.Team, x:x, y:y}
+				} else if (type === "sig.MovementSignal") {
+					var loc = sig.NewLoc.split(",")
+					var x = loc[0] - originX;
+					var y = loc[1] - originY;
+					var id = sig.RobotId;
+					var robot = robots[id];
+					robot.x = x;
+					robot.y = y;
+					//drawUnit(units, x, y, team);
+				} else if (type === "sig.DeathSignal") {
+					delete robots[sig.RobotId];
+				} else if (type === "sig.AttackSignal") {
+					var loc = sig.TargetLoc.split(",")
+					var x = loc[0] - originX;
+					var y = loc[1] - originY;
+					var id = sig.RobotId;
+					var robot = robots[id];
+					var rx = robot.x;
+					var ry = robot.y;
+					effects[effectCount] = {type:"attack", x:rx, y:ry, x2:x, y2:y, duration:5}; 
+					effectCount++;
+				}
+			}
+
+			units.clear();
+			for (var id in robots) {
+				if (robots.hasOwnProperty(id)) {
+					var robot = robots[id]
+					drawUnit(units, robot.x, robot.y, robot.team);
+				}
+			}
+			for (var id in effects) {
+				if (effects.hasOwnProperty(id)) {
+					var effect = effects[id]
+					if (effect.type == "attack") {
+						drawAttack(units, effect.x, effect.y, effect.x2, effect.y2);
+					}
+					effect.duration--;
+					if (effect.duration < 0) {
+						delete effects[id];
+					}
 				}
 			}
 		}
@@ -176,7 +239,6 @@ function animate() {
 		if (bunny !== undefined) {
 			bunny.rotation += 0.1;
 		}
-		console.log(round);
 		round++;
 		renderer.render(stage);
 		requestAnimationFrame(animate);

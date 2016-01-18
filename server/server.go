@@ -50,7 +50,7 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	httpServer := &http.Server{
 		Addr:           fmt.Sprintf(":%v", properties.ServerPort),
 		Handler:        http.NewServeMux(),
-		ReadTimeout:    10 * time.Second,
+		ReadTimeout:    10 * time.Minute,
 		WriteTimeout:   10 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
