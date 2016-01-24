@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"code.google.com/p/go.net/websocket"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -223,4 +224,18 @@ func WriteXml(w http.ResponseWriter, bs []byte) {
 	if _, err := w.Write(bs); err != nil {
 		log.Println("failed to send response: ", err)
 	}
+}
+
+var JsonCodec = websocket.Codec{wsJsonSend, wsJsonReceive}
+
+func wsJsonSend(v interface{}) (data []byte, payloadType byte, err error) {
+	if data, err := json.Marshal(v); err != nil {
+		return nil, websocket.UnknownFrame, err
+	} else {
+		return data, websocket.TextFrame, nil
+	}
+}
+
+func wsJsonReceive(data []byte, payloadType byte, v interface{}) (err error) {
+	return json.Unmarshal(data, v)
 }

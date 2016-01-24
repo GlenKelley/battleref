@@ -68,13 +68,12 @@ const (
 )
 
 type Replay struct {
-	XMLName   xml.Name    `xml:"object-stream"`
-	Header    Header      `xml:"ser.MatchHeader"`
-	Metadata  Info        `xml:"ser.ExtensibleMetadata"`
-	Round     []Round     `xml:"ser.RoundDelta"`
-	RoundStat []RoundStat `xml:"ser.RoundStats"`
-	GameStats GameStats   `xml:"ser.GameStats"`
-	Footer    Footer      `xml:"ser.MatchFooter"`
+	XMLName   xml.Name  `xml:"object-stream"`
+	Header    Header    `xml:"ser.MatchHeader"`
+	Metadata  Info      `xml:"ser.ExtensibleMetadata"`
+	Round     []Round   `xml:",any"`
+	GameStats GameStats `xml:"ser.GameStats"`
+	Footer    Footer    `xml:"ser.MatchFooter"`
 }
 
 type Header struct {
@@ -127,11 +126,9 @@ type MapTiles struct {
 }
 
 type Round struct {
-	Signals []Signal `xml:",any,omitempty" json:",omitempty"`
-}
-
-type RoundStats struct {
-	Points FloatArray `xml:"points,attr,omitempty" json:",omitempty"`
+	XMLName xml.Name
+	Signals []Signal   `xml:",any,omitempty"`
+	Points  FloatArray `xml:"points,attr,omitempty"`
 }
 
 type Signal struct {

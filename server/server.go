@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"regexp"
 	//	"sort"
+	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"github.com/GlenKelley/battleref/git"
 	"github.com/GlenKelley/battleref/tournament"
@@ -70,8 +71,8 @@ func NewServer(tournament *tournament.Tournament, properties Properties) *Server
 	s.HandleFunc("POST", "/match/run/latest", runLatestMatches, "Run matches between all recent submissions.")
 	s.HandleFunc("GET", "/matches", matches, "List all matches")
 	s.HandleFunc("GET", "/replay", replay, "The replay log of a single match")
+	s.WebsocketHandle("/replay/stream", replayStream, "The replay log of a single match")
 	s.HandleFunc("GET", "/leaderboard", leaderboard, "Lists the player rankings for a tournament category.")
-
 	return &s
 }
 
@@ -96,6 +97,14 @@ func (s *ServerState) HandleFunc(method string, pattern string, handler func(htt
 			web.WriteJsonErrorWithCode(w, fmt.Errorf("Expected method %v not %v", method, r.Method), http.StatusMethodNotAllowed)
 		}
 	})
+}
+
+func (s *ServerState) WebsocketHandle(pattern string, handler func(*websocket.Conn, *ServerState), help string) {
+	s.Routes[pattern] = Route{"WebSocket", pattern, help}
+	s.HttpServer.Handler.(*http.ServeMux).Handle(pattern, websocket.Handler(func(ws *websocket.Conn) {
+		log.Println(pattern)
+		handler(ws, s)
+	}))
 }
 
 // Environment variables
@@ -456,11 +465,25 @@ func replay(w http.ResponseWriter, r *http.Request, s *ServerState) {
 	}
 	if err := parseForm(r, &form); err != nil {
 		web.WriteJsonWebError(w, err)
-	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
+	} else if replay, err := s.Tournament.GetMatchReplayRaw(form.Id); err != nil {
 		web.WriteJsonError(w, err)
 	} else {
 		web.WriteRawGzipJson(w, replay)
 	}
+}
+
+func replayStream(ws *websocket.Conn, s *ServerState) {
+	var form struct {
+		Id int64 `json:"id" form:"id" validate:"required,nonzero"`
+	}
+	if err := parseForm(ws.Request(), &form); err != nil {
+		log.Println("Error parsing form", err)
+	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
+		log.Println("Error writing message", err)
+	} else if err := web.JsonCodec.Send(ws, JSONResponse{"header": replay.Header}); err != nil {
+		log.Println("Error sending message", err)
+	}
+	ws.Close()
 }
 
 func leaderboard(w http.ResponseWriter, r *http.Request, s *ServerState) {

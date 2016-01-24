@@ -223,7 +223,19 @@ func (t *Tournament) GetMatchResult(id int64) (MatchResult, error) {
 	return result, err
 }
 
-func (t *Tournament) GetMatchReplay(id int64) ([]byte, error) {
+func (t *Tournament) GetMatchReplay(id int64) (*simulator.Replay, error) {
+	if replay, err := t.Database.GetMatchReplay(id); err != nil {
+		return nil, err
+	} else if unzipped, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
+		return nil, err
+	} else if replay, err := simulator.NewReplayJson(unzipped); err != nil {
+		return nil, err
+	} else {
+		return replay, err
+	}
+}
+
+func (t *Tournament) GetMatchReplayRaw(id int64) ([]byte, error) {
 	replay, err := t.Database.GetMatchReplay(id)
 	return replay, err
 }

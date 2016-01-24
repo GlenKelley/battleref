@@ -2,8 +2,9 @@ package server
 
 import (
 	"bytes"
-	"compress/gzip"
+	"code.google.com/p/go.net/websocket"
 	"encoding/json"
+	"fmt"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
 	"github.com/GlenKelley/battleref/testing"
@@ -35,14 +36,10 @@ func ServerTest(test *testing.T, f func(*testutil.T, *ServerState)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		var bs bytes.Buffer
-		writer := gzip.NewWriter(&bs)
-		replay, _ := ioutil.ReadFile("../simulator/replay.xml.gz")
-		if _, err := writer.Write(replay); err != nil {
-			t.ErrorNow(err)
+		if replay, err := ioutil.ReadFile("../simulator/replay.xml.gz"); err != nil {
+			t.ErrorNow()
 		} else {
-			writer.Close()
-			dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, bs.Bytes()}, nil}
+			dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, replay}, nil}
 			remote := &git.TempRemote{}
 			bootstrap := &arena.MinimalBootstrap{}
 			if database, err := tournament.NewInMemoryDatabase(); err != nil {
@@ -71,6 +68,21 @@ func sendGet(t *testutil.T, server *ServerState, url string) JSONResponse {
 		return nil
 	} else {
 		return sendRequest(t, server, http.StatusOK, req)
+	}
+}
+
+func sendRawGet(t *testutil.T, server *ServerState, url string) []byte {
+	if req, err := http.NewRequest("GET", url, nil); err != nil {
+		t.ErrorNow(err)
+		return nil
+	} else {
+		body := sendRawRequest(t, server, http.StatusOK, req)
+		if p, err := ioutil.ReadAll(body); err != nil {
+			t.ErrorNow(err)
+			return nil
+		} else {
+			return p
+		}
 	}
 }
 
@@ -118,7 +130,7 @@ func sendJSONPostExpectStatus(t *testutil.T, server *ServerState, expectedCode i
 	}
 }
 
-func sendRequest(t *testutil.T, server *ServerState, expectedCode int, req *http.Request) JSONResponse {
+func sendRawRequest(t *testutil.T, server *ServerState, expectedCode int, req *http.Request) *bytes.Buffer {
 	resp := httptest.NewRecorder()
 	server.HttpServer.Handler.ServeHTTP(resp, req)
 	if resp.Code != expectedCode {
@@ -128,8 +140,13 @@ func sendRequest(t *testutil.T, server *ServerState, expectedCode int, req *http
 		}
 		t.FailNow()
 	}
+	return resp.Body
+}
+
+func sendRequest(t *testutil.T, server *ServerState, expectedCode int, req *http.Request) JSONResponse {
 	var jsonResponse JSONResponse
-	t.CheckError(json.NewDecoder(resp.Body).Decode(&jsonResponse))
+	body := sendRawRequest(t, server, expectedCode, req)
+	t.CheckError(json.NewDecoder(body).Decode(&jsonResponse))
 	return jsonResponse
 }
 
@@ -507,6 +524,29 @@ func TestReplay(t *testing.T) {
 		commit := Json(t, r).Key("data").Key("commits").At(0).String()
 		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryTest), "commit1": commit, "commit2": commit, "map": "NameBar"})
 		id := Json(t, r).Key("data").Key("id").Int()
-		sendGet(t, server, "/replay?id="+strconv.Itoa(id))
+		sendRawGet(t, server, "/replay?id="+strconv.Itoa(id))
+	})
+}
+
+func TestReplayStream(test *testing.T) {
+	ServerTest(test, func(t *testutil.T, server *ServerState) {
+		go server.Serve()
+		//Race condition of server not starting
+		time.Sleep(time.Microsecond)
+		defer sendPost(t, server, "/shutdown", nil)
+		sendJSONPost(t, server, "/register", map[string]string{"name": "NameFoo", "public_key": SamplePublicKey, "category": string(tournament.CategoryTest)})
+		sendJSONPost(t, server, "/map/create", map[string]string{"name": "NameBar", "source": "SourceBar", "category": string(tournament.CategoryTest)})
+		r := sendGet(t, server, "/commits?name=NameFoo&category="+string(tournament.CategoryTest))
+		commit := Json(t, r).Key("data").Key("commits").At(0).String()
+		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryTest), "commit1": commit, "commit2": commit, "map": "NameBar"})
+		id := Json(t, r).Key("data").Key("id").Int()
+		msg := make([]byte, 1024)
+		if ws, err := websocket.Dial(fmt.Sprintf("ws://localhost:8081/replay/stream?id=%v", id), "", "http://localhost"); err != nil {
+			t.ErrorNow(err)
+		} else if n, err := ws.Read(msg); err != nil {
+			t.ErrorNow(err)
+		} else {
+			fmt.Println("%v, %v", n, string(msg))
+		}
 	})
 }

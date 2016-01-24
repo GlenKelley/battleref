@@ -1,7 +1,9 @@
 package simulator
 
 import (
+	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 )
 
@@ -9,6 +11,19 @@ func NewReplay(input io.Reader) (*Replay, error) {
 	decoder := xml.NewDecoder(input)
 	replay := Replay{}
 	err := decoder.Decode(&replay)
+	if err != nil {
+		fmt.Println("ERROR DECODING", err)
+	}
+	return &replay, err
+}
+
+func NewReplayJson(input io.Reader) (*Replay, error) {
+	decoder := json.NewDecoder(input)
+	replay := Replay{}
+	err := decoder.Decode(&replay)
+	if err != nil {
+		fmt.Println("ERROR DECODING", err)
+	}
 	return &replay, err
 }
 

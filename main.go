@@ -22,7 +22,6 @@ func main() {
 		log.Fatal("You must define a environment")
 	}
 
-	log.Println("Starting webserver.")
 	if properties, err := server.ReadProperties(environment, resourcePath); err != nil {
 		log.Fatal(err)
 	} else {
@@ -45,6 +44,7 @@ func main() {
 					log.Fatal(err)
 				}
 			}
+			log.Printf("Listening on port %v.", properties.ServerPort)
 			log.Fatal(webserver.Serve())
 		}
 	}

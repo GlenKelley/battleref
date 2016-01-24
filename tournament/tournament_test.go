@@ -230,7 +230,7 @@ func TestUpdateMatch(t *testing.T) {
 				t.ErrorNow(t, err)
 			} else if result != MatchResultWinA {
 				t.ErrorNow(result, " expected ", MatchResultWinA)
-			} else if replay, err := tm.GetMatchReplay(id); err != nil {
+			} else if replay, err := tm.GetMatchReplayRaw(id); err != nil {
 				t.ErrorNow(err)
 			} else if string(replay) != "LogFoo" {
 				t.ErrorNow(replay, " expected LogFoo")
