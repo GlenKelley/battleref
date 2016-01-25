@@ -13,6 +13,7 @@ type Bootstrap interface {
 }
 
 type MinimalBootstrap struct {
+	ResourceDir string
 }
 
 func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) ([]string, error) {
@@ -25,6 +26,11 @@ func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) (
 	case "battlecode2015":
 		{
 			files, err := populateBattlecode2015Player(name, sourceDir)
+			return files, err
+		}
+	case "battlecode2016":
+		{
+			files, err := populateBattlecode2016Player(name, sourceDir, b.ResourceDir)
 			return files, err
 		}
 	default:
@@ -77,6 +83,24 @@ func populateBattlecode2015Player(name, sourceDir string) ([]string, error) {
 		return []string{}, err
 	}
 	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2015Readme), os.ModePerm); err != nil {
+		return []string{}, err
+	}
+	return files, nil
+}
+
+const Battlecode2016Readme = ``
+
+func populateBattlecode2016Player(name, sourceDir, resourceDir string) ([]string, error) {
+	sourceFile := filepath.Join(sourceDir, "RobotPlayer.java")
+	readmeFile := filepath.Join(sourceDir, "README")
+	files := []string{sourceFile, readmeFile}
+	sourceTemplate := filepath.Join(resourceDir, "battlecode2016", "RobotPlayer.java")
+	if data, err := ioutil.ReadFile(sourceTemplate); err != nil {
+		return []string{}, err
+	} else if err := ioutil.WriteFile(sourceFile, []byte(strings.Replace(string(data), "PLAYER_NAMESPACE", name, 1)), os.ModePerm); err != nil {
+		return []string{}, err
+	}
+	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2016Readme), os.ModePerm); err != nil {
 		return []string{}, err
 	}
 	return files, nil

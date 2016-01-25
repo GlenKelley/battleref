@@ -22,6 +22,11 @@ func TestInitToRun2015(test *testing.T) {
 	initToRun(t, "8082", tournament.CategoryBattlecode2015)
 }
 
+func TestInitToRun2016(test *testing.T) {
+	t := (*testutil.T)(test)
+	initToRun(t, "8083", tournament.CategoryBattlecode2016)
+}
+
 func initToRun(t *testutil.T, port string, category tournament.TournamentCategory) {
 	if webserver, err := CreateServer(server.Properties{
 		":memory:",

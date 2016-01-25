@@ -486,8 +486,8 @@ func replayStream(ws *websocket.Conn, s *ServerState) {
 		log.Println("Error sending message", err)
 	} else {
 		var err error
-		for i := 0; err == nil && i < len(replay.Round); i++) {
-			if err = web.JsonCodec.Send(ws, JSONResponse{"Round": replay.Round}) {
+		for i := 0; err == nil && i < len(replay.Round); i++ {
+			if err = web.JsonCodec.Send(ws, JSONResponse{"Round": replay.Round}); err != nil {
 				log.Println("Error sending message", err)
 			}
 		}

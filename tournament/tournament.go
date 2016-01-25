@@ -36,6 +36,7 @@ const (
 	CategoryTest           = TournamentCategory("battlecode2014")
 	CategoryBattlecode2014 = TournamentCategory("battlecode2014")
 	CategoryBattlecode2015 = TournamentCategory("battlecode2015")
+	CategoryBattlecode2016 = TournamentCategory("battlecode2016")
 )
 
 type Tournament struct {

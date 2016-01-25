@@ -62,7 +62,7 @@ func CreateServer(properties server.Properties) (*server.ServerState, error) {
 	} else {
 		matchArena := arena.NewArena(properties.ArenaResourcePath())
 		remote := git.TempRemote{}
-		bootstrap := arena.MinimalBootstrap{}
+		bootstrap := arena.MinimalBootstrap{properties.ArenaResourcePath()}
 		tm := tournament.NewTournament(database, matchArena, bootstrap, host, remote)
 		webserver := server.NewServer(tm, properties)
 		return webserver, nil
