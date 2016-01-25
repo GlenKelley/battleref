@@ -480,8 +480,24 @@ func replayStream(ws *websocket.Conn, s *ServerState) {
 		log.Println("Error parsing form", err)
 	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
 		log.Println("Error writing message", err)
-	} else if err := web.JsonCodec.Send(ws, JSONResponse{"header": replay.Header}); err != nil {
+	} else if err := web.JsonCodec.Send(ws, JSONResponse{"Header": replay.Header}); err != nil {
 		log.Println("Error sending message", err)
+	} else if err := web.JsonCodec.Send(ws, JSONResponse{"Metadata": replay.Metadata}); err != nil {
+		log.Println("Error sending message", err)
+	} else {
+		var err error
+		for i := 0; err == nil && i < len(replay.Round); i++) {
+			if err = web.JsonCodec.Send(ws, JSONResponse{"Round": replay.Round}) {
+				log.Println("Error sending message", err)
+			}
+		}
+		if err == nil {
+			if err := web.JsonCodec.Send(ws, JSONResponse{"GameStats": replay.GameStats}); err != nil {
+				log.Println("Error sending message", err)
+			} else if err := web.JsonCodec.Send(ws, JSONResponse{"Footer": replay.Footer}); err != nil {
+				log.Println("Error sending message", err)
+			}
+		}
 	}
 	ws.Close()
 }
