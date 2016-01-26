@@ -1,25 +1,21 @@
-package simulator
+package bc2015
 
 import (
 	"encoding/xml"
 )
-
-type Team string
 
 const (
 	TeamA = Team("A")
 	TeamB = Team("B")
 )
 
-type DominationFactor string
-
 const (
-	Win0 = "DESTROYED"
-	Win1 = "PWNED"
-	Win2 = "BEAT"
-	Win3 = "BARELY_BEAT"
-	Win4 = "BARELY_BARELY_BEAT"
-	Win5 = "WON_BY_DUBIOUS_REASONS"
+	Win0 = DominationFactor("DESTROYED")
+	Win1 = DominationFactor("PWNED")
+	Win2 = DominationFactor("BEAT")
+	Win3 = DominationFactor("BARELY_BEAT")
+	Win4 = DominationFactor("BARELY_BARELY_BEAT")
+	Win5 = DominationFactor("WON_BY_DUBIOUS_REASONS")
 )
 
 type Direction string
@@ -37,11 +33,7 @@ const (
 	DirectionOmni      = Direction("OMNI")
 )
 
-type RobotId int
-
 type Color [3]int
-
-type RobotType string
 
 const (
 	RobotHQ                  = RobotType("HQ")
@@ -85,8 +77,8 @@ type Header struct {
 
 type Info struct {
 	Type  string      `xml:"type,attr"`
-	TeamA string      `xml:"team-a,attr"`
-	TeamB string      `xml:"team-b,attr"`
+	TeamA Team        `xml:"team-a,attr"`
+	TeamB Team        `xml:"team-b,attr"`
 	Maps  StringArray `xml:"maps,attr"`
 }
 
@@ -173,11 +165,3 @@ type Signal struct {
 	Xp           *int        `xml:"XP,attr" json:",omitempty"`
 	DamageFactor *float64    `xml:"damageFactor,attr" json:",omitempty"`
 }
-
-type FloatArray string
-type IntArray string
-type LongArray string
-type MapLog string
-type RobotIdArray string
-type StringArray string
-type MapLoc string
