@@ -9,10 +9,24 @@ import (
 	"io"
 )
 
-type Replay interface{}
+type Replay interface {
+	Stream(messages chan interface{}, done chan bool)
+}
+
+type Replay2014 struct {
+}
+
+func (r *Replay2014) Stream(messages chan interface{}, done chan bool) {
+	close(messages)
+	return
+}
 
 func createReplay(category string) (Replay, error) {
 	switch category {
+	case "test":
+		return &Replay2014{}, nil
+	case "battlecode2014":
+		return &Replay2014{}, nil
 	case "battlecode2015":
 		return &bc2015.Replay{}, nil
 	case "battlecode2016":

@@ -6,7 +6,7 @@ import (
 	"encoding/xml"
 	"github.com/GlenKelley/battleref/arena"
 	"github.com/GlenKelley/battleref/git"
-	"github.com/GlenKelley/battleref/simulator"
+	"github.com/GlenKelley/battleref/simulator/battlecode2015"
 	"github.com/GlenKelley/battleref/testing"
 	"os/user"
 	"testing"
@@ -22,7 +22,7 @@ func TournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 
 		gzReplay := bytes.Buffer{}
 		gz := gzip.NewWriter(&gzReplay)
-		if xmlReplay, err := xml.MarshalIndent(simulator.Replay{}, "", "\t"); err != nil {
+		if xmlReplay, err := xml.MarshalIndent(bc2015.Replay{}, "", "\t"); err != nil {
 			t.ErrorNow(err)
 		} else if _, err := gz.Write(xmlReplay); err != nil {
 			t.ErrorNow(err)
@@ -87,11 +87,11 @@ func GitoliteTournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 func TestListCategories(t *testing.T) {
 	TournamentTest(t, func(t *testutil.T, tm *Tournament) {
 		categories := tm.ListCategories()
-		if len(categories) != 2 {
-			t.ErrorNowf("expected 2 category, got %v", len(categories))
+		if len(categories) != 3 {
+			t.ErrorNowf("expected 3 category, got %v", len(categories))
 		}
 		as := []string{}
-		bs := []string{string(CategoryBattlecode2014), string(CategoryBattlecode2015)}
+		bs := []string{string(CategoryBattlecode2014), string(CategoryBattlecode2015), string(CategoryBattlecode2016)}
 		for _, category := range categories {
 			as = append(as, string(category))
 		}

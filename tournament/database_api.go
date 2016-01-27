@@ -25,7 +25,7 @@ type Statements interface {
 	CreateMatch(category TournamentCategory, mapName string, player1, player2 Submission, created time.Time) (int64, error)
 	UpdateMatch(category TournamentCategory, mapName string, player1, player2 Submission, finished time.Time, result MatchResult, replay []byte) error
 	GetMatchResult(id int64) (MatchResult, error)
-	GetMatchReplay(id int64) ([]byte, error)
+	GetMatchReplay(id int64) ([]byte, TournamentCategory, error)
 	UpdateLeaderboard(category TournamentCategory, stats map[string]LeaderboardStats, commits map[string]string) error
 	GetLeaderboard(category TournamentCategory) (map[string]LeaderboardStats, []Match, error)
 }
@@ -251,10 +251,11 @@ func (c *Commands) GetMatchResult(id int64) (MatchResult, error) {
 	}
 }
 
-func (c *Commands) GetMatchReplay(id int64) ([]byte, error) {
+func (c *Commands) GetMatchReplay(id int64) ([]byte, TournamentCategory, error) {
 	var replay []byte
-	err := c.tx.QueryRow("select replay from match where id = ?", id).Scan(&replay)
-	return replay, err
+	var category string
+	err := c.tx.QueryRow("select replay, category from match where id = ?", id).Scan(&replay, &category)
+	return replay, TournamentCategory(category), err
 }
 
 func (c *Commands) UpdateLeaderboard(category TournamentCategory, stats map[string]LeaderboardStats, commits map[string]string) error {

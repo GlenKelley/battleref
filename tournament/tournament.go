@@ -33,10 +33,10 @@ func (c *systemClock) Now() time.Time {
 type TournamentCategory string
 
 const (
-	CategoryTest           = TournamentCategory("battlecode2014")
 	CategoryBattlecode2014 = TournamentCategory("battlecode2014")
 	CategoryBattlecode2015 = TournamentCategory("battlecode2015")
 	CategoryBattlecode2016 = TournamentCategory("battlecode2016")
+	CategoryTest           = CategoryBattlecode2014
 )
 
 type Tournament struct {
@@ -83,7 +83,7 @@ func (t *Tournament) ListUsers() ([]string, error) {
 }
 
 func (t *Tournament) ListCategories() []TournamentCategory {
-	return []TournamentCategory{CategoryBattlecode2014, CategoryBattlecode2015}
+	return []TournamentCategory{CategoryBattlecode2014, CategoryBattlecode2015, CategoryBattlecode2016}
 }
 
 func (t *Tournament) deleteRepository(name string) error {
@@ -224,12 +224,12 @@ func (t *Tournament) GetMatchResult(id int64) (MatchResult, error) {
 	return result, err
 }
 
-func (t *Tournament) GetMatchReplay(id int64) (*simulator.Replay, error) {
-	if replay, err := t.Database.GetMatchReplay(id); err != nil {
+func (t *Tournament) GetMatchReplay(id int64) (simulator.Replay, error) {
+	if replay, category, err := t.Database.GetMatchReplay(id); err != nil {
 		return nil, err
 	} else if unzipped, err := gzip.NewReader(bytes.NewReader(replay)); err != nil {
 		return nil, err
-	} else if replay, err := simulator.NewReplayJson(unzipped); err != nil {
+	} else if replay, err := simulator.NewReplayJson(unzipped, string(category)); err != nil {
 		return nil, err
 	} else {
 		return replay, err
@@ -237,7 +237,7 @@ func (t *Tournament) GetMatchReplay(id int64) (*simulator.Replay, error) {
 }
 
 func (t *Tournament) GetMatchReplayRaw(id int64) ([]byte, error) {
-	replay, err := t.Database.GetMatchReplay(id)
+	replay, _, err := t.Database.GetMatchReplay(id)
 	return replay, err
 }
 
@@ -262,7 +262,7 @@ func (t *Tournament) RunMatch(category TournamentCategory, mapName string, playe
 			return id, MatchResultError, err
 		} else if unzipped, err := gzip.NewReader(bytes.NewReader(result.Replay)); err != nil {
 			return id, MatchResultError, err
-		} else if replay, err := simulator.NewReplay(unzipped); err != nil {
+		} else if replay, err := simulator.NewReplay(unzipped, string(category)); err != nil {
 			return id, MatchResultError, err
 		} else {
 			matchResult := GetMatchResult(result)

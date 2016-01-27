@@ -479,25 +479,24 @@ func replayStream(ws *websocket.Conn, s *ServerState) {
 	if err := parseForm(ws.Request(), &form); err != nil {
 		log.Println("Error parsing form", err)
 	} else if replay, err := s.Tournament.GetMatchReplay(form.Id); err != nil {
-		log.Println("Error writing message", err)
-	} else if err := web.JsonCodec.Send(ws, JSONResponse{"Header": replay.Header}); err != nil {
-		log.Println("Error sending message", err)
-	} else if err := web.JsonCodec.Send(ws, JSONResponse{"Metadata": replay.Metadata}); err != nil {
-		log.Println("Error sending message", err)
+		log.Println("Error getting replay", err)
 	} else {
-		var err error
-		for i := 0; err == nil && i < len(replay.Round); i++ {
-			if err = web.JsonCodec.Send(ws, JSONResponse{"Round": replay.Round}); err != nil {
-				log.Println("Error sending message", err)
+		messages := make(chan interface{})
+		done := make(chan bool)
+		go replay.Stream(messages, done)
+		for message := range messages {
+			var ping string
+			if err := websocket.Message.Receive(ws, &ping); err != nil {
+				log.Println("Error receiving message", err)
+				done <- true
+			} else if err := web.JsonCodec.Send(ws, message); err != nil {
+				log.Println("Error writing message", err)
+				done <- true
+			} else {
+				done <- false
 			}
 		}
-		if err == nil {
-			if err := web.JsonCodec.Send(ws, JSONResponse{"GameStats": replay.GameStats}); err != nil {
-				log.Println("Error sending message", err)
-			} else if err := web.JsonCodec.Send(ws, JSONResponse{"Footer": replay.Footer}); err != nil {
-				log.Println("Error sending message", err)
-			}
-		}
+		close(done)
 	}
 	ws.Close()
 }

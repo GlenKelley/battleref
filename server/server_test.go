@@ -36,7 +36,7 @@ func ServerTest(test *testing.T, f func(*testutil.T, *ServerState)) {
 		t.ErrorNow(err)
 	} else {
 		defer host.Cleanup()
-		if replay, err := ioutil.ReadFile("../simulator/replay.xml.gz"); err != nil {
+		if replay, err := ioutil.ReadFile("../simulator/" + string(tournament.CategoryBattlecode2015) + "/replay.xml.gz"); err != nil {
 			t.ErrorNow()
 		} else {
 			dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, replay}, nil}
@@ -534,11 +534,11 @@ func TestReplayStream(test *testing.T) {
 		//Race condition of server not starting
 		time.Sleep(time.Microsecond)
 		defer sendPost(t, server, "/shutdown", nil)
-		sendJSONPost(t, server, "/register", map[string]string{"name": "NameFoo", "public_key": SamplePublicKey, "category": string(tournament.CategoryTest)})
-		sendJSONPost(t, server, "/map/create", map[string]string{"name": "NameBar", "source": "SourceBar", "category": string(tournament.CategoryTest)})
-		r := sendGet(t, server, "/commits?name=NameFoo&category="+string(tournament.CategoryTest))
+		sendJSONPost(t, server, "/register", map[string]string{"name": "NameFoo", "public_key": SamplePublicKey, "category": string(tournament.CategoryBattlecode2015)})
+		sendJSONPost(t, server, "/map/create", map[string]string{"name": "NameBar", "source": "SourceBar", "category": string(tournament.CategoryBattlecode2015)})
+		r := sendGet(t, server, "/commits?name=NameFoo&category="+string(tournament.CategoryBattlecode2015))
 		commit := Json(t, r).Key("data").Key("commits").At(0).String()
-		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryTest), "commit1": commit, "commit2": commit, "map": "NameBar"})
+		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryBattlecode2015), "commit1": commit, "commit2": commit, "map": "NameBar"})
 		id := Json(t, r).Key("data").Key("id").Int()
 		msg := make([]byte, 1024)
 		if ws, err := websocket.Dial(fmt.Sprintf("ws://localhost:8081/replay/stream?id=%v", id), "", "http://localhost"); err != nil {

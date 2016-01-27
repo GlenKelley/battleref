@@ -31,10 +31,6 @@
 		return b;
 	})(window.location.search.substr(1).split('&'));
 
-	var xhr = new XMLHttpRequest();
-	xhr.open('GET', 'http://localhost:8080/replay?id=' + query.id);
-
-
 stageWidth = window.innerWidth; 
 stageHeight = window.innerHeight;
 console.log(stageWidth, stageHeight);
@@ -49,11 +45,15 @@ document.body.appendChild(renderer.view);
 // You need to create a root container that will hold the scene you want to draw.
 var stage = new PIXI.Container();
 
-var bunny
+var game = {render:{}};
+
+var MS_PER_ROUND = 200;
+
 // load the texture we need
 PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/master/test/textures/bunny.png').load(function (loader, resources) {
 	// This creates a texture from a 'bunny.png' image.
-	bunny = new PIXI.Sprite(resources.bunny.texture);
+	var bunny = new PIXI.Sprite(resources.bunny.texture);
+	game.render.bunny = bunny;
 
 	// Setup the position and scale of the bunny
 	bunny.position.x = renderer.width-25;
@@ -61,8 +61,6 @@ PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/maste
 
 	bunny.anchor.x = 0.5;
 	bunny.anchor.y = 0.5;
-	//bunny.scale.x = 2;
-	//bunny.scale.y = 2;
 
 	// Add the bunny to the scene we are building.
 	stage.addChild(bunny);
@@ -71,191 +69,328 @@ PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/maste
 	renderer.render(stage);
 });
 
-function getMap(replay) {
-	var lines = replay.Header.Map.MapTiles.split('\n');
-	lines.shift();
-	var map = new Array(lines.length);
-	for (var i = 0; i < lines.length; i++) {
-		map[i] = new Array(lines[i].length)
-		for (var j = 0; j < lines[i].length; j++) {
-			map[i][j] = lines[i][j] == '.';
+function parseArray(raw) {
+	var a = new Array(raw.length);
+	for (var i = 0; i < a.length; i++) {
+		var line = raw[i][0].split(',');
+		a[i] = new Array(line.length)
+		for (var j = 0; j < a[i].length; j++) {
+			a[i][j] = parseFloat(line[j]);
 		}
 	}
-	console.log(map)
-	return map
+	return a
+	
 }
 
-var map;
-var replay;
-var units;
-var board;
-var scale;
-function drawGame(r) {
-	replay = r;
-	map = getMap(replay);
-	
-	var graphics = new PIXI.Graphics();
-	
-	// set a fill and line style
-	graphics.clear();
-	//graphics.beginFill(0xFF3300);
-	graphics.lineStyle(1, 0x555500, 1);
+function parseLoc(raw, origin) {
+	var s = raw.split(",");
+	var ox = 0;
+	var oy = 0;
+	if (origin !== undefined) {
+		ox = origin.x;
+		oy = origin.y;
+	}
+	return {x:parseFloat(s[0])-ox, y:parseFloat(s[1])-oy};
+}
 
+function getMap() {
+	var rawMap = game.replay.Header.Map;
+	var height = rawMap.Height;
+	var width = rawMap.Width;
+	game.map = {
+		width:width,
+		height:height,
+		name:rawMap.Name,
+		origin:parseLoc(rawMap.Origin),
+		rubble:parseArray(rawMap.InitialRubble),
+		parts:parseArray(rawMap.InitialParts)
+	};
+}
+
+function rgb(r, g, b) {
+	r = Math.min(255,Math.max(0,r*256));
+	g = Math.min(255,Math.max(0,g*256));
+	b = Math.min(255,Math.max(0,b*256));
+	var color = r*256*256 + g*256 + b;
+	return color;
+}
+
+function drawMap() {
 	var margin = 50;
-	var width = replay.Header.Map.Width;
-	var height = replay.Header.Map.Height;	
-	console.log(renderer.width)
+	var width = game.map.width;
+	var height = game.map.height; 
 	
 	var sx = (renderer.width - margin*2) / width;
 	var sy = (renderer.height - margin*2) / height;
-	scale = Math.min(sx, sy);
-	var mx = (renderer.width - width * scale) / 2
-	var my = (renderer.height - height * scale) / 2
+	var scale = Math.min(sx, sy);
+	game.scale = scale;
+	var mx = 0;// (renderer.width - width * scale) / 2;
+	var my = 0;//(renderer.height - height * scale) / 2;
+
+	var graphics = game.render.map;
+	if (game.render.map === undefined) {
+		graphics = new PIXI.Graphics();
+		game.render.map = graphics;
+		board = new PIXI.Container();
+		board.addChild(graphics);
+		game.render.units = new PIXI.Graphics();
+		game.render.units.x=0.5;
+		game.render.units.y=0.5;
+		board.addChild(game.render.units);
+		game.render.effects= new PIXI.Graphics();
+		game.render.effects.x=0.5;
+		game.render.effects.y=0.5;
+		board.addChild(game.render.effects);
+		board.x = mx;
+		board.y = my;
+		board.scale.x = scale;
+		board.scale.y = scale;
+		stage.addChild(board);
+
+		game.units = {}
+		game.effects = {}
+		game.effectCount = {}
+	}
+
+	// set a fill and line style
+	graphics.clear();
+	//graphics.beginFill(0xFF3300);
+	graphics.lineStyle(1/scale, 0x555500, 1);
 
 	for (var i = 0; i < width; i++) {
 		for (var j = 0; j < height; j++) {
-			var x = i * scale;
-			var y = j * scale;
-			var tile = map[j][i];
-			var color = tile ? 0x005000 : 0x500000;
+			var x = i;
+			var y = j;
+			var rubble = game.map.rubble[j][i];
+			var part = game.map.parts[j][i];
+			var color = rgb(rubble / 100, part / 100, 0); 
 			graphics.beginFill(color, 0.5);
 			graphics.moveTo(x, y);
-			graphics.lineTo(x+scale, y);
-			graphics.lineTo(x+scale, y+scale);
-			graphics.lineTo(x, y+scale);
+			graphics.lineTo(x+1, y);
+			graphics.lineTo(x+1, y+1);
+			graphics.lineTo(x, y+1);
 			graphics.lineTo(x, y);
 			graphics.endFill();
 		}
 	}
 	graphics.endFill();
-	
-	board = new PIXI.Container();
-	units = new PIXI.Graphics();
-	board.addChild(graphics);
-	board.addChild(units);
-	board.x = mx;
-	board.y = my;
-	stage.addChild(board);
-	
-	animate()
 }
 
-function drawUnit(graphic, x, y, team) {
-	x = x * scale;
-	y = y * scale;
-	var color = team == "A" ? 0x00FF00 : 0x0000FF;
-	graphic.beginFill(color, 1);
-	graphic.moveTo(x, y);
-	graphic.lineTo(x+scale, y);
-	graphic.lineTo(x+scale, y+scale);
-	graphic.lineTo(x, y+scale);
-	graphic.lineTo(x, y);
-	graphic.endFill();
+function teamColor(team) {
+	var color;
+	if (team === "A") {
+		color = 0xFF0000;
+	} else if (team === "B") {
+		color = 0x0000FF;
+	} else {
+		color = 0x00FF00;
+	}
+	return color;
 }
 
-function drawAttack(graphic, x, y, x2, y2) {
-	x = x * scale;
-	y = y * scale;
-	x2 = x2 * scale;
-	y2 = y2 * scale;
+function drawUnit(graphic, x, y, team, kind) {
+	var color = teamColor(team);
+	if (kind === "ARCHON") {
+		graphic.beginFill(color, 1);
+		graphic.moveTo(x+-0.5,y+0);
+		graphic.lineTo(x+0,y+0.5);
+		graphic.lineTo(x+0.5,y+0);
+		graphic.lineTo(x+0,y+-0.5);
+		graphic.lineTo(x+-0.5,y+0);
+		graphic.endFill();
+	} else if (kind === "GUARD") {
+		graphic.beginFill(color, 1);
+		graphic.drawRoundedRect(x-0.5,y-0.5, 1, 1, 0.1); 
+		graphic.endFill();
+	} else if (kind === "SCOUT") {
+		graphic.beginFill(color, 1);
+		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
+		graphic.endFill();
+	} else if (kind === "SOLDIER") {
+		graphic.beginFill(color, 1);
+		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
+		graphic.endFill();
+	} else if (kind === "VIPER") {
+		graphic.beginFill(color, 1);
+		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
+		graphic.endFill();
+	} else if (kind === "ZOMBIEDEN") {
+		graphic.beginFill(color, 1);
+		graphic.drawRect(x-0.5,y-0.5, 1, 1); 
+		graphic.endFill();
+	} else {
+		console.log(kind);
+		graphic.beginFill(color, 1);
+		graphic.drawCircle(x,y,0.25);
+		graphic.endFill();
+	}
+}
+
+function drawAttack(graphic, x, y, x2, y2, t) {
+	var t1 = Math.min(1,Math.max(0, (t)));
+	var t0 = Math.min(1,Math.max(0, (t1 - 0.1)/0.9));
+	var sx = x*(1-t0) + x2*t0;
+	var sy = y*(1-t0) + y2*t0;
+	var ex = x*(1-t1) + x2*t1;
+	var ey = y*(1-t1) + y2*t1;
 	var color = 0xFFFFFF; 
-	graphic.lineStyle(2, color, 1);
-	graphic.beginFill(color, 1);
-	graphic.moveTo(x, y);
-	graphic.lineTo(x2, y2);
+	graphic.lineStyle(2/game.scale, color, 1);
+	graphic.moveTo(sx, sy);
+	graphic.lineTo(ex, ey);
 	graphic.endFill();
 }
 
-var round = 0;
-var robots = {};
-var effects = {};
-var effectCount = 0;
+function drawUnits(time) {
+	game.render.units.clear();
+	for (var id in game.units) {
+		if (game.units.hasOwnProperty(id)) {
+			var robot = game.units[id]
+			var t = Math.min(1, game.currentRound - robot.start + time * 2);
+			var x = robot.from.x*(1-t) + robot.loc.x * t;
+			var y = robot.from.y*(1-t) + robot.loc.y * t;
+			drawUnit(game.render.units, x, y, robot.team, robot.kind);
+		}
+	}
+}
+
+function drawEffects(time) {
+	game.render.effects.clear();
+	for (var id in game.effects) {
+		if (game.effects.hasOwnProperty(id)) {
+			var effect = game.effects[id]
+			if (game.currentRound - effect.start > effect.duration) {
+				delete game.effects[id];
+			} else {
+				if (effect.type == "attack") {
+					var t = (game.currentRound - effect.start + time) / effect.duration;
+					drawAttack(game.render.effects, effect.x, effect.y, effect.x2, effect.y2, t);
+				}
+			}
+		}
+	}
+}
 
 function animate() {
-	//console.log(round)
-	var originX = replay.Header.Map.OriginX;
-	var originY = replay.Header.Map.OriginY;
-	if (round < replay.Round.length) {
-		var signals = replay.Round[round].Signals;
-		if (signals !== null && signals !== undefined) {
-			for (var i = 0; i < signals.length; i++) {
-				var sig = signals[i];
-				var type = sig.XMLName.Local;
-				//console.log("sig", type, sig);
+	var now = new Date();
+	if (game.lastRenderedRound !== game.currentRound) {
+		game.lastRenderedRound = game.currentRound;
+	}
+	var time = (now - game.lastRoundTime) / MS_PER_ROUND;
+	if (time < 0 || time >= 1) {
+		time = Math.max(0, Math.min(1, time));
+	}
 
-				if (type === "sig.SpawnSignal") {
-					var loc = sig.Loc.split(",")
-					var x = loc[0] - originX;
-					var y = loc[1] - originY;
-					var id = sig.RobotId;
-					var team = sig.Team;
-					//drawUnit(units, x, y, team);
-					robots[id] = {team:sig.Team, x:x, y:y}
-				} else if (type === "sig.MovementSignal") {
-					var loc = sig.NewLoc.split(",")
-					var x = loc[0] - originX;
-					var y = loc[1] - originY;
-					var id = sig.RobotId;
-					var robot = robots[id];
-					robot.x = x;
-					robot.y = y;
-					//drawUnit(units, x, y, team);
-				} else if (type === "sig.DeathSignal") {
-					delete robots[sig.RobotId];
-				} else if (type === "sig.AttackSignal") {
-					var loc = sig.TargetLoc.split(",")
-					var x = loc[0] - originX;
-					var y = loc[1] - originY;
-					var id = sig.RobotId;
-					var robot = robots[id];
-					var rx = robot.x;
-					var ry = robot.y;
-					effects[effectCount] = {type:"attack", x:rx, y:ry, x2:x, y2:y, duration:5}; 
-					effectCount++;
-				}
-			}
+	if (game.map !== undefined && game.isMapDrawn === undefined) {
+		game.isMapDrawn = true;
+		drawMap();
+	}
 
-			units.clear();
-			for (var id in robots) {
-				if (robots.hasOwnProperty(id)) {
-					var robot = robots[id]
-					drawUnit(units, robot.x, robot.y, robot.team);
-				}
-			}
-			for (var id in effects) {
-				if (effects.hasOwnProperty(id)) {
-					var effect = effects[id]
-					if (effect.type == "attack") {
-						drawAttack(units, effect.x, effect.y, effect.x2, effect.y2);
-					}
-					effect.duration--;
-					if (effect.duration < 0) {
-						delete effects[id];
-					}
-				}
-			}
-		}
+	if (game.units !== undefined) {
+		drawUnits(time);
+	}
+	if (game.effects !== undefined) {
+		drawEffects(time);
+	}
 
-		if (bunny !== undefined) {
-			bunny.rotation += 0.1;
-		}
-		round++;
-		renderer.render(stage);
+	if (game.render.bunny !== undefined) {
+		game.render.bunny.rotation += 0.1;
+	}
+
+	renderer.render(stage);
+
+	game.lastFrameTime = now;
+	if (game.Stopped !== true) {
 		requestAnimationFrame(animate);
+		if (game.lastRoundTime === undefined) {
+			game.lastRoundTime = now;
+		}
+		var roundDelta = now - game.lastRoundTime;
+		if (game.isReady === false && roundDelta > MS_PER_ROUND) {
+			game.lastRoundTime = now;
+			game.requestMore();
+		}
 	}
 }
 
-xhr.onload = function() {
-	console.log("load")
-	if (xhr.status !== 200) {
-		console.log("Failed to load replay.")
-	} else {
-		var response = JSON.parse(xhr.response);
-		console.log("response", response);
-		drawGame(response);
+animate();
+
+//Stream replay
+var replayStream = new WebSocket("ws://localhost:8080/replay/stream?id=" + query.id); 
+replayStream.onopen = function() {
+	replayStream.send("Connection init");
+	console.log("Connection Open");
+	game.replay = {};
+	game.currentRound = 0;
+	game.isReady = true;
+	game.requestMore = function() {
+		isReady = true;
+		replayStream.send("")
+	}
+	game.maxRounds = 5;
+}
+
+function parseRound() {
+	var signals = game.replay.Round.Signals;
+	if (signals !== null && signals !== undefined) {
+		for (var i = 0; i < signals.length; i++) {
+			var sig = signals[i];
+			var type = sig.XMLName.Local;
+			if (type === "sig.SpawnSignal") {
+				var loc = parseLoc(sig.Loc, game.map.origin);
+				var id = sig.RobotId;
+				game.units[id] = {team:sig.Team, loc:loc, from:loc, kind:sig.Type, creator:sig.ParentId, delay:sig.Delay, start:game.currentRound}
+			} else if (type === "sig.MovementSignal") {
+				var loc = parseLoc(sig.NewLoc, game.map.origin);
+				var id = sig.RobotId;
+				var robot = game.units[id];
+				robot.from = robot.loc;
+				robot.loc = loc;
+				robot.delay = sig.Delay;
+				robot.start = game.currentRound;
+			} else if (type === "sig.IndicatorStringSignal") {
+			} else if (type === "sig.BroadcastSignal") {
+			} else if (type === "sig.DeathSignal") {
+				delete game.units[sig.ObjectId];
+			} else if (type === "sig.AttackSignal") {
+				var loc = parseLoc(sig.TargetLoc, game.map.origin);
+				var id = sig.RobotId;
+				var robot = game.units[id];
+				var source = robot.loc;
+				game.effects[game.effectCount] = {type:"attack", x:source.x, y:source.y, x2:loc.x, y2:loc.y, duration:1, start:game.currentRound}; 
+				game.effectCount++;
+			} else if (type === "sig.InfectionSignal") {
+			} else if (type === "sig.TeamResourceSignal") {
+			} else if (type === "sig.HealthChangeSignal") {
+			} else if (type === "sig.BytecodesUsedSignal") {
+			} else if (type === "sig.RobotDelaySignal") {
+			} else if (type === "sig.ClearRubbleSignal") {
+			} else if (type === "sig.RubbleChangeSignal") {
+			} else if (type === "sig.PartsChangeSignal") {
+			} else {
+				console.log(sig.XMLName.Local, sig);
+				//game.Stopped = true;
+			}
+		}
 	}
 }
-xhr.send();
+   
+replayStream.onmessage = function(e) {
+	var response = JSON.parse(e.data);
+	game.replay[response.MessageType] = response.Data
+	if (response.MessageType == "Round") {
+		game.currentRound = game.currentRound + 1;
+		parseRound();
+	}
+	game.isReady = false;
 
- </script>
+	if (game.replay.Header !== undefined && game.map === undefined) {
+		getMap();	
+	}
+};
+
+replayStream.onclose = function() {
+	game.Stopped = true;
+	console.log("websocket closed")
+}
+</script>
 </html>
