@@ -108,19 +108,24 @@ type Signal struct {
 }
 
 type StoredConstants struct {
-	EngineVersion string  `xml:"engineVersion,attr"`
-	GameConstants []Entry `xml:"gameConstants>entry"`
-	RobotTypes    []Entry `xml:"robotTypes>entry"`
+	EngineVersion string       `xml:"engineVersion,attr"`
+	GameConstants []Entry      `xml:"gameConstants>entry"`
+	RobotTypes    []RobotClass `xml:"robotTypes>entry"`
 }
 
 type Entry struct {
-	String string `xml:"string"`
-	Enum   Value  `xml:",any"`
+	Name  string `xml:"string"`
+	Value Value  `xml:",any"`
 }
 
 type Value struct {
 	XMLName xml.Name
 	Data    string `xml:",innerxml"`
+}
+
+type RobotClass struct {
+	Name   string  `xml:"string"`
+	Params []Entry `xml:"map>entry"`
 }
 
 const (

@@ -85,6 +85,16 @@ var sprites = {
 	'OTHER':'images/other.png'
 }
 
+function parse1DArray(raw) {
+	var line = raw.split(',');
+	var a = new Array(line.length)
+	for (var i = 0; i < line.length; i++) {
+		a[i] = parseFloat(line[i]);
+	}
+	return a
+	
+}
+
 function parseArray(raw) {
 	var a = new Array(raw.length);
 	for (var i = 0; i < a.length; i++) {
@@ -165,7 +175,7 @@ function drawMap() {
 
 		game.units = {}
 		game.effects = {}
-		game.effectCount = {}
+		game.effectCount = 0;
 	}
 
 	// set a fill and line style
@@ -181,11 +191,7 @@ function drawMap() {
 			var part = game.map.parts[j][i];
 			var color = rgb(rubble / 100, part / 100, 0); 
 			graphics.beginFill(color, 0.5);
-			graphics.moveTo(x, y);
-			graphics.lineTo(x+1, y);
-			graphics.lineTo(x+1, y+1);
-			graphics.lineTo(x, y+1);
-			graphics.lineTo(x, y);
+			graphics.drawRect(x,y, 1,1);
 			graphics.endFill();
 		}
 	}
@@ -218,12 +224,16 @@ function createUnitSprite(kind, team) {
 	return sprite;
 }
 
-function drawUnit(graphic, x, y, team, kind, sprite) {
+function drawUnit(graphic, x, y, team, kind, sprite, health) {
 	sprite.x = x-0.5;
 	sprite.y = y-0.5;
 	sprite.width = 1;
 	sprite.height = 1;
 	graphic.addChild(sprite);
+	graphic.lineStyle(0, 0x000000, 1);
+	graphic.beginFill(teamColor(team, 0.5), 1);
+	graphic.drawRect(x-0.5, y+0.45, health, 0.1);
+	graphic.endFill();
 }
 
 function drawAttack(graphic, x, y, x2, y2, t, team) {
@@ -240,6 +250,15 @@ function drawAttack(graphic, x, y, x2, y2, t, team) {
 	graphic.endFill();
 }
 
+function drawDeath(graphic, x, y, t, team) {
+	var r = Math.min(1,Math.max(0, t));
+	var color = teamColor(team, 0.5); 
+	graphic.lineStyle(0, color, 1);
+	graphic.beginFill(color, 1);
+	graphic.drawCircle(x, y, r/2);
+	graphic.endFill();
+}
+
 function drawUnits(time) {
 	game.render.units.clear();
 	for (var id in game.units) {
@@ -248,24 +267,36 @@ function drawUnits(time) {
 			var t = Math.min(1, game.currentRound - robot.start + time * 2);
 			var x = robot.from.x*(1-t) + robot.loc.x * t;
 			var y = robot.from.y*(1-t) + robot.loc.y * t;
-			drawUnit(game.render.units, x, y, robot.team, robot.kind, robot.sprite);
+			var currentHealth = robot.health / robot.maxHealth;
+			drawUnit(game.render.units, x, y, robot.team, robot.kind, robot.sprite, currentHealth);
 		}
 	}
 }
 
 function drawEffects(time) {
 	game.render.effects.clear();
+	var deletedEffects = {};
 	for (var id in game.effects) {
 		if (game.effects.hasOwnProperty(id)) {
 			var effect = game.effects[id]
-			if (game.currentRound - effect.start > effect.duration) {
-				delete game.effects[id];
+			if (game.currentRound - effect.start >= effect.duration) {
+				deletedEffects[id] = true;
 			} else {
 				if (effect.type == "attack") {
 					var t = (game.currentRound - effect.start + time) / effect.duration;
 					drawAttack(game.render.effects, effect.x, effect.y, effect.x2, effect.y2, t, effect.team);
+				} else if (effect.type == "death") {
+					var t = (game.currentRound - effect.start + time) / effect.duration;
+					drawDeath(game.render.effects, effect.x, effect.y, t, effect.team);
+				} else {
+					console.log("Unexpected type", effect.type);
 				}
 			}
+		}
+	}
+	for (var id in deletedEffects) {
+		if (deletedEffects.hasOwnProperty(id)) {
+			delete game.effects[id];
 		}
 	}
 }
@@ -329,6 +360,48 @@ replayStream.onopen = function() {
 	game.maxRounds = 5;
 }
 
+function parseValue(val, kind) {
+	if (kind === "int") {
+		return parseInt(val);
+	} else if (kind === "double") {
+		return parseFloat(val);
+	} else if (kind === "string") {
+		return val;
+	} else if (kind === "boolean") {
+		return val === "true";
+	} else if (kind === "null") {
+		return null;
+	} else if (kind === "battlecode.common.RobotType") {
+		return val;
+	} else {
+		console.log("Unknown value kind", kind, val);
+		return val;
+	}	
+}
+
+function parseStoredConstants() {
+	var gameConstants = {}; 
+	var robotTypes = {}; 
+	var rawGameConstants = game.replay.StoredConstants.GameConstants;
+	for (var i = 0; i < rawGameConstants.length; i++) {
+		var key = rawGameConstants[i].String; 
+		var value = rawGameConstants[i].Value;
+		gameConstants[key] = value;
+	}
+	var rawRobotTypes = game.replay.StoredConstants.RobotTypes;
+	for (var i = 0; i < rawRobotTypes.length; i++) {
+		var key = rawRobotTypes[i].Name; 
+		var p = rawRobotTypes[i].Params;
+		var params = {}
+		for (var j = 0; j < p.length; j++) {
+			params[p[j].Name] = parseValue(p[j].Value.Data, p[j].Value.XMLName.Local);
+		}
+		robotTypes[key] = params;
+	}
+	game.robotTypes = robotTypes;
+	game.constants = gameConstants;
+}
+
 function parseRound() {
 	var signals = game.replay.Round.Signals;
 	if (signals !== null && signals !== undefined) {
@@ -341,7 +414,10 @@ function parseRound() {
 				var kind = sig.Type;
 				var team = sig.Team;
 				var sprite = createUnitSprite(kind, team);
-				game.units[id] = {team:team, loc:loc, from:loc, kind:kind, creator:sig.ParentId, delay:sig.Delay, start:game.currentRound, sprite:sprite}
+				var health = game.robotTypes[kind].maxHealth; 
+					game.units[id] = {team:team, loc:loc, from:loc, kind:kind, 
+						creator:sig.ParentId, delay:sig.Delay, start:game.currentRound, 
+						sprite:sprite, health:health, maxHealth:health}
 			} else if (type === "sig.MovementSignal") {
 				var loc = parseLoc(sig.NewLoc, game.map.origin);
 				var id = sig.RobotId;
@@ -353,7 +429,10 @@ function parseRound() {
 			} else if (type === "sig.IndicatorStringSignal") {
 			} else if (type === "sig.BroadcastSignal") {
 			} else if (type === "sig.DeathSignal") {
-				game.render.units.removeChild(game.units[sig.ObjectId].sprite);
+				robot = game.units[sig.ObjectId];
+				game.render.units.removeChild(robot.sprite);
+				game.effects[game.effectCount] = {type:"death", x:robot.loc.x, y:robot.loc.y, duration:1, start:game.currentRound, team:robot.team}; 
+				game.effectCount++;
 				delete game.units[sig.ObjectId];
 			} else if (type === "sig.AttackSignal") {
 				var loc = parseLoc(sig.TargetLoc, game.map.origin);
@@ -365,6 +444,15 @@ function parseRound() {
 			} else if (type === "sig.InfectionSignal") {
 			} else if (type === "sig.TeamResourceSignal") {
 			} else if (type === "sig.HealthChangeSignal") {
+				var ids = parse1DArray(sig.RobotIds);
+				var healthStats = parse1DArray(sig.Health);
+				for (var j = 0; j < ids.length; j++) {
+					var robotId = ids[j];
+					var health = healthStats[j];
+					if (game.units[robotId] !== undefined) {
+						game.units[robotId].health = health;
+					}
+				}
 			} else if (type === "sig.BytecodesUsedSignal") {
 			} else if (type === "sig.RobotDelaySignal") {
 			} else if (type === "sig.ClearRubbleSignal") {
@@ -381,10 +469,14 @@ function parseRound() {
 replayStream.onmessage = function(e) {
 	var response = JSON.parse(e.data);
 	game.replay[response.MessageType] = response.Data
-	if (response.MessageType == "Round") {
+	if (response.MessageType ===  "Round") {
 		game.currentRound = game.currentRound + 1;
 		parseRound();
-	}
+	} else if (response.MessageType === "StoredConstants") {
+		parseStoredConstants();
+	} else {                                               	
+		console.log(response.MessageType);             	
+	}                                                      	
 	game.isReady = false;
 
 	if (game.replay.Header !== undefined && game.map === undefined) {
