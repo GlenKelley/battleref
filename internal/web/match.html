@@ -69,6 +69,22 @@ PIXI.loader.add('bunny', 'https://raw.githubusercontent.com/pixijs/pixi.js/maste
 	renderer.render(stage);
 });
 
+var sprites = {
+	'ZOMBIEDEN':'images/zombieden.png',
+	'TTM':'images/ttm.png',
+	'TURRET':'images/turret.png',
+	'VIPER':'images/viper.png',
+	'GUARD':'images/guard.png',
+	'SOLDIER':'images/soldier.png',
+	'SCOUT':'images/scout.png',
+	'ARCHON':'images/archon.png',
+	'RANGEDZOMBIE':'images/rangedzombie.png',
+	'STANDARDZOMBIE':'images/standardzombie.png',
+	'FASTZOMBIE':'images/fastzombie.png',
+	'BIGZOMBIE':'images/bigzombie.png',
+	'OTHER':'images/other.png'
+}
+
 function parseArray(raw) {
 	var a = new Array(raw.length);
 	for (var i = 0; i < a.length; i++) {
@@ -176,64 +192,48 @@ function drawMap() {
 	graphics.endFill();
 }
 
-function teamColor(team) {
+function teamColor(team, b) {
+	if (b === undefined) {
+		b = 0;
+	}
 	var color;
 	if (team === "A") {
-		color = 0xFF0000;
+		color = rgb(b+1,b,b);
 	} else if (team === "B") {
-		color = 0x0000FF;
+		color = rgb(b,b,b+1);
 	} else {
-		color = 0x00FF00;
+		color = rgb(b,b+1,b);
 	}
 	return color;
 }
 
-function drawUnit(graphic, x, y, team, kind) {
-	var color = teamColor(team);
-	if (kind === "ARCHON") {
-		graphic.beginFill(color, 1);
-		graphic.moveTo(x+-0.5,y+0);
-		graphic.lineTo(x+0,y+0.5);
-		graphic.lineTo(x+0.5,y+0);
-		graphic.lineTo(x+0,y+-0.5);
-		graphic.lineTo(x+-0.5,y+0);
-		graphic.endFill();
-	} else if (kind === "GUARD") {
-		graphic.beginFill(color, 1);
-		graphic.drawRoundedRect(x-0.5,y-0.5, 1, 1, 0.1); 
-		graphic.endFill();
-	} else if (kind === "SCOUT") {
-		graphic.beginFill(color, 1);
-		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
-		graphic.endFill();
-	} else if (kind === "SOLDIER") {
-		graphic.beginFill(color, 1);
-		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
-		graphic.endFill();
-	} else if (kind === "VIPER") {
-		graphic.beginFill(color, 1);
-		graphic.drawRoundedRect(x-0.25,y-0.25, 0.5, 0.5, 0.1); 
-		graphic.endFill();
-	} else if (kind === "ZOMBIEDEN") {
-		graphic.beginFill(color, 1);
-		graphic.drawRect(x-0.5,y-0.5, 1, 1); 
-		graphic.endFill();
-	} else {
-		console.log(kind);
-		graphic.beginFill(color, 1);
-		graphic.drawCircle(x,y,0.25);
-		graphic.endFill();
+function createUnitSprite(kind, team) {
+	var resource = sprites[kind];
+	if (resource === undefined) {
+		resource = sprites['OTHER'];
 	}
+	var sprite = PIXI.Sprite.fromImage(resource);
+	var color = teamColor(team);
+	sprite.tint = color;
+	return sprite;
 }
 
-function drawAttack(graphic, x, y, x2, y2, t) {
+function drawUnit(graphic, x, y, team, kind, sprite) {
+	sprite.x = x-0.5;
+	sprite.y = y-0.5;
+	sprite.width = 1;
+	sprite.height = 1;
+	graphic.addChild(sprite);
+}
+
+function drawAttack(graphic, x, y, x2, y2, t, team) {
 	var t1 = Math.min(1,Math.max(0, (t)));
-	var t0 = Math.min(1,Math.max(0, (t1 - 0.1)/0.9));
+	var t0 = Math.min(1,Math.max(0, t - 0.1));
 	var sx = x*(1-t0) + x2*t0;
 	var sy = y*(1-t0) + y2*t0;
 	var ex = x*(1-t1) + x2*t1;
 	var ey = y*(1-t1) + y2*t1;
-	var color = 0xFFFFFF; 
+	var color = teamColor(team, 0.5); 
 	graphic.lineStyle(2/game.scale, color, 1);
 	graphic.moveTo(sx, sy);
 	graphic.lineTo(ex, ey);
@@ -248,7 +248,7 @@ function drawUnits(time) {
 			var t = Math.min(1, game.currentRound - robot.start + time * 2);
 			var x = robot.from.x*(1-t) + robot.loc.x * t;
 			var y = robot.from.y*(1-t) + robot.loc.y * t;
-			drawUnit(game.render.units, x, y, robot.team, robot.kind);
+			drawUnit(game.render.units, x, y, robot.team, robot.kind, robot.sprite);
 		}
 	}
 }
@@ -263,7 +263,7 @@ function drawEffects(time) {
 			} else {
 				if (effect.type == "attack") {
 					var t = (game.currentRound - effect.start + time) / effect.duration;
-					drawAttack(game.render.effects, effect.x, effect.y, effect.x2, effect.y2, t);
+					drawAttack(game.render.effects, effect.x, effect.y, effect.x2, effect.y2, t, effect.team);
 				}
 			}
 		}
@@ -338,7 +338,10 @@ function parseRound() {
 			if (type === "sig.SpawnSignal") {
 				var loc = parseLoc(sig.Loc, game.map.origin);
 				var id = sig.RobotId;
-				game.units[id] = {team:sig.Team, loc:loc, from:loc, kind:sig.Type, creator:sig.ParentId, delay:sig.Delay, start:game.currentRound}
+				var kind = sig.Type;
+				var team = sig.Team;
+				var sprite = createUnitSprite(kind, team);
+				game.units[id] = {team:team, loc:loc, from:loc, kind:kind, creator:sig.ParentId, delay:sig.Delay, start:game.currentRound, sprite:sprite}
 			} else if (type === "sig.MovementSignal") {
 				var loc = parseLoc(sig.NewLoc, game.map.origin);
 				var id = sig.RobotId;
@@ -350,13 +353,14 @@ function parseRound() {
 			} else if (type === "sig.IndicatorStringSignal") {
 			} else if (type === "sig.BroadcastSignal") {
 			} else if (type === "sig.DeathSignal") {
+				game.render.units.removeChild(game.units[sig.ObjectId].sprite);
 				delete game.units[sig.ObjectId];
 			} else if (type === "sig.AttackSignal") {
 				var loc = parseLoc(sig.TargetLoc, game.map.origin);
 				var id = sig.RobotId;
 				var robot = game.units[id];
 				var source = robot.loc;
-				game.effects[game.effectCount] = {type:"attack", x:source.x, y:source.y, x2:loc.x, y2:loc.y, duration:1, start:game.currentRound}; 
+				game.effects[game.effectCount] = {type:"attack", x:source.x, y:source.y, x2:loc.x, y2:loc.y, duration:1, start:game.currentRound, team:robot.team}; 
 				game.effectCount++;
 			} else if (type === "sig.InfectionSignal") {
 			} else if (type === "sig.TeamResourceSignal") {
