@@ -142,7 +142,7 @@ function rgb(r, g, b) {
 }
 
 function drawMap() {
-	var margin = 50;
+	var margin = 10;
 	var width = game.map.width;
 	var height = game.map.height; 
 	
@@ -150,8 +150,8 @@ function drawMap() {
 	var sy = (renderer.height - margin*2) / height;
 	var scale = Math.min(sx, sy);
 	game.scale = scale;
-	var mx = 0;// (renderer.width - width * scale) / 2;
-	var my = 0;//(renderer.height - height * scale) / 2;
+	var mx = (renderer.width - width * scale) / 2;
+	var my = (renderer.height - height * scale) / 2;
 
 	var graphics = game.render.map;
 	if (game.render.map === undefined) {
@@ -207,6 +207,8 @@ function teamColor(team, b) {
 		color = rgb(b+1,b,b);
 	} else if (team === "B") {
 		color = rgb(b,b,b+1);
+	} else if (team === "NEUTRAL") {
+		color = rgb(b+1,b+1,b+1);
 	} else {
 		color = rgb(b,b+1,b);
 	}
