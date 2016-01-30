@@ -41,7 +41,7 @@ func ServerTest(test *testing.T, f func(*testutil.T, *ServerState)) {
 		} else {
 			dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, replay}, nil}
 			remote := &git.TempRemote{}
-			bootstrap := &arena.MinimalBootstrap{}
+			bootstrap := &arena.MinimalBootstrap{"../arena/internal/categories"}
 			if database, err := tournament.NewInMemoryDatabase(); err != nil {
 				t.ErrorNow(err)
 			} else if err = database.MigrateSchema(); err != nil {
@@ -409,8 +409,8 @@ func (j JsonWrapper) Len() int {
 
 func TestCategories(t *testing.T) {
 	ServerTest(t, func(t *testutil.T, server *ServerState) {
-		if r := sendGet(t, server, "/categories"); !compareStringsUnordered(Json(t, r).Key("data").Key("categories").Array(), []string{string(tournament.CategoryBattlecode2014), string(tournament.CategoryBattlecode2015)}) {
-			t.ErrorNow("expected 2 categories", r)
+		if r := sendGet(t, server, "/categories"); !compareStringsUnordered(Json(t, r).Key("data").Key("categories").Array(), []string{string(tournament.CategoryBattlecode2014), string(tournament.CategoryBattlecode2015), string(tournament.CategoryBattlecode2016)}) {
+			t.ErrorNow("expected 3 categories", r)
 		}
 	})
 }
@@ -534,19 +534,24 @@ func TestReplayStream(test *testing.T) {
 		//Race condition of server not starting
 		time.Sleep(time.Microsecond)
 		defer sendPost(t, server, "/shutdown", nil)
-		sendJSONPost(t, server, "/register", map[string]string{"name": "NameFoo", "public_key": SamplePublicKey, "category": string(tournament.CategoryBattlecode2015)})
-		sendJSONPost(t, server, "/map/create", map[string]string{"name": "NameBar", "source": "SourceBar", "category": string(tournament.CategoryBattlecode2015)})
-		r := sendGet(t, server, "/commits?name=NameFoo&category="+string(tournament.CategoryBattlecode2015))
+		sendJSONPost(t, server, "/register", map[string]string{"name": "NameFoo", "public_key": SamplePublicKey, "category": string(tournament.CategoryBattlecode2016)})
+		sendJSONPost(t, server, "/map/create", map[string]string{"name": "NameBar", "source": "SourceBar", "category": string(tournament.CategoryBattlecode2016)})
+		r := sendGet(t, server, "/commits?name=NameFoo&category="+string(tournament.CategoryBattlecode2016))
 		commit := Json(t, r).Key("data").Key("commits").At(0).String()
-		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryBattlecode2015), "commit1": commit, "commit2": commit, "map": "NameBar"})
+		r = sendJSONPost(t, server, "/match/run", map[string]string{"player1": "NameFoo", "player2": "NameFoo", "category": string(tournament.CategoryBattlecode2016), "commit1": commit, "commit2": commit, "map": "NameBar"})
 		id := Json(t, r).Key("data").Key("id").Int()
-		msg := make([]byte, 1024)
+		msg := make([]byte, 4096)
 		if ws, err := websocket.Dial(fmt.Sprintf("ws://localhost:8081/replay/stream?id=%v", id), "", "http://localhost"); err != nil {
 			t.ErrorNow(err)
-		} else if n, err := ws.Read(msg); err != nil {
-			t.ErrorNow(err)
 		} else {
-			fmt.Println("%v, %v", n, string(msg))
+			var err error
+			for err == nil {
+				if _, err = ws.Write([]byte("")); err != nil {
+					t.ErrorNow(err)
+				} else if _, err = ws.Read(msg); err != io.EOF && err != nil {
+					t.ErrorNow(err)
+				}
+			}
 		}
 	})
 }

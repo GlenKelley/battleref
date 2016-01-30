@@ -106,13 +106,13 @@ func (t *Tournament) CreatePlayerRepository(name, publicKey string, category Tou
 		return "", err
 	} else {
 		defer checkout.Delete()
-		if files, err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
+		if err := t.Bootstrap.PopulateRepository(name, checkout.Dir(), string(category)); err != nil {
 			defer t.deleteRepository(name)
 			return "", err
-		} else if err := checkout.AddFiles(files); err != nil {
+		} else if err := checkout.AddFiles([]string{"."}); err != nil {
 			defer t.deleteRepository(name)
 			return "", err
-		} else if err := checkout.CommitFiles(files, "Bootstrap_Code"); err != nil {
+		} else if err := checkout.CommitFiles([]string{"."}, "Bootstrap_Code"); err != nil {
 			defer t.deleteRepository(name)
 			return "", err
 		} else if err := checkout.Push(); err != nil {

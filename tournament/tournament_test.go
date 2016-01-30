@@ -31,7 +31,7 @@ func TournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 		}
 		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, gzReplay.Bytes()}, nil}
 		remote := git.TempRemote{}
-		bootstrap := &arena.MinimalBootstrap{}
+		bootstrap := &arena.MinimalBootstrap{"../arena/internal/categories"}
 		if database, err := NewInMemoryDatabase(); err != nil {
 			t.ErrorNow(err)
 		} else if err = database.MigrateSchema(); err != nil {
@@ -72,7 +72,7 @@ func GitoliteTournamentTest(test *testing.T, f func(*testutil.T, *Tournament)) {
 		defer host.Cleanup()
 		dummyArena := arena.DummyArena{time.Now(), arena.MatchResult{arena.WinnerA, arena.ReasonVictory, []byte("MATCH_RESULT")}, nil}
 		remote := git.TempRemote{}
-		bootstrap := &arena.MinimalBootstrap{}
+		bootstrap := &arena.MinimalBootstrap{"../arena/internal/categories"}
 		if database, err := NewInMemoryDatabase(); err != nil {
 			t.ErrorNow(err)
 		} else if err = database.MigrateSchema(); err != nil {
