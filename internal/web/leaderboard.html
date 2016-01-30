@@ -32,9 +32,9 @@
  <script type='text/javascript'>
 	console.log('loaded');
 	var xhr = new XMLHttpRequest();
-	var host = "api.akusete.com"
+	var host = "localhost:8080"
 	var category = "battlecode2015"
-	xhr.open('GET', 'http://' + host + ':8080/leaderboard?category=' + category);
+	xhr.open('GET', 'http://' + host + '/leaderboard?category=' + category);
 	xhr.send();
 
 	xhr.onload = function() {

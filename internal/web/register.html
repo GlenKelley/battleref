@@ -12,7 +12,7 @@
  <body class='page-new-repo'>
   <div role='main' class='main-content'>
    <div id="register_page" class='new-repo-container'>
-    <form id='registerForm' action='http://api.akusete.com:8080/register' method='post'>
+    <form id='registerForm' action='http://localhost:8080/register' method='post'>
      <div class='subhead'>
       <h2 class='subhead-heading'>Register for Battlecode</h2>
       <p class='subhead-description'>Create a repository for your battlecode submission.</p>
@@ -108,7 +108,7 @@
 		var category = document.getElementById('category').value
 		var public_key = document.getElementById('public_key').value
 		var xhr = new XMLHttpRequest();
-		xhr.open('POST', 'http://api.akusete.com:8080/register');
+		xhr.open('POST', 'http://localhost:8080/register');
 		xhr.setRequestHeader('Content-Type', 'application/json');
 		xhr.send(JSON.stringify({
 					'name':name,
