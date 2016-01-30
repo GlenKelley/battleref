@@ -65,7 +65,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func() time.Time) (time.Ti
 	if err != nil {
 		return clock(), result, err
 	}
-	//	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir)
 
 	cmd := exec.Command("./runMatch.sh",
 		"-r", tarFile,
@@ -80,6 +80,7 @@ func (a LocalArena) RunMatch(p MatchProperties, clock func() time.Time) (time.Ti
 	cmd.Dir = filepath.Join(a.ResourceDir, p.Category)
 	buffer := bytes.Buffer{}
 	cmd.Stderr = &buffer
+	log.Println(cmd)
 	if out, err := cmd.Output(); err != nil {
 		debug.PrintStack()
 		log.Println("runMatch Error: ", string(buffer.Bytes()))

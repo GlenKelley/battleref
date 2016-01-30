@@ -81,7 +81,6 @@ func populateBattlecode2015Player(name, sourceDir string) error {
 func populateBattlecode2016Player(name, sourceDir, resourceDir string) error {
 	cmd := exec.Command("./copySamplePlayer.sh", "-d", sourceDir, "-n", name)
 	cmd.Dir = filepath.Join(resourceDir, "battlecode2016")
-	fmt.Println(cmd)
 	return cmd.Run()
 }
 

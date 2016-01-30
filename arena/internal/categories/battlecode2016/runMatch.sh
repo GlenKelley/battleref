@@ -96,17 +96,21 @@ mkdir -p "$BATTLECODE_DIR/maps/"
 cp "$MAP_FILE" "$BATTLECODE_DIR/maps/${MAP}.xml"
 
 mkdir "$BATTLECODE_DIR/test"
+mkdir "$BATTLECODE_DIR/extract"
 
 function createRepo {
 	REPO_URL=$1
 	REPO_NAME=$2
 	COMMIT=$3
-	REPO_PATH=$BATTLECODE_DIR/src/$REPO_NAME
+	REPO_PATH=$BATTLECODE_DIR/extract/$REPO_NAME
+	SRC_DIR=$BATTLECODE_DIR/src/$REPO_NAME
 	git clone "$REPO_URL" "$REPO_PATH"
 	pushd "$REPO_PATH" >/dev/null
 	if ! git checkout "$COMMIT" 2>error.log ; then 
 		cat error.log >&2
 	fi
+	mv "$REPO_PATH/src/$REPO_NAME" "$SRC_DIR"
+	rm -rf "$REPO_PATH"
 	popd >/dev/null
 }
 
@@ -154,12 +158,10 @@ WINNER=`grep "\[java\] \[server\]" output.log | perl -i -n -e 'if(/ \((\w)\) win
 REASON=`grep "Reason:" output.log | perl -i -n -e '
 	if(/Reason: ([^\n]+)/){
 		if ($1 eq "The winning team won by destruction.") { print "VICTORY" }
-		if ($1 eq "The winning team won on tiebreakers (more towers remaining).") { print "TIE" }
-		if ($1 eq "The winning team won on tiebreakers (more HQ health).") { print "TIE" }
-		if ($1 eq "The winning team won on tiebreakers (more TOWER health).") { print "TIE" }
-		if ($1 eq "The winning team won due to superior sanitation.") { print "TIE" }
-		if ($1 eq "The winning team won on tiebreakers (more total ore value).") { print "TIE" }
-		if ($1 =~ /Team (A|B) won arbitrarily./) { print "TIE" }
+		if ($1 eq "The winning team won on tiebreakers (more Archons remaining).") { print "TIE" }
+		if ($1 eq "The winning team won on tiebreakers (more Archon health).") { print "TIE" }
+		if ($1 eq "The winning team won on tiebreakers (more Parts)") { print "TIE" }
+		if ($1 eq "The winning team won arbitrarily.") { print "TIE" }
 	}'`
 echo -n "{\"winner\":\"$WINNER\",\"reason\":\"$REASON\"}"
 
