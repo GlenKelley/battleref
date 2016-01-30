@@ -4,37 +4,29 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 type Bootstrap interface {
-	PopulateRepository(name, repoURL, category string) ([]string, error)
+	PopulateRepository(name, repoDir, category string) error
 }
 
 type MinimalBootstrap struct {
 	ResourceDir string
 }
 
-func (b MinimalBootstrap) PopulateRepository(name, sourceDir, category string) ([]string, error) {
+func (b MinimalBootstrap) PopulateRepository(name, repoDir, category string) error {
 	switch category {
 	case "battlecode2014":
-		{
-			files, err := populateBattlecode2014Player(name, sourceDir)
-			return files, err
-		}
+		return populateBattlecode2014Player(name, repoDir)
 	case "battlecode2015":
-		{
-			files, err := populateBattlecode2015Player(name, sourceDir)
-			return files, err
-		}
+		return populateBattlecode2015Player(name, repoDir)
 	case "battlecode2016":
-		{
-			files, err := populateBattlecode2016Player(name, sourceDir, b.ResourceDir)
-			return files, err
-		}
+		return populateBattlecode2016Player(name, repoDir, b.ResourceDir)
 	default:
-		return []string{}, fmt.Errorf("Can't create bootstrap for unkown category %s", category)
+		return fmt.Errorf("Can't create bootstrap for unkown category %s", category)
 	}
 }
 
@@ -50,17 +42,16 @@ public class RobotPlayer {
 
 const Battlecode2014Readme = ``
 
-func populateBattlecode2014Player(name, sourceDir string) ([]string, error) {
+func populateBattlecode2014Player(name, sourceDir string) error {
 	sourceFile := filepath.Join(sourceDir, "RobotPlayer.java")
 	readmeFile := filepath.Join(sourceDir, "README")
-	files := []string{sourceFile, readmeFile}
 	if err := ioutil.WriteFile(sourceFile, []byte(fmt.Sprintf(Battlecode2014Template, name)), os.ModePerm); err != nil {
-		return []string{}, err
+		return err
 	}
 	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2014Readme), os.ModePerm); err != nil {
-		return []string{}, err
+		return err
 	}
-	return files, nil
+	return nil
 }
 
 const Battlecode2015Template = `package %s;
@@ -75,35 +66,23 @@ public class RobotPlayer {
 
 const Battlecode2015Readme = ``
 
-func populateBattlecode2015Player(name, sourceDir string) ([]string, error) {
+func populateBattlecode2015Player(name, sourceDir string) error {
 	sourceFile := filepath.Join(sourceDir, "RobotPlayer.java")
 	readmeFile := filepath.Join(sourceDir, "README")
-	files := []string{sourceFile, readmeFile}
 	if err := ioutil.WriteFile(sourceFile, []byte(fmt.Sprintf(Battlecode2015Template, name)), os.ModePerm); err != nil {
-		return []string{}, err
+		return err
 	}
 	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2015Readme), os.ModePerm); err != nil {
-		return []string{}, err
+		return err
 	}
-	return files, nil
+	return nil
 }
 
-const Battlecode2016Readme = ``
-
-func populateBattlecode2016Player(name, sourceDir, resourceDir string) ([]string, error) {
-	sourceFile := filepath.Join(sourceDir, "RobotPlayer.java")
-	readmeFile := filepath.Join(sourceDir, "README")
-	files := []string{sourceFile, readmeFile}
-	sourceTemplate := filepath.Join(resourceDir, "battlecode2016", "RobotPlayer.java")
-	if data, err := ioutil.ReadFile(sourceTemplate); err != nil {
-		return []string{}, err
-	} else if err := ioutil.WriteFile(sourceFile, []byte(strings.Replace(string(data), "PLAYER_NAMESPACE", name, 1)), os.ModePerm); err != nil {
-		return []string{}, err
-	}
-	if err := ioutil.WriteFile(readmeFile, []byte(Battlecode2016Readme), os.ModePerm); err != nil {
-		return []string{}, err
-	}
-	return files, nil
+func populateBattlecode2016Player(name, sourceDir, resourceDir string) error {
+	cmd := exec.Command("./copySamplePlayer.sh", "-d", sourceDir, "-n", name)
+	cmd.Dir = filepath.Join(resourceDir, "battlecode2016")
+	fmt.Println(cmd)
+	return cmd.Run()
 }
 
 func DefaultMaps(resourcePath, category string) (map[string]string, error) {
