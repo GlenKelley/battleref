@@ -129,21 +129,21 @@ function Replay() {
 		var loc = parseLoc(sig.Loc, this.map.origin);
 		var delay = parseInt(sig.Delay);
 		this.addClearEffect(robot.loc, loc, this.currentRound, delay);
-		this.draw.isMapDrawn = false;
+		this.draw.drawTile(this.map, this.constants, loc.x, loc.y);
 	}
 
 	this.processChangeParts = function(sig) {
 		var loc = parseLoc(sig.Loc, this.map.origin);
 		var amount = parseInt(sig.Amount);
-		this.map.rubble[loc.y][loc.x] = amount;
-		this.draw.isMapDrawn = false;
+		this.map.parts[loc.y][loc.x] = amount;
+		this.draw.drawTile(this.map, this.constants, loc.x, loc.y);
 	}
 
 	this.processChangeRubble = function(sig) {
 		var loc = parseLoc(sig.Loc, this.map.origin);
 		var amount = parseInt(sig.Amount);
 		this.map.rubble[loc.y][loc.x] = amount;
-		this.draw.isMapDrawn = false;
+		this.draw.drawTile(this.map, this.constants, loc.x, loc.y);
 	}
 
 	this.processBroadcast = function(sig) {
@@ -289,9 +289,9 @@ function parseLoc(raw, origin) {
 }
 
 function rgb(r, g, b) {
-	r = Math.min(255,Math.max(0,r*256));
-	g = Math.min(255,Math.max(0,g*256));
-	b = Math.min(255,Math.max(0,b*256));
+	r = Math.min(255,Math.max(0,Math.floor(r*256)));
+	g = Math.min(255,Math.max(0,Math.floor(g*256)));
+	b = Math.min(255,Math.max(0,Math.floor(b*256)));
 	var color = r*256*256 + g*256 + b;
 	return color;
 }
@@ -346,6 +346,8 @@ function Draw(width, height) {
 
 	this.map = new PIXI.Graphics();
 	this.board.addChild(this.map);
+	
+	this.tiles = undefined;
 
 	this.units = new PIXI.Graphics();
 	this.units.x=0.5;
@@ -367,7 +369,7 @@ function Draw(width, height) {
 		var margin = 10;
 		var sx = (this.renderer.width - margin*2) / map.width;
 		var sy = (this.renderer.height - margin*2) / map.height;
-		this.scale = Math.min(sx, sy) * 2;
+		this.scale = Math.min(sx, sy);
 		var mx = (this.renderer.width - map.width * this.scale) / 2;
 		var my = (this.renderer.height - map.height * this.scale) / 2;
 	
@@ -375,6 +377,12 @@ function Draw(width, height) {
 		this.board.y = my;
 		this.board.scale.x = this.scale;
 		this.board.scale.y = this.scale;
+		
+		this.map.scale.x = 1;
+		this.map.scale.y = 1;
+		this.map.x = 0;
+		this.map.y = 0;
+		this.createMapTiles(map);
 	}
 
 	this.loadResources = function() {
@@ -442,36 +450,63 @@ function Draw(width, height) {
 		this.units.removeChild(robot.draw.unit);
 	}
 
-	this.drawMap = function(map, constants) {
-		var RT = constants.RUBBLE_OBSTRUCTION_THRESH;
-		var PT = constants.PARTS_INITIAL_AMOUNT;
-		var g = this.map;
-		g.clear();
-		g.lineStyle(1/this.scale, 0x555500, 1);
-		for (var i = 0; i < map.width; i++) {
-			for (var j = 0; j < map.height; j++) {
-				var x = i;
-				var y = j;
-				var rubble = map.rubble[j][i];
-				var part = map.parts[j][i] / PT;
-				var color = rgb(0, part, 0); 
-				g.beginFill(color, 0.5);
-				g.drawRect(x,y, 1,1);
-				g.endFill();
-				if (rubble > 0) {
-					var alpha = 0.5;
-					var p = Math.max(0, Math.min(1, rubble + 1 - RT));
-					var color = 0xCC7A00 * (1-p) + 0xCCCCCC * p;
-					var radius = Math.min(0.4, rubble * 0.2/ RT);
-					g.lineStyle(1, color, 0);
-					g.beginFill(color, alpha);
-					g.drawCircle(x+0.5,y+0.5, radius);
-					g.endFill();
-					g.lineStyle(1/this.scale, 0x555500, 1);
-				}
+	this.createMapTiles = function(map) {
+		this.tiles = new Array(map.height);
+		for (var j = 0; j < map.height; j++) {
+			this.tiles[j] = new Array(map.width);
+			for (var i = 0; i < map.width; i++) {
+				var tile = new PIXI.Graphics();
+				tile.x = i;
+				tile.y = j;
+				this.map.addChild(tile);
+				this.tiles[j][i] = tile; 
 			}
 		}
+
+	}
+
+	this.drawTile = function(map, constants, x, y) {
+		var RT = constants.RUBBLE_OBSTRUCTION_THRESH;
+		var PT = 75;
+		var g = this.tiles[y][x];
+		g.clear();
+		
+		// draw rubble
+		var rubble = map.rubble[y][x];
+		var color;
+		var alpha;
+		if (rubble > RT) {
+			color = 0xCCCCCC;
+			alpha = 0.5;
+		} else {
+			color = 0xAAAAAA;
+			alpha = rubble * 0.5 / RT;
+		}
+		g.lineStyle(1/this.scale, 0x555500, 1);
+		g.beginFill(color, alpha);
+		g.drawRect(0,0, 1,1);
 		g.endFill();
+
+		// draw parts
+		var part = map.parts[y][x];
+		if (part > 1) {
+			var color = 0xCC7A00;
+			g.lineStyle(0, 0x555500, 1);
+			g.beginFill(color, 1.0);
+			var radius = Math.min(0.4, part / PT);
+			g.lineStyle(1, color, 0);
+			g.beginFill(color, 1);
+			g.drawCircle(0.5,0.5, radius);
+			g.endFill();
+		}
+	}
+
+	this.drawMap = function(map, constants) {
+		for (var j = 0; j < map.height; j++) {
+			for (var i = 0; i < map.width; i++) {
+				this.drawTile(map, constants, i, j);
+			}
+		}
 		this.isMapDrawn = true;
 	}
 	
