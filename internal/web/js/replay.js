@@ -186,7 +186,7 @@ function Replay() {
 			parts:parseArray(header.Map.InitialParts)
 		};
 		this.draw.resize(this.draw.renderer.width, this.draw.renderer.height, this.map); 
-		this.isMapDrawn = false;
+		this.draw.drawMap(this.map, this.constants);
 	}
 
 	this.createPixi = function(width, height) {
@@ -194,18 +194,40 @@ function Replay() {
 		this.draw.loadResources();
 	}
 
+	var n = 0;
+	var sumdt = 0.0;
+	var sampleSize = 100;
+	var lastFrameTime = undefined;
 	this.animate = function() {
 		var now = new Date();
 		if (this.lastRenderedRound !== this.currentRound) {
 			this.lastRenderedRound = this.currentRound;
 		}
 		var time = (now - this.lastRoundTime) / this.draw.MS_PER_ROUND;
+		var dt = now - lastFrameTime;
+		lastFrameTime = now;
+		if (n == sampleSize) {
+			var fps = 1000 * sampleSize / sumdt;
+			console.log(fps);
+			n = 0;
+			sumdt = 0.0;
+		} else {
+			n++;
+			sumdt += dt;
+		}
 		if (time < 0 || time >= 1) {
 			time = Math.max(0, Math.min(1, time));
 		}
 	
-		if (this.map && this.draw.isMapDrawn === false) {
-			this.draw.drawMap(this.map, this.constants);
+		if (this.map !== undefined) {
+			for (var j = 0; j < this.map.height; j++) {
+				for (var i = 0; i < this.map.width; i++) {
+					var tile = this.draw.tiles[j][i];
+					//tile.pivot.x = 0.5;
+					//tile.pivot.y = 0.5;
+					//tile.rotation += 0.1;
+				}
+			}
 		}
 		this.draw.drawUnits(this.units, this.currentRound, time);
 		this.draw.drawEffects(this.effects, this.currentRound, time);
@@ -213,8 +235,28 @@ function Replay() {
 		if (this.draw.bunny !== undefined) {
 			this.draw.bunny.rotation += 0.1;
 		}
-	
-		this.draw.renderer.render(this.draw.stage);
+
+		if (this.draw.mapHasChanged) {
+			this.draw.map.cacheAsBitmap = false;
+			this.draw.renderer.render(this.draw.stage);
+			this.draw.map.cacheAsBitmap = true;
+			this.draw.mapHasChanged = false;
+		} else {
+			this.draw.renderer.render(this.draw.stage);
+		}
+
+		//// swap the buffers ...
+		//var temp = this.renderTexture;
+		//this.renderTexture = this.renderTexture2;
+		//this.renderTexture2 = temp;
+
+		//// set the new texture
+		//this.draw.outputSprite.texture = this.draw.renderTexture;
+		//this.draw.outputSprite.scale.x += 0.1;
+		//
+		//// render the stage to the texture
+		//// the 'true' clears the texture before the content is rendered
+		//this.draw.renderTexture2.render(this.draw.stage, null, false);
 	
 		this.lastFrameTime = now;
 		if (this.Stopped !== true) {
@@ -320,6 +362,7 @@ function Draw(width, height) {
 	// You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
 	// which will try to choose the best renderer for the environment you are in.
 	this.renderer = new PIXI.WebGLRenderer(width, height);
+	//this.renderer.resolution = 100;
 	
 	// The renderer will create a canvas element for you that you can then insert into the DOM.
 	document.body.appendChild(this.renderer.view);
@@ -342,9 +385,25 @@ function Draw(width, height) {
 		'BIGZOMBIE':'images/bigzombie.png',
 		'OTHER':'images/other.png'
 	};
+
+	// create two render textures... these dynamic textures will be used to draw the scene into itself
+	//this.renderTexture = new PIXI.RenderTexture(this.renderer, this.renderer.width, this.renderer.height);
+	//this.renderTexture2 = new PIXI.RenderTexture(this.renderer, this.renderer.width, this.renderer.height);
+
+	// create a new sprite that uses the render texture we created above
+	//this.outputSprite = new PIXI.Sprite(this.renderTexture);
+	
+	// align the sprite
+	//this.outputSprite.position.x = 400;
+	//this.outputSprite.position.y = 300;
+	//this.outputSprite.anchor.set(0.5);
+
+	// add to stage
+	//this.stage.addChild(this.outputSprite);
+
 	this.board = new PIXI.Container();
 
-	this.map = new PIXI.Graphics();
+	this.map = new PIXI.Container();
 	this.board.addChild(this.map);
 	
 	this.tiles = undefined;
@@ -362,7 +421,7 @@ function Draw(width, height) {
 	this.stage.addChild(this.board);
 			
 	this.MS_PER_ROUND = 200;
-	this.isMapDrawn = false;
+	this.mapHasChanged = false;
 	this.scale = undefined;
 	
 	this.resize = function(width, height, map) {
@@ -370,6 +429,9 @@ function Draw(width, height) {
 		var sx = (this.renderer.width - margin*2) / map.width;
 		var sy = (this.renderer.height - margin*2) / map.height;
 		this.scale = Math.min(sx, sy);
+		var n = 1.0;
+		this.ns = this.scale / n;
+		this.nsi = 1.0 / this.ns; 
 		var mx = (this.renderer.width - map.width * this.scale) / 2;
 		var my = (this.renderer.height - map.height * this.scale) / 2;
 	
@@ -378,8 +440,8 @@ function Draw(width, height) {
 		this.board.scale.x = this.scale;
 		this.board.scale.y = this.scale;
 		
-		this.map.scale.x = 1;
-		this.map.scale.y = 1;
+		this.map.scale.x = this.nsi;
+		this.map.scale.y = this.nsi;
 		this.map.x = 0;
 		this.map.y = 0;
 		this.createMapTiles(map);
@@ -456,13 +518,14 @@ function Draw(width, height) {
 			this.tiles[j] = new Array(map.width);
 			for (var i = 0; i < map.width; i++) {
 				var tile = new PIXI.Graphics();
-				tile.x = i;
-				tile.y = j;
+				tile.x = i * this.ns;
+				tile.y = j * this.ns;
+				tile.scale.x = this.ns;
+				tile.scale.y = this.ns;
 				this.map.addChild(tile);
 				this.tiles[j][i] = tile; 
 			}
 		}
-
 	}
 
 	this.drawTile = function(map, constants, x, y) {
@@ -482,7 +545,7 @@ function Draw(width, height) {
 			color = 0xAAAAAA;
 			alpha = rubble * 0.5 / RT;
 		}
-		g.lineStyle(1/this.scale, 0x555500, 1);
+		g.lineStyle(2/this.scale, 0x555555, 0.1);
 		g.beginFill(color, alpha);
 		g.drawRect(0,0, 1,1);
 		g.endFill();
@@ -499,6 +562,7 @@ function Draw(width, height) {
 			g.drawCircle(0.5,0.5, radius);
 			g.endFill();
 		}
+		this.mapHasChanged = true;
 	}
 
 	this.drawMap = function(map, constants) {
@@ -507,7 +571,6 @@ function Draw(width, height) {
 				this.drawTile(map, constants, i, j);
 			}
 		}
-		this.isMapDrawn = true;
 	}
 	
 	this.drawUnits = function(units, currentRound,  time) {
