@@ -21,6 +21,10 @@ function Replay() {
 			this.parseStoredConstants(response.Data);
 		} else if (response.MessageType == "Header") {
 			this.parseHeader(response.Data);
+		} else if (response.MessageType == "Metadata") {
+			this.parseMetadata(response.Data);	
+		} else {
+			console.log(response.MessageType);
 		}
 		this.isReady = false;
 	}
@@ -178,6 +182,7 @@ function Replay() {
 
 	this.parseHeader = function(header) {
 		this.map = {
+			armageddon:header.Map.Armageddon,
 			width:header.Map.Width,
 			height:header.Map.Height,
 			name:header.Map.Name,
@@ -187,6 +192,21 @@ function Replay() {
 		};
 		this.draw.resize(this.draw.renderer.width, this.draw.renderer.height, this.map); 
 		this.draw.drawMap(this.map, this.constants);
+
+		this.header = {
+			matchCount:header.MatchCount,
+			matchNumber:header.MatchNumber
+		}
+	}
+
+	this.parseMetadata = function(metadata) {
+		console.log(metadata);
+		this.metadata = {
+			teamA:metadata.TeamA,
+			teamB:metadata.TeamB
+		}
+		this.draw.createInfoComponents();
+		this.draw.drawInfo(this.map, this.header, this.metadata);
 	}
 
 	this.createPixi = function(width, height) {
@@ -199,6 +219,11 @@ function Replay() {
 	var sampleSize = 100;
 	var lastFrameTime = undefined;
 	this.animate = function() {
+		if (this.Stopped !== true) {
+			var game = this;
+			requestAnimationFrame(function(){game.animate();});
+		}
+
 		var now = new Date();
 		if (this.lastRenderedRound !== this.currentRound) {
 			this.lastRenderedRound = this.currentRound;
@@ -219,16 +244,6 @@ function Replay() {
 			time = Math.max(0, Math.min(1, time));
 		}
 	
-		if (this.map !== undefined) {
-			for (var j = 0; j < this.map.height; j++) {
-				for (var i = 0; i < this.map.width; i++) {
-					var tile = this.draw.tiles[j][i];
-					//tile.pivot.x = 0.5;
-					//tile.pivot.y = 0.5;
-					//tile.rotation += 0.1;
-				}
-			}
-		}
 		this.draw.drawUnits(this.units, this.currentRound, time);
 		this.draw.drawEffects(this.effects, this.currentRound, time);
 		
@@ -245,23 +260,8 @@ function Replay() {
 			this.draw.renderer.render(this.draw.stage);
 		}
 
-		//// swap the buffers ...
-		//var temp = this.renderTexture;
-		//this.renderTexture = this.renderTexture2;
-		//this.renderTexture2 = temp;
-
-		//// set the new texture
-		//this.draw.outputSprite.texture = this.draw.renderTexture;
-		//this.draw.outputSprite.scale.x += 0.1;
-		//
-		//// render the stage to the texture
-		//// the 'true' clears the texture before the content is rendered
-		//this.draw.renderTexture2.render(this.draw.stage, null, false);
-	
 		this.lastFrameTime = now;
 		if (this.Stopped !== true) {
-			var game = this;
-			requestAnimationFrame(function(){game.animate();});
 			if (this.lastRoundTime === undefined) {
 				this.lastRoundTime = now;
 			}
@@ -362,7 +362,7 @@ function Draw(width, height) {
 	// You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
 	// which will try to choose the best renderer for the environment you are in.
 	this.renderer = new PIXI.WebGLRenderer(width, height);
-	//this.renderer.resolution = 100;
+	//this.renderer = new PIXI.WebGLRenderer(width, height - 4);
 	
 	// The renderer will create a canvas element for you that you can then insert into the DOM.
 	document.body.appendChild(this.renderer.view);
@@ -386,20 +386,9 @@ function Draw(width, height) {
 		'OTHER':'images/other.png'
 	};
 
-	// create two render textures... these dynamic textures will be used to draw the scene into itself
-	//this.renderTexture = new PIXI.RenderTexture(this.renderer, this.renderer.width, this.renderer.height);
-	//this.renderTexture2 = new PIXI.RenderTexture(this.renderer, this.renderer.width, this.renderer.height);
-
-	// create a new sprite that uses the render texture we created above
-	//this.outputSprite = new PIXI.Sprite(this.renderTexture);
-	
-	// align the sprite
-	//this.outputSprite.position.x = 400;
-	//this.outputSprite.position.y = 300;
-	//this.outputSprite.anchor.set(0.5);
-
-	// add to stage
-	//this.stage.addChild(this.outputSprite);
+	this.info = new PIXI.Container();
+	this.stage.addChild(this.info);
+	this.infoComponents = undefined;
 
 	this.board = new PIXI.Container();
 
@@ -423,19 +412,22 @@ function Draw(width, height) {
 	this.MS_PER_ROUND = 200;
 	this.mapHasChanged = false;
 	this.scale = undefined;
+	this.INFO_WIDTH = 300;
+
 	
 	this.resize = function(width, height, map) {
-		var margin = 10;
-		var sx = (this.renderer.width - margin*2) / map.width;
+		var margin = 5;
+		var infoWidth = this.INFO_WIDTH;
+		var sx = (this.renderer.width - infoWidth - margin*2) / map.width;
 		var sy = (this.renderer.height - margin*2) / map.height;
 		this.scale = Math.min(sx, sy);
 		var n = 1.0;
 		this.ns = this.scale / n;
 		this.nsi = 1.0 / this.ns; 
-		var mx = (this.renderer.width - map.width * this.scale) / 2;
+		var mx = (this.renderer.width - infoWidth - map.width * this.scale) / 2;
 		var my = (this.renderer.height - map.height * this.scale) / 2;
 	
-		this.board.x = mx;
+		this.board.x = infoWidth + mx;
 		this.board.y = my;
 		this.board.scale.x = this.scale;
 		this.board.scale.y = this.scale;
@@ -446,7 +438,7 @@ function Draw(width, height) {
 		this.map.y = 0;
 		this.createMapTiles(map);
 	}
-
+	
 	this.loadResources = function() {
 		var draw = this;
 		// load the texture we need
@@ -467,10 +459,37 @@ function Draw(width, height) {
 		});
 	
 		for (var id in this.sprites) {
-			if (this.sprites.hasOwnProperty(id)) {
+		if (this.sprites.hasOwnProperty(id)) {
 				PIXI.loader.add(id, this.sprites[id]).load();
 			}
 		}
+	}
+
+	this.createInfoComponents = function() {
+		var g = new PIXI.Graphics();
+		var summary = new PIXI.Text("", {font: '28px ComputerFont', fill:teamColor("NEUTRAL"), align: 'left'});
+		var teamA = new PIXI.Text("", {font: '24px ComputerFont', fill:teamColor("A"), align: 'center'});
+		var teamB = new PIXI.Text("", {font: '24px ComputerFont', fill:teamColor("B"), align: 'center'});
+		teamB.y = 25;
+
+		this.infoComponents = {g:g, summary: summary, ta:teamA, tb: teamB};
+		this.info.addChild(g);
+		this.info.addChild(summary);
+		this.info.addChild(teamA);
+		this.info.addChild(teamB);
+	
+	}
+
+	this.drawInfo = function(map, header, metadata) {
+		var g = this.infoComponents.g;
+		g.clear();
+		g.lineStyle(0, 0, 0);
+		g.beginFill(0x222222, 1);
+		g.drawRect(0, 0, this.INFO_WIDTH, this.renderer.height);
+		g.endFill();
+		
+		this.infoComponents.summary.text = "Map: " + map.name + "\nTeam A: " + metadata.teamA + "\nTeam B: " + metadata.teamB; 
+		
 	}
 
 	this.drawHealthBar = function(g, loc, team, healthRatio) {

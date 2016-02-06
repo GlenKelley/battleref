@@ -7,15 +7,26 @@
   <link rel=icon href='images/favicon.png' sizes='96x96' type='image/png'>
   
   <script src="js/pixi.min.js"></script>
-<style>
+  <style>
 	body {
 		margin: 0;
 		padding: 0;
 		background-color: #000000;
 	}
-</style>
+ 	@font-face {
+		font-family: 'ComputerFont';
+		src: url('fonts/computerfont.ttf');
+		font-style: normal;
+	}
+	p {
+		font-family:'ComputerFont';
+		position:absolute;
+		color:transparent;
+	}
+  </style>
 </head>
 <body>
+	<p>preload text</p>
 </body>
 <script type='text/javascript'>
 	var query = (function(a) {
