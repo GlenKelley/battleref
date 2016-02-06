@@ -1,50 +1,20 @@
-- return error values
-- 
+- display match stats
+- armageddon mode
+
+- display points
+- display team names
+- units
+- display sound
+ 
+
 
 P2
-TODO: remove category from run match
 TODO: Install git hooks which trigger server updates on push events.
-TODO: Check for duplicate keys, and semantic equivalent keys, including admin keys and reserved repositories
-TODO: Validate public keys - only accept open ssl public keys. Display key format link.
 
 P3
-TEST: arena with no slash in path name
-TODO: Endpoint to run all matches
 TODO: Run arena matches in sandbox to prevent malicious java execution
-TODO: Define categories 
 TEST: Allow rerun of failed match
 TEST: reset removes repos
 TODO: Secure endpoint
 TODO: Secure endpoint to reset server
-
-Functional tests
-local tests
-- register map
-- register player
-- submit match
-- clone repo
-- push to repo
-- sumbit player (push)
-- run match
-
-gitolite
-- register map
-- register player
-- clone repo (with key)
-- clone repo failed (wrong key)
-- push to repo
-- submit player (pushed
-- run match
-
-Category
-Player -> one per person (default category?)
-
-commit -> meta.json e.g. {
-	tag:"The Conqueror",
-	category:"battlecode2014"
-}
-
-Commit -> single category
-Match -> single category x 2
-Map -> single category
 
